@@ -1,0 +1,25 @@
+{
+  "name": "compact-browser-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Estensione per Claude Desktop: Claude naviga e compila siti in Chrome leggendo le pagine come testo compatto invece che con screenshot.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "postinstall": "npm ci --prefix extension/server --omit=dev --no-audit --no-fund",
+    "test": "node test/functional.mjs && node test/resilience.mjs",
+    "bench": "node test/bench.mjs",
+    "profile": "node test/profile.mjs",
+    "build": "node scripts/build.mjs"
+  },
+  "devDependencies": {
+    "@anthropic-ai/mcpb": "2.1.2",
+    "@anthropic-ai/tokenizer": "0.0.4",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "@playwright/mcp": "0.0.83",
+    "playwright-core": "^1.64.1"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,17 @@
+<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Home - Portale Servizi Formazione</title><link rel="stylesheet" href="style.css"></head><body>
+<div id="hdr"></div>
+<main>
+<h1>Servizi per la formazione finanziata</h1>
+<p>Il portale consente alle imprese di presentare domande di contributo per piani formativi, gestire la rendicontazione e consultare gli avvisi.</p>
+<p><a class="btn" href="domanda1.html">Presenta una nuova domanda</a> <a class="btn" href="elenco.html">Elenco progetti</a> <a href="test.html">Pagina di test</a></p>
+<h2>In evidenza</h2>
+<div class="cards" id="cards"></div>
+<h2>Scadenze</h2>
+<ul><li>31/10/2026 - Avviso 1/2026 piani aziendali</li><li>15/11/2026 - Rendicontazione FNC3 secondo lotto</li><li>30/11/2026 - Avviso 2/2026 competenze digitali</li></ul>
+</main>
+<div id="ftr"></div><div id="cookie"></div>
+<script src="common.js"></script>
+<script>
+const t=['Avviso 1/2026 piani formativi aziendali','Nuove regole di rendicontazione','Webinar: come presentare la domanda','FAQ sul conto formazione','Proroga termini avviso digitale','Guida alla piattaforma','Elenco enti accreditati','Modulistica aggiornata','Esiti valutazione avviso 3/2025','Calendario controlli in itinere','Manuale di gestione 2026','Comunicato: manutenzione sistemi'];
+document.getElementById('cards').innerHTML=t.map((x,i)=>`<div class="card"><h3><a href="#n${i}">${x}</a></h3><p>Pubblicato il ${10+i}/10/2026. Testo di anteprima della notizia numero ${i+1} con alcune righe descrittive.</p><a href="#n${i}">Leggi di più</a></div>`).join('');
+</script></body></html>

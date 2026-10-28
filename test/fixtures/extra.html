@@ -1,0 +1,17 @@
+<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Casi portale</title><link rel="stylesheet" href="style.css"></head><body><main>
+<h1>Casi portale</h1>
+<label for="dp">Data protocollo</label><input id="dp" readonly placeholder="gg/mm/aaaa" onclick="document.getElementById('cal').hidden=false">
+<div id="cal" hidden>calendario</div><p id="dpo"></p>
+<div style="position:relative;width:400px"><button id="cov" onclick="document.getElementById('cvo').textContent='coperto ok'">Pulsante coperto</button>
+<div style="position:absolute;inset:0;background:transparent" class="overlay-mask"></div></div><p id="cvo"></p>
+<button id="dis" disabled>Pulsante disattivato</button>
+<button id="slow">Carica dati lenti</button>
+<button id="slownav">Procedi lento</button>
+<p id="out"></p>
+<h2>Archivio</h2><table id="big"><tbody></tbody></table>
+</main><script>
+document.getElementById('dp').addEventListener('change',e=>document.getElementById('dpo').textContent='data ricevuta: '+e.target.value);
+document.getElementById('slow').onclick=async()=>{ const r=await fetch('/slow?ms=2500'); document.getElementById('out').textContent='dati arrivati: '+await r.text(); };
+document.getElementById('slownav').onclick=async()=>{ await fetch('/slow?ms=2500'); location.href='popup.html'; };
+document.querySelector('#big tbody').innerHTML=Array.from({length:3000},(_,i)=>`<tr><td>Doc ${i+1}</td><td>Descrizione documento numero ${i+1} archiviato</td><td><a href="#d${i}">Apri</a></td></tr>`).join('');
+</script></body></html>

@@ -1,0 +1,21 @@
+<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Nuova domanda - passo 2 di 2</title><link rel="stylesheet" href="style.css"></head><body>
+<div id="hdr"></div>
+<main>
+<h1>Riepilogo e invio</h1>
+<div id="ok" role="status"></div>
+<table id="riep"><thead><tr><th>Campo</th><th>Valore</th></tr></thead><tbody></tbody></table>
+<p><a href="domanda1.html">Indietro</a> <button id="mod" onclick="location.href='domanda1.html'">Modifica dati</button> <button id="invia">Invia domanda</button></p>
+<div id="mdl"></div>
+</main>
+<div id="ftr"></div>
+<script src="common.js"></script>
+<script>
+const d=JSON.parse(sessionStorage.getItem('domanda')||'{}');
+document.querySelector('#riep tbody').innerHTML=Object.entries(d).map(([k,v])=>`<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+document.getElementById('invia').onclick=()=>{
+  document.getElementById('mdl').innerHTML=`<div class="modal-bg"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">Conferma invio</h2><p>Dopo l'invio non sarà possibile modificare la domanda.</p><button id="ann">Annulla</button> <button id="conf">Conferma invio</button></div></div>`;
+  document.getElementById('ann').onclick=()=>document.getElementById('mdl').innerHTML='';
+  document.getElementById('conf').onclick=()=>{ document.getElementById('mdl').innerHTML=''; document.getElementById('ok').textContent='Domanda inviata. Protocollo n. 2026/004512 del 28/10/2026'; document.getElementById('invia').disabled=true;
+    const a=document.createElement('a'); a.href='ricevuta.pdf'; a.textContent='Scarica ricevuta'; a.download='ricevuta-2026-004512.pdf'; document.getElementById('ok').after(a); };
+};
+</script></body></html>

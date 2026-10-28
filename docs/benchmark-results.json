@@ -1,0 +1,850 @@
+{
+ "defs": {
+  "M2": 4536,
+  "M3": 1639,
+  "M1": 1500
+ },
+ "results": {
+  "T1": {
+   "M1": {
+    "calls": 54,
+    "obs": 74304,
+    "maxObs": 1366,
+    "ctxEnd": 83725,
+    "inputTot": 2480688,
+    "outTot": 3071,
+    "toolS": 19.934059696999995,
+    "modelS": 133.68333333333342,
+    "totS": 153.6173930303334,
+    "costNoCache": 4.992086,
+    "cacheCost": 0.47971879999999933,
+    "ok": true,
+    "raw": [
+     {
+      "a": {
+       "action": "navigate",
+       "url": "http://127.0.0.1:43763/domanda1.html"
+      },
+      "ms": 498
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        777,
+        770
+       ]
+      },
+      "ms": 335
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        190,
+        409
+       ]
+      },
+      "ms": 355
+     },
+     {
+      "a": {
+       "action": "type",
+       "text": "Alfa Meccanica S.r.l."
+      },
+      "ms": 399
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        190,
+        468
+       ]
+      },
+      "ms": 341
+     },
+     {
+      "a": {
+       "action": "type",
+       "text": "01234567890"
+      },
+      "ms": 376
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        190,
+        527
+       ]
+      },
+      "ms": 343
+     },
+     {
+      "a": {
+       "action": "type",
+       "text": "01234567890"
+      },
+      "ms": 369
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        182,
+        586
+       ]
+      },
+      "ms": 365
+     },
+     {
+      "a": {
+       "action": "type",
+       "text": "62\n"
+      },
+      "ms": 355
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        182,
+        645
+       ]
+      },
+      "ms": 355
+     },
+     {
+      "a": {
+       "action": "type",
+       "text": "Campania\n"
+      },
+      "ms": 356
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        182,
+        704
+       ]
+      },
+      "ms": 358
+     },
+     {
+      "a": {
+       "action": "type",
+       "text": "Napoli\n"
+      },
+      "ms": 352
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        190,
+        763
+       ]
+      },
+      "ms": 351
+     },
+     {
+      "a": {
+       "action": "type",
+       "text": "Isch"
+      },
+      "ms": 650
+     },
+     {
+      "a": {
+       "action": "scroll",
+       "coordinate": [
+        640,
+        400
+       ],
+       "scroll_direction": "down",
+       "scroll_amount": 5
+      },
+      "ms": 339
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        594,
+        305
+       ]
+      },
+      "ms": 340
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        190,
+        322
+       ]
+      },
+      "ms": 345
+     },
+     {
+      "a": {
+       "action": "type",
+       "text": "Via Roma 1"
+      },
+      "ms": 401
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        190,
+        381
+       ]
+      },
+      "ms": 334
+     },
+     {
+      "a": {
+       "action": "type",
+       "text": "80077"
+      },
+      "ms": 357
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        190,
+        440
+       ]
+      },
+      "ms": 347
+     },
+     {
+      "a": {
+       "action": "type",
+       "text": "alfa@pec.it"
+      },
+      "ms": 368
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        190,
+        626
+       ]
+      },
+      "ms": 342
+     },
+     {
+      "a": {
+       "action": "type",
+       "text": "Mario"
+      },
+      "ms": 350
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        190,
+        685
+       ]
+      },
+      "ms": 339
+     },
+     {
+      "a": {
+       "action": "type",
+       "text": "Rossi"
+      },
+      "ms": 351
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        190,
+        744
+       ]
+      },
+      "ms": 353
+     },
+     {
+      "a": {
+       "action": "type",
+       "text": "mario@alfa.it"
+      },
+      "ms": 381
+     },
+     {
+      "a": {
+       "action": "scroll",
+       "coordinate": [
+        640,
+        400
+       ],
+       "scroll_direction": "down",
+       "scroll_amount": 5
+      },
+      "ms": 341
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        187,
+        319
+       ]
+      },
+      "ms": 345
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        190,
+        501
+       ]
+      },
+      "ms": 334
+     },
+     {
+      "a": {
+       "action": "type",
+       "text": "Competenze digitali 2026"
+      },
+      "ms": 387
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        182,
+        560
+       ]
+      },
+      "ms": 343
+     },
+     {
+      "a": {
+       "action": "type",
+       "text": "Fondo Nuove Competenze\n"
+      },
+      "ms": 390
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        190,
+        619
+       ]
+      },
+      "ms": 332
+     },
+     {
+      "a": {
+       "action": "type",
+       "text": "12"
+      },
+      "ms": 347
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        190,
+        678
+       ]
+      },
+      "ms": 340
+     },
+     {
+      "a": {
+       "action": "type",
+       "text": "40"
+      },
+      "ms": 344
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        190,
+        739
+       ]
+      },
+      "ms": 349
+     },
+     {
+      "a": {
+       "action": "type",
+       "text": "11032026"
+      },
+      "ms": 350
+     },
+     {
+      "a": {
+       "action": "scroll",
+       "coordinate": [
+        640,
+        400
+       ],
+       "scroll_direction": "down",
+       "scroll_amount": 5
+      },
+      "ms": 341
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        190,
+        299
+       ]
+      },
+      "ms": 342
+     },
+     {
+      "a": {
+       "action": "type",
+       "text": "15/12/2026"
+      },
+      "ms": 369
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        189,
+        446
+       ]
+      },
+      "ms": 341
+     },
+     {
+      "a": {
+       "action": "type",
+       "text": "Sviluppare competenze digitali di base per 12 dipendenti."
+      },
+      "ms": 451
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        574,
+        642
+       ]
+      },
+      "ms": 337
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        574,
+        670
+       ]
+      },
+      "ms": 344
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        143,
+        724
+       ]
+      },
+      "ms": 742
+     },
+     {
+      "a": {
+       "action": "scroll",
+       "coordinate": [
+        640,
+        400
+       ],
+       "scroll_direction": "down",
+       "scroll_amount": 5
+      },
+      "ms": 341
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        229,
+        569
+       ]
+      },
+      "ms": 332
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        498,
+        451
+       ]
+      },
+      "ms": 344
+     },
+     {
+      "a": {
+       "action": "scroll",
+       "coordinate": [
+        640,
+        400
+       ],
+       "scroll_direction": "up",
+       "scroll_amount": 5
+      },
+      "ms": 339
+     }
+    ]
+   },
+   "M2": {
+    "calls": 14,
+    "obs": 23421,
+    "maxObs": 5354,
+    "ctxEnd": 34198,
+    "inputTot": 318910,
+    "outTot": 1391,
+    "toolS": 5.4095465170000026,
+    "modelS": 45.68333333333334,
+    "totS": 51.09287985033334,
+    "costNoCache": 0.6517299999999999,
+    "cacheCost": 0.1278762,
+    "ok": true,
+    "raw": [
+     {
+      "n": "browser_navigate",
+      "t": 159,
+      "ms": 704
+     },
+     {
+      "n": "browser_snapshot",
+      "t": 5285,
+      "ms": 39
+     },
+     {
+      "n": "browser_click",
+      "t": 117,
+      "ms": 618
+     },
+     {
+      "n": "browser_fill_form",
+      "t": 590,
+      "ms": 1191
+     },
+     {
+      "n": "browser_type",
+      "t": 122,
+      "ms": 576
+     },
+     {
+      "n": "browser_snapshot",
+      "t": 5354,
+      "ms": 49
+     },
+     {
+      "n": "browser_click",
+      "t": 120,
+      "ms": 569
+     },
+     {
+      "n": "browser_fill_form",
+      "t": 65,
+      "ms": 90
+     },
+     {
+      "n": "browser_click",
+      "t": 107,
+      "ms": 361
+     },
+     {
+      "n": "browser_snapshot",
+      "t": 3706,
+      "ms": 37
+     },
+     {
+      "n": "browser_click",
+      "t": 109,
+      "ms": 583
+     },
+     {
+      "n": "browser_snapshot",
+      "t": 3803,
+      "ms": 22
+     },
+     {
+      "n": "browser_click",
+      "t": 110,
+      "ms": 549
+     },
+     {
+      "n": "browser_snapshot",
+      "t": 3774,
+      "ms": 20
+     }
+    ]
+   },
+   "M3": {
+    "calls": 4,
+    "obs": 1191,
+    "maxObs": 634,
+    "ctxEnd": 8414,
+    "inputTot": 38495,
+    "outTot": 734,
+    "toolS": 4.445509801999997,
+    "modelS": 19.733333333333334,
+    "totS": 24.17884313533333,
+    "costNoCache": 0.08433,
+    "cacheCost": 0.0313831,
+    "ok": true,
+    "raw": [
+     {
+      "n": "browse_open",
+      "t": 634,
+      "ms": 1021
+     },
+     {
+      "n": "browse_do",
+      "t": 135,
+      "ms": 1962
+     },
+     {
+      "n": "browse_do",
+      "t": 339,
+      "ms": 642
+     },
+     {
+      "n": "browse_do",
+      "t": 83,
+      "ms": 820
+     }
+    ]
+   }
+  },
+  "T2": {
+   "M1": {
+    "calls": 3,
+    "obs": 4128,
+    "maxObs": 1366,
+    "ctxEnd": 10809,
+    "inputTot": 34630,
+    "outTot": 331,
+    "toolS": 1.3373103990000017,
+    "modelS": 11.516666666666666,
+    "totS": 12.853977065666667,
+    "costNoCache": 0.07257,
+    "cacheCost": 0.0327146,
+    "ok": true,
+    "raw": [
+     {
+      "a": {
+       "action": "navigate",
+       "url": "http://127.0.0.1:43763/elenco.html"
+      },
+      "ms": 439
+     },
+     {
+      "a": {
+       "action": "scroll",
+       "coordinate": [
+        640,
+        400
+       ],
+       "scroll_direction": "down",
+       "scroll_amount": 5
+      },
+      "ms": 347
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        901,
+        538
+       ]
+      },
+      "ms": 552
+     }
+    ]
+   },
+   "M2": {
+    "calls": 4,
+    "obs": 10698,
+    "maxObs": 6944,
+    "ctxEnd": 20434,
+    "inputTot": 73371,
+    "outTot": 350,
+    "toolS": 1.5604118900000103,
+    "modelS": 13.333333333333334,
+    "totS": 14.893745223333344,
+    "costNoCache": 0.150242,
+    "cacheCost": 0.05987870000000001,
+    "ok": true,
+    "raw": [
+     {
+      "n": "browser_navigate",
+      "t": 153,
+      "ms": 739
+     },
+     {
+      "n": "browser_snapshot",
+      "t": 6944,
+      "ms": 72
+     },
+     {
+      "n": "browser_click",
+      "t": 124,
+      "ms": 720
+     },
+     {
+      "n": "browser_snapshot",
+      "t": 3477,
+      "ms": 29
+     }
+    ]
+   },
+   "M3": {
+    "calls": 2,
+    "obs": 1101,
+    "maxObs": 821,
+    "ctxEnd": 7866,
+    "inputTot": 22026,
+    "outTot": 276,
+    "toolS": 1.4012062649999935,
+    "modelS": 9.1,
+    "totS": 10.501206264999993,
+    "costNoCache": 0.046812,
+    "cacheCost": 0.023841000000000005,
+    "ok": true,
+    "raw": [
+     {
+      "n": "browse_open",
+      "t": 821,
+      "ms": 839
+     },
+     {
+      "n": "browse_do",
+      "t": 280,
+      "ms": 562
+     }
+    ]
+   }
+  },
+  "T3": {
+   "M1": {
+    "calls": 2,
+    "obs": 2752,
+    "maxObs": 1366,
+    "ctxEnd": 9369,
+    "inputTot": 23809,
+    "outTot": 267,
+    "toolS": 1.053642841000008,
+    "modelS": 8.95,
+    "totS": 10.003642841000007,
+    "costNoCache": 0.050288,
+    "cacheCost": 0.027536500000000002,
+    "ok": true,
+    "raw": [
+     {
+      "a": {
+       "action": "navigate",
+       "url": "http://127.0.0.1:43763/index.html"
+      },
+      "ms": 498
+     },
+     {
+      "a": {
+       "action": "left_click",
+       "coordinate": [
+        296,
+        340
+       ]
+      },
+      "ms": 556
+     }
+    ]
+   },
+   "M2": {
+    "calls": 4,
+    "obs": 12301,
+    "maxObs": 7703,
+    "ctxEnd": 22034,
+    "inputTot": 69739,
+    "outTot": 347,
+    "toolS": 1.4390649239999984,
+    "modelS": 13.283333333333333,
+    "totS": 14.722398257333332,
+    "costNoCache": 0.142948,
+    "cacheCost": 0.0633255,
+    "ok": true,
+    "raw": [
+     {
+      "n": "browser_navigate",
+      "t": 154,
+      "ms": 611
+     },
+     {
+      "n": "browser_snapshot",
+      "t": 4338,
+      "ms": 47
+     },
+     {
+      "n": "browser_click",
+      "t": 106,
+      "ms": 740
+     },
+     {
+      "n": "browser_snapshot",
+      "t": 7703,
+      "ms": 41
+     }
+    ]
+   },
+   "M3": {
+    "calls": 2,
+    "obs": 487,
+    "maxObs": 459,
+    "ctxEnd": 7253,
+    "inputTot": 21050,
+    "outTot": 277,
+    "toolS": 1.5406844889999993,
+    "modelS": 9.116666666666667,
+    "totS": 10.657351155666667,
+    "costNoCache": 0.04487,
+    "cacheCost": 0.022282200000000002,
+    "ok": true,
+    "raw": [
+     {
+      "n": "browse_open",
+      "t": 459,
+      "ms": 1065
+     },
+     {
+      "n": "browse_do",
+      "t": 28,
+      "ms": 475
+     }
+    ]
+   }
+  }
+ },
+ "SHOT_TOK": 1366,
+ "assumptions": {
+  "BASE_CTX": 5000,
+  "PER_CALL": 40,
+  "FINAL": 150,
+  "TTFT": 1.5,
+  "TPS": 60
+ }
+}

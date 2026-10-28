@@ -1,0 +1,132 @@
+{
+  "manifest_version": "0.3",
+  "name": "compact-browser",
+  "display_name": "Browser compatto",
+  "version": "0.1.0",
+  "description": "Claude naviga e compila siti in Chrome leggendo le pagine come testo compatto: molti meno token e passaggi rispetto agli screenshot.",
+  "long_description": "Apre Google Chrome (o Edge) con un profilo dedicato e restituisce a Claude una tabella compatta degli elementi interattivi invece di screenshot o alberi di accessibilita' completi. Claude esegue piu' passi in una sola chiamata (compilazione moduli, menu, autocompletamenti, conferme) e riceve solo le variazioni. Le azioni con effetti (invio, conferma, salvataggio, eliminazione, pagamento, accettazione termini, caricamento file) vengono bloccate finche' l'utente non le conferma; password, carte, OTP e IBAN non sono mai compilabili da Claude. Non serve nessuna chiave API: funziona con il piano Claude dell'utente.",
+  "author": {
+    "name": "Roca Software"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/t4zxxx1/compact-browser-mcp"
+  },
+  "homepage": "https://github.com/t4zxxx1/compact-browser-mcp",
+  "support": "https://github.com/t4zxxx1/compact-browser-mcp/issues",
+  "icon": "icon.png",
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/server/index.js"
+      ],
+      "env": {
+        "CB_ALLOWED_DOMAINS": "${user_config.allowed_domains}",
+        "CB_CHROME_PATH": "${user_config.chrome_path}",
+        "CB_PROFILE_DIR": "${user_config.profile_dir}",
+        "CB_DOWNLOADS_DIR": "${user_config.downloads_dir}",
+        "CB_CONFIRM_SENSITIVE": "${user_config.confirm_sensitive}",
+        "CB_HEADLESS": "${user_config.headless}",
+        "CB_ALLOW_SCREENSHOT": "${user_config.allow_screenshot}"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "browse_open",
+      "description": "Apre un URL e restituisce la tabella compatta degli elementi interattivi."
+    },
+    {
+      "name": "browse_view",
+      "description": "Vista compatta della pagina attuale, con filtro e paginazione."
+    },
+    {
+      "name": "browse_do",
+      "description": "Esegue piu' passi in una sola chiamata e restituisce solo le variazioni."
+    },
+    {
+      "name": "browse_read",
+      "description": "Legge testo, tabelle, righe che contengono un testo o il dettaglio di un elemento."
+    },
+    {
+      "name": "browse_screenshot",
+      "description": "Screenshot ridotto, solo quando la vista testuale non basta."
+    },
+    {
+      "name": "browse_stats",
+      "description": "Consumo stimato della sessione e confronto con il metodo a screenshot."
+    }
+  ],
+  "user_config": {
+    "allowed_domains": {
+      "type": "string",
+      "title": "Domini consentiti",
+      "description": "Separati da virgola, es. servizi.lavoro.gov.it, fondimpresa.it. Vuoto = tutti i siti. Fuori da questi domini Claude puo' solo leggere.",
+      "required": false,
+      "default": ""
+    },
+    "confirm_sensitive": {
+      "type": "boolean",
+      "title": "Conferma per le azioni con effetti",
+      "description": "Blocca invio, conferma, salvataggio, eliminazione, pagamento, accettazione termini e caricamento file finche' non dai l'ok a Claude. Consigliato attivo.",
+      "required": false,
+      "default": true
+    },
+    "profile_dir": {
+      "type": "directory",
+      "title": "Cartella del profilo browser",
+      "description": "Profilo Chrome dedicato (separato dal tuo): qui restano accessi e cookie dei siti in cui entri a mano.",
+      "required": false,
+      "default": "${HOME}/.compact-browser/profile"
+    },
+    "downloads_dir": {
+      "type": "directory",
+      "title": "Cartella download",
+      "description": "Dove salvare i file scaricati dalle pagine.",
+      "required": false,
+      "default": "${DOWNLOADS}"
+    },
+    "chrome_path": {
+      "type": "file",
+      "title": "Percorso di Chrome (facoltativo)",
+      "description": "Lascia vuoto: Chrome o Edge vengono trovati da soli. Indicalo solo se l'avvio non riesce.",
+      "required": false
+    },
+    "headless": {
+      "type": "boolean",
+      "title": "Browser invisibile",
+      "description": "Esegue Chrome senza finestra. Lascia disattivato per vedere cosa fa Claude e per fare gli accessi a mano.",
+      "required": false,
+      "default": false
+    },
+    "allow_screenshot": {
+      "type": "boolean",
+      "title": "Consenti screenshot",
+      "description": "Permette a Claude di chiedere uno screenshot ridotto quando la vista testuale non basta (circa 900 token).",
+      "required": false,
+      "default": true
+    }
+  },
+  "compatibility": {
+    "platforms": [
+      "darwin",
+      "win32",
+      "linux"
+    ],
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
+  },
+  "keywords": [
+    "browser",
+    "chrome",
+    "automazione",
+    "moduli",
+    "portali",
+    "token"
+  ],
+  "license": "MIT"
+}

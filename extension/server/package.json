@@ -1,0 +1,17 @@
+{
+  "name": "compact-browser-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Server MCP del Browser compatto",
+  "license": "MIT",
+  "type": "module",
+  "main": "index.js",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "playwright-core": "^1.64.1",
+    "zod": "^3.25.76"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

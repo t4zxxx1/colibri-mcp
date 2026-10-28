@@ -1,0 +1,24 @@
+<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Casi limite</title><link rel="stylesheet" href="style.css"></head><body>
+<main><h1>Casi limite</h1>
+<div role="alert" class="alert-danger">Attenzione: sessione in scadenza tra 5 minuti</div>
+<iframe src="frame.html" width="600" height="160" title="frame interno"></iframe>
+<my-widget></my-widget>
+<p><input type="checkbox" id="nl" class="sr-chk"><label for="nl">Ricevi la newsletter</label></p>
+<label for="carta">Numero carta</label><input id="carta" autocomplete="cc-number">
+<label for="ibn">IBAN</label><input id="ibn" name="iban">
+<label for="cfp">Codice fiscale</label><input id="cfp" name="codice_fiscale">
+<div class="g-recaptcha" style="width:304px;height:78px;background:#eee">captcha</div>
+<p><a href="popup.html" target="_blank">Apri guida in nuova scheda</a></p>
+<p><button id="cf" onclick="document.getElementById('r').textContent = confirm('Confermi la cancellazione?') ? 'confermato' : 'annullato'">Cancella elemento</button> <span id="r"></span></p>
+<p><a id="ext" href="http://localhost:PORT/elenco.html">Link a dominio esterno</a></p>
+<div contenteditable="true" aria-label="Note libere" style="border:1px solid #999;min-height:40px"></div>
+<div role="button" tabindex="0" onclick="this.textContent='cliccato'">Pulsante custom</div>
+<label for="big">Comune di nascita</label><select id="big"></select>
+<p><a href="ricevuta.pdf" download>Scarica modulo</a></p>
+<div style="height:1500px"></div><button onclick="this.textContent='fondo ok'">Pulsante in fondo</button>
+</main>
+<script>
+customElements.define('my-widget', class extends HTMLElement{ connectedCallback(){ const s=this.attachShadow({mode:'open'}); s.innerHTML='<label for="si">Campo nello shadow</label><input id="si"><button>Ok shadow</button>'; } });
+document.getElementById('ext').href = document.getElementById('ext').href.replace('PORT', location.port);
+document.getElementById('big').innerHTML = Array.from({length:120},(_,i)=>`<option>Comune ${String(i+1).padStart(3,'0')}</option>`).join('');
+</script></body></html>

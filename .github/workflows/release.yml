@@ -1,0 +1,32 @@
+name: Release
+
+# Pubblica una nuova versione: aggiorna la versione nei tre package/manifest, poi
+#   git tag v0.2.0 && git push --tags
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Pubblica la release con il file .mcpb
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/compact-browser.mcpb --clobber
+          else
+            gh release create "$TAG" dist/compact-browser.mcpb --title "Browser compatto $TAG" --notes-file .github/release-notes.md
+          fi

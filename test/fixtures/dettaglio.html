@@ -1,0 +1,13 @@
+<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Dettaglio progetto</title><link rel="stylesheet" href="style.css"></head><body>
+<div id="hdr"></div>
+<main><h1 id="h"></h1>
+<dl id="dl"></dl>
+<h2>Edizioni</h2><table id="ed"><thead><tr><th>Edizione</th><th>Inizio</th><th>Fine</th><th>Partecipanti</th><th>Ore svolte</th></tr></thead><tbody></tbody></table>
+<p><a href="elenco.html">Torna all'elenco</a></p></main>
+<div id="ftr"></div>
+<script src="common.js"></script>
+<script>
+const c=new URLSearchParams(location.search).get('c')||'?'; document.getElementById('h').textContent='Progetto '+c; document.title='Dettaglio '+c;
+document.getElementById('dl').innerHTML=`<dt>Codice</dt><dd>${c}</dd><dt>Importo approvato</dt><dd>€ 18.400,00</dd><dt>Ore approvate</dt><dd>120</dd><dt>Referente</dt><dd>Mario Rossi</dd><dt>Scadenza rendicontazione</dt><dd>15/11/2026</dd>`;
+document.querySelector('#ed tbody').innerHTML=Array.from({length:6},(_,i)=>`<tr><td>Ed. ${i+1}</td><td>${10+i}/09/2026</td><td>${20+i}/10/2026</td><td>${8+i}</td><td>${12+i*2}</td></tr>`).join('');
+</script></body></html>

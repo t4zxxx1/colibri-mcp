@@ -1,0 +1,879 @@
+import os from 'node:os';
+import path from 'node:path';
+import fs from 'node:fs';
+import { chromium } from 'playwright-core';
+import * as P from './page-script.js';
+import { renderView, renderDiff, snapKeys, lineOf, estTokens } from './render.js';
+
+const clean = (v) => (typeof v === 'string' && !v.startsWith('${') ? v.trim() : '');
+const list = (s) =>
+  clean(s)
+    .split(/[,;\s]+/)
+    .map((x) => x.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '').replace(/^\*\./, ''))
+    .filter(Boolean);
+const yes = (v, def) => {
+  const c = clean(v);
+  if (!c) return def;
+  return /^(1|true|yes|si|sì|on)$/i.test(c);
+};
+const firstLine = (e) => String((e && e.message) || e).split('\n')[0].replace(/^\w+Error: /, '').slice(0, 220);
+
+export function loadConfig(env = process.env) {
+  const home = os.homedir();
+  const dl = path.join(home, 'Downloads');
+  return {
+    mode: clean(env.CB_MODE) === 'cdp' ? 'cdp' : 'launch',
+    cdpUrl: clean(env.CB_CDP_URL) || 'http://127.0.0.1:9222',
+    chromePath: clean(env.CB_CHROME_PATH),
+    profileDir: clean(env.CB_PROFILE_DIR) || path.join(home, '.compact-browser', 'profile'),
+    downloadsDir: clean(env.CB_DOWNLOADS_DIR) || (fs.existsSync(dl) ? dl : path.join(home, '.compact-browser', 'downloads')),
+    headless: yes(env.CB_HEADLESS, false),
+    allowed: list(env.CB_ALLOWED_DOMAINS),
+    confirmSensitive: yes(env.CB_CONFIRM_SENSITIVE, true),
+    allowScreenshot: yes(env.CB_ALLOW_SCREENSHOT, true),
+    rejectCookies: yes(env.CB_REJECT_COOKIES, true),
+    maxItems: Math.max(20, parseInt(clean(env.CB_MAX_ITEMS) || '120', 10) || 120),
+    extraArgs: clean(env.CB_EXTRA_ARGS) ? clean(env.CB_EXTRA_ARGS).split(/\s+/) : [],
+  };
+}
+
+const ACTIONS = ['click', 'fill', 'type', 'select', 'check', 'press', 'pick', 'hover', 'scroll', 'wait', 'waitFor', 'goto', 'back', 'tab', 'upload', 'dialog', 'find', 'read'];
+const PICK_SEL = [
+  '[role=option]', '[role=listbox] li', '.ui-menu-item', '.autocomplete-suggestion', '.tt-suggestion', '.pac-item',
+  '.select2-results__option', '.mat-option', '.mat-mdc-option', '.ng-option', '.dropdown-item', '.choices__item--choice',
+  '.awesomplete li', '.typeahead li', 'datalist option',
+].map((s) => s + ':visible').join(',');
+
+export class Session {
+  constructor(cfg) {
+    this.cfg = cfg;
+    this.ctx = null;
+    this.browser = null;
+    this.page = null;
+    this.launching = null;
+    this.hooked = new WeakSet();
+    this.frameIds = new WeakMap();
+    this.frameN = 0;
+    this.idN = 0;
+    this.newPages = [];
+    this.events = [];
+    this.pending = new Set();
+    this.net = new WeakMap();
+    this.dialogAccept = false;
+    this.last = null; // { page, url, modal, keys }
+    this.stats = { calls: 0, chars: 0, actions: 0, observations: 0, shots: 0, shotTokens: 0, toolMs: 0, vw: 1280, vh: 800 };
+  }
+
+  // ---------- avvio e gestione browser ----------
+  async ensure() {
+    if (this.ctx && this.page && !this.page.isClosed()) return this.page;
+    if (this.ctx) {
+      const pages = this.ctx.pages().filter((p) => !p.isClosed());
+      this.page = pages[pages.length - 1] || (await this.ctx.newPage());
+      this.hook(this.page);
+      return this.page;
+    }
+    if (!this.launching) this.launching = this.launch().finally(() => (this.launching = null));
+    await this.launching;
+    return this.page;
+  }
+
+  async launch() {
+    const c = this.cfg;
+    if (c.mode === 'cdp') {
+      try {
+        this.browser = await chromium.connectOverCDP(c.cdpUrl, { timeout: 8000 });
+      } catch (e) {
+        throw new Error(`Nessun Chrome in ascolto su ${c.cdpUrl}. Avvia Chrome con --remote-debugging-port e un profilo dedicato (--user-data-dir). Dettaglio: ${firstLine(e)}`);
+      }
+      this.ctx = this.browser.contexts()[0] || (await this.browser.newContext());
+      this.page = await this.ctx.newPage();
+      this.browser.on('disconnected', () => this.reset());
+    } else {
+      fs.mkdirSync(c.profileDir, { recursive: true });
+      const base = {
+        headless: c.headless,
+        viewport: c.headless ? { width: 1280, height: 800 } : null,
+        acceptDownloads: true,
+        args: ['--no-first-run', '--no-default-browser-check', ...c.extraArgs],
+      };
+      const tries = c.chromePath ? [{ executablePath: c.chromePath }] : [{ channel: 'chrome' }, { channel: 'msedge' }, {}];
+      let err;
+      for (const t of tries) {
+        try {
+          this.ctx = await chromium.launchPersistentContext(c.profileDir, { ...base, ...t });
+          break;
+        } catch (e) {
+          err = e;
+          if (/ProcessSingleton|profile.*in use|already running|SingletonLock/i.test(String(e && e.message))) {
+            throw new Error(`Il profilo ${c.profileDir} e' gia' aperto da un'altra finestra di Chrome: chiudila e riprova.`);
+          }
+        }
+      }
+      if (!this.ctx) throw new Error(`Impossibile avviare Chrome o Edge. Installa Google Chrome oppure indica il percorso nelle impostazioni dell'estensione. Dettaglio: ${firstLine(err)}`);
+      this.page = this.ctx.pages()[0] || (await this.ctx.newPage());
+    }
+    this.ctx.setDefaultTimeout(8000);
+    await this.ctx.addInitScript(() => {
+      window.__cbMut = performance.now();
+      window.__cbAdded = [];
+      try {
+        new MutationObserver((ms) => {
+          window.__cbMut = performance.now();
+          const a = window.__cbAdded;
+          for (const m of ms) {
+            if (m.type === 'childList') for (const n of m.addedNodes) a.push(n);
+            else if (m.type === 'characterData') a.push(m.target);
+          }
+          if (a.length > 600) a.splice(0, a.length - 300);
+        }).observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
+      } catch {}
+    });
+    this.ctx.on('close', () => this.reset());
+    this.ctx.on('page', (p) => {
+      this.hook(p);
+      this.newPages.push(p);
+    });
+    for (const p of this.ctx.pages()) this.hook(p);
+  }
+
+  reset() {
+    this.ctx = null;
+    this.page = null;
+    this.browser = null;
+    this.last = null;
+  }
+
+  hook(p) {
+    if (this.hooked.has(p)) return;
+    this.hooked.add(p);
+    const net = new Map();
+    this.net.set(p, net);
+    const SKIP = /^(websocket|eventsource|ping|media|manifest|other)$/;
+    const TRACK = /google-analytics|googletagmanager|doubleclick|matomo|piwik|hotjar|clarity\.ms|facebook\.net|connect\.facebook|analytics|\/collect\?|newrelic|nr-data|sentry|bugsnag|datadog|cookiebot|iubenda|onetrust|recaptcha|gstatic/i;
+    p.on('request', (r) => {
+      if (!SKIP.test(r.resourceType()) && !TRACK.test(r.url())) net.set(r, Date.now());
+    });
+    p.on('requestfinished', (r) => net.delete(r));
+    p.on('requestfailed', (r) => net.delete(r));
+    p.on('framenavigated', (f) => {
+      if (f === p.mainFrame()) net.clear();
+    });
+    p.on('dialog', async (d) => {
+      const type = d.type();
+      const msg = d.message().replace(/\s+/g, ' ').slice(0, 200);
+      const accept = type === 'alert' || type === 'beforeunload' || this.dialogAccept;
+      this.dialogAccept = false;
+      try {
+        if (accept) await d.accept();
+        else await d.dismiss();
+      } catch {}
+      this.events.push(
+        `finestra ${type} "${msg}" -> ${accept ? 'accettata' : 'annullata'}` +
+          (!accept ? ' (per accettarla: passo {"dialog":"accept","confirm":true} poi ripeti l\'azione)' : '')
+      );
+    });
+    p.on('download', (dl) => {
+      const job = (async () => {
+        const raw = dl.suggestedFilename() || 'download';
+        const name = raw.replace(/[\\/:*?"<>|]/g, '_');
+        fs.mkdirSync(this.cfg.downloadsDir, { recursive: true });
+        const ext = path.extname(name);
+        let target = path.join(this.cfg.downloadsDir, name);
+        for (let i = 1; fs.existsSync(target); i++) target = path.join(this.cfg.downloadsDir, `${path.basename(name, ext)} (${i})${ext}`);
+        await dl.saveAs(target);
+        this.events.push(`download salvato: ${target}`);
+      })().catch((e) => this.events.push('download fallito: ' + firstLine(e)));
+      this.pending.add(job);
+      job.finally(() => this.pending.delete(job));
+    });
+  }
+
+  framePrefix(f) {
+    if (f === f.page().mainFrame()) return '';
+    let id = this.frameIds.get(f);
+    if (!id) {
+      id = 'f' + ++this.frameN;
+      this.frameIds.set(f, id);
+    }
+    return id;
+  }
+
+  allowedUrl(u) {
+    if (!this.cfg.allowed.length) return true;
+    try {
+      const h = new URL(u).hostname.toLowerCase();
+      return this.cfg.allowed.some((d) => h === d || h.endsWith('.' + d));
+    } catch {
+      return false;
+    }
+  }
+
+  // ---------- lettura pagina ----------
+  async collect() {
+    const page = await this.ensure();
+    const main = page.mainFrame();
+    const out = { items: [], regions: [], alerts: [], modal: '', captcha: false, login: false, total: 0, meta: null, ngroups: 0 };
+    for (const f of page.frames()) {
+      if (f.isDetached()) continue;
+      const isMain = f === main;
+      if (!isMain) {
+        let box = null;
+        try {
+          const fe = await f.frameElement();
+          box = await fe.boundingBox();
+          await fe.dispose();
+        } catch {}
+        if (!box || box.width < 20 || box.height < 20) continue;
+        if (/recaptcha|hcaptcha|turnstile|challenges\.cloudflare|arkoselabs|funcaptcha/i.test(f.url())) {
+          if (box.height >= 70 && !/\/anchor\?.*size=invisible/.test(f.url())) out.captcha = true;
+          continue;
+        }
+      }
+      let r;
+      for (let attempt = 0; attempt < 2 && !r; attempt++) {
+        try {
+          r = JSON.parse(await f.evaluate(P.collectInPage, { prefix: this.framePrefix(f), start: this.idN, json: true }));
+        } catch (e) {
+          if (!isMain) break;
+          if (attempt) throw e;
+          await this.settle(page, 2000, 150);
+        }
+      }
+      if (!r) continue;
+      if (r.n > this.idN) this.idN = r.n;
+      const off = out.regions.length;
+      const goff = out.ngroups;
+      out.ngroups += r.ngroups || 0;
+      for (const it of r.items) {
+        if (it.reg >= 0) it.reg += off;
+        if (it.grp >= 0) it.grp += goff;
+        it.frame = f;
+        out.items.push(it);
+      }
+      out.regions.push(...r.regions);
+      for (const a of r.alerts) if (!out.alerts.includes(a)) out.alerts.push(a);
+      if (isMain) {
+        out.meta = r.meta;
+        out.mut = r.mut;
+        out.url = page.url();
+        out.nframes = page.frames().length;
+      }
+      if (r.modal && !out.modal) out.modal = r.modal;
+      out.captcha ||= r.captcha;
+      out.login ||= r.login;
+      out.total += r.total;
+    }
+    if (out.modal) out.items = out.items.filter((i) => i.frame === main);
+    out.alerts = out.alerts.slice(0, 5);
+    if (out.meta) {
+      this.stats.vw = out.meta.vw || this.stats.vw;
+      this.stats.vh = out.meta.vh || this.stats.vh;
+    }
+    return out;
+  }
+
+  /** Rilegge la pagina solo se e' cambiata (mutazioni DOM, URL, frame, scheda). */
+  async freshSnap(snap, page) {
+    if (snap && snap.mut && snap.url === page.url() && snap.nframes === page.frames().length && this.last && this.last.page === page) {
+      try {
+        const m = await page.mainFrame().evaluate(() => window.__cbMut || 0);
+        if (m === snap.mut) return snap;
+      } catch {}
+    }
+    return this.collect();
+  }
+
+  tabs() {
+    return this.ctx ? this.ctx.pages().filter((p) => !p.isClosed()).length : 1;
+  }
+
+  remember(snap) {
+    this.last = { page: this.page, url: this.page.url(), modal: snap.modal, prev: snapKeys(snap) };
+  }
+
+  /**
+   * Attende che la pagina sia stabile: documento caricato, DOM fermo da quietMs,
+   * nessuna richiesta di rete in corso (escluse quelle aperte da >4 s), almeno minMs
+   * trascorsi (per intercettare navigazioni ritardate dopo un clic), massimo maxMs.
+   */
+  async settle(page, maxMs = 2500, quietMs = 150, minMs = 0) {
+    const t0 = Date.now();
+    const net = this.net.get(page);
+    let navWaits = 0;
+    while (Date.now() - t0 < maxMs) {
+      let st;
+      try {
+        st = await page.mainFrame().evaluate(() => ({ m: window.__cbMut ? performance.now() - window.__cbMut : 1e9, r: document.readyState }));
+      } catch {
+        if (navWaits++ > 3) return;
+        try {
+          await page.waitForLoadState('domcontentloaded', { timeout: Math.max(1000, 15000 - (Date.now() - t0)) });
+        } catch {}
+        continue;
+      }
+      const now = Date.now();
+      let busy = 0;
+      if (net) for (const t of net.values()) if (now - t < 8000) busy++;
+      if (now - t0 >= minMs && st.r !== 'loading' && st.m >= quietMs && busy === 0) return true;
+      await new Promise((r) => setTimeout(r, 40));
+    }
+    return false;
+  }
+
+  async dismissCookies(page) {
+    if (!this.cfg.rejectCookies) return '';
+    for (const f of page.frames()) {
+      try {
+        const r = await f.evaluate(P.dismissCookiesInPage);
+        if (r) {
+          await this.settle(page, 1500, 150);
+          return r;
+        }
+      } catch {}
+    }
+    return '';
+  }
+
+  // ---------- tool: open ----------
+  async open(url) {
+    const page = await this.ensure();
+    const u = this.checkUrl(url);
+    await page.goto(u, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await this.settle(page, 8000, 250, 300);
+    const ck = await this.dismissCookies(page);
+    const snap = await this.collect();
+    this.remember(snap);
+    this.stats.observations++;
+    let txt = renderView(snap, { url: page.url(), tabs: this.tabs(), max: this.cfg.maxItems });
+    if (ck) txt = `cookie: rifiutati i non necessari (${ck})\n` + txt;
+    if (!this.allowedUrl(page.url())) txt = `ATTENZIONE: ${new URL(page.url()).hostname} e' fuori dai domini consentiti, le azioni sono bloccate\n` + txt;
+    return txt;
+  }
+
+  checkUrl(url) {
+    let u;
+    try {
+      u = new URL(/^[a-z][a-z0-9+.-]*:/i.test(url) ? url : 'https://' + url);
+    } catch {
+      throw new Error('URL non valido: ' + url);
+    }
+    if (!/^https?:$/.test(u.protocol)) throw new Error(`schema ${u.protocol} non consentito (solo http/https)`);
+    if (!this.allowedUrl(u.href)) throw new Error(`${u.hostname} non e' tra i domini consentiti (${this.cfg.allowed.join(', ')})`);
+    return u.href;
+  }
+
+  // ---------- tool: view ----------
+  async view(opts = {}) {
+    const page = await this.ensure();
+    const snap = await this.collect();
+    this.stats.observations++;
+    if (!opts.filter && !opts.offset) this.remember(snap);
+    return renderView(snap, { url: page.url(), tabs: this.tabs(), max: this.cfg.maxItems, ...opts });
+  }
+
+  // ---------- tool: do ----------
+  resolve(snap, target) {
+    if (typeof target === 'string' && /^(f\d+)?e\d+$/.test(target.trim())) {
+      const it = snap.items.find((i) => i.id === target.trim());
+      if (!it) return { err: `${target} non trovato: ref scaduto (pagina cambiata) o elemento non visibile ora` };
+      return { it };
+    }
+    const qy = typeof target === 'string' ? { name: target } : target || {};
+    if (!qy.name) return { err: 'target mancante: usa un ref (es. "e12") o un testo' };
+    const n = String(qy.name).toLowerCase().replace(/\s+/g, ' ').trim();
+    const row = qy.row ? String(qy.row).toLowerCase() : '';
+    const cands = snap.items.filter((i) => (!qy.role || i.role === qy.role) && (!row || (i.ctx || '').toLowerCase().includes(row)));
+    const isLow = (i) => !!(snap.regions[i.reg] && snap.regions[i.reg].low);
+    // priorita': esatto nel contenuto principale, esatto ovunque, parziale nel principale, parziale ovunque
+    const exact = cands.filter((i) => i.name.toLowerCase() === n);
+    const part = cands.filter((i) => i.name.toLowerCase().includes(n));
+    let m = [];
+    for (const tier of [exact.filter((i) => !isLow(i)), exact, part.filter((i) => !isLow(i)), part]) {
+      if (tier.length) {
+        m = tier;
+        break;
+      }
+    }
+    if (m.length > 1 && qy.n) m = [m[qy.n - 1]].filter(Boolean);
+    if (!m.length) return { err: `nessun elemento "${qy.name}"${qy.role ? ' con ruolo ' + qy.role : ''}${row ? ' nella riga "' + qy.row + '"' : ''}` };
+    if (m.length > 1) return { err: `"${qy.name}" ambiguo (${m.length}): ${m.slice(0, 5).map((i) => lineOf(i, true)).join(' | ')}` };
+    return { it: m[0] };
+  }
+
+  async handle(it) {
+    const h = await it.frame.evaluateHandle((id) => (window.__cb && window.__cb.byId.get(id)) || null, it.id);
+    const el = h.asElement();
+    if (!el) {
+      await h.dispose();
+      return null;
+    }
+    return el;
+  }
+
+  async run(steps, { view = 'diff' } = {}) {
+    let page = await this.ensure();
+    const notes = [];
+    let done = 0;
+    let stop = '';
+    let snap = await this.collect();
+    if (!this.last || this.last.page !== page) this.remember(snap);
+    const touched = new Map();
+    const startUrl = page.url();
+    await page.mainFrame().evaluate(() => { window.__cbAdded = []; }).catch(() => {});
+    const startModal = this.last.modal;
+
+    for (let i = 0; i < steps.length; i++) {
+      const st = steps[i] || {};
+      const act = ACTIONS.find((a) => st[a] !== undefined);
+      const tag = `passo ${i + 1}`;
+      if (!act) {
+        stop = `${tag}: azione non riconosciuta (${Object.keys(st).join(',') || 'vuoto'})`;
+        break;
+      }
+      if (!['goto', 'back', 'tab', 'wait', 'find', 'read'].includes(act) && page.url() !== 'about:blank' && !this.allowedUrl(page.url())) {
+        stop = `${tag}: BLOCCATO, la pagina ${new URL(page.url()).hostname} e' fuori dai domini consentiti`;
+        break;
+      }
+      try {
+        const r = await this.step(act, st, snap, page);
+        if (r && r.block) {
+          stop = `${tag}: BLOCCATO ${r.block}`;
+          break;
+        }
+        if (r && r.note) notes.push(`${tag}: ${r.note}`);
+        if (r && r.id && (act === 'fill' || act === 'check')) touched.set(r.id, act);
+        done++;
+        this.stats.actions++;
+      } catch (e) {
+        stop = `${tag} (${act}): errore: ${firstLine(e)}`;
+        break;
+      }
+      if (this.newPages.length) {
+        const np = this.newPages.filter((p) => !p.isClosed()).pop();
+        this.newPages = [];
+        if (np) {
+          try {
+            await np.waitForLoadState('domcontentloaded', { timeout: 10000 });
+          } catch {}
+          this.page = page = np;
+          await np.bringToFront().catch(() => {});
+          notes.push(`${tag}: aperta nuova scheda, ora attiva (${np.url()})`);
+        }
+      }
+      page = this.page;
+      if (i < steps.length - 1) snap = await this.freshSnap(snap, page);
+    }
+
+    if (this.pending.size) await Promise.race([Promise.all([...this.pending]), new Promise((r) => setTimeout(r, 15000))]);
+
+    page = this.page;
+    const after = await this.collect();
+    this.stats.observations++;
+    const head = [`ok ${done}/${steps.length}` + (stop ? ' · ' + stop : '')];
+    head.push(...notes, ...this.events.splice(0));
+
+    let body = '';
+    if (view !== 'none') {
+      const navigated = page.url() !== startUrl || this.last.page !== page;
+      const modalChanged = after.modal !== startModal;
+      if (view === 'diff' && !navigated && !modalChanged) {
+        let fresh = [];
+        try {
+          fresh = await page.mainFrame().evaluate(P.addedTextInPage, 4);
+        } catch {}
+        const known = new Set([...after.alerts, ...after.items.map((i) => i.name)]);
+        fresh = fresh.filter((t) => !known.has(t) && !after.alerts.some((a) => a.includes(t) || t.includes(a)));
+        body = renderDiff(this.last.prev, after, { url: page.url(), tabs: this.tabs(), touched, fresh }) || '';
+      }
+      if (!body) body = (navigated ? 'pagina cambiata\n' : '') + renderView(after, { url: page.url(), tabs: this.tabs(), max: this.cfg.maxItems });
+    }
+    this.remember(after);
+    return head.join('\n') + (body ? '\n---\n' + body : '');
+  }
+
+  needConfirm(it, act, st) {
+    if (!this.cfg.confirmSensitive || st.confirm === true) return '';
+    if ((act === 'click' || act === 'check') && it && it.s === 'c') return `!c ${it.id} "${it.name}": chiedi conferma all'utente, poi ripeti solo questo passo con "confirm": true`;
+    return '';
+  }
+
+  async step(act, st, snap, page) {
+    const target = async (t) => {
+      const r = this.resolve(snap, t);
+      if (r.err) throw new Error(r.err);
+      const el = await this.handle(r.it);
+      if (!el) throw new Error(`${r.it.id} non piu' presente: ref scaduto`);
+      return { it: r.it, el };
+    };
+    const after = async (ms = 1500, min = 0) => this.settle(page, ms, 120, min);
+
+    switch (act) {
+      case 'click': {
+        const { it, el } = await target(st.click);
+        const why = this.needConfirm(it, 'click', st);
+        if (why) return { block: why };
+        if (it.flags.includes('off')) throw new Error(`${it.id} "${it.name}" e' disattivato`);
+        if (st.force) await el.evaluate((e) => e.click());
+        else {
+          try {
+            await el.click({ timeout: 5000 });
+          } catch (e) {
+            const m = String(e && e.message).match(/(<[^>\n]{1,90}>)[^\n]*intercepts pointer events/);
+            if (m) throw new Error(`${it.id} coperto da ${m[1]}: chiudi l'elemento sovrapposto oppure ripeti con "force": true`);
+            throw e;
+          }
+        }
+        if (!(await after(10000, 300))) return { note: 'pagina ancora in caricamento dopo 10 s (usa waitFor o browse_view)' };
+        return;
+      }
+      case 'fill':
+      case 'type': {
+        const { it, el } = await target(st[act]);
+        if (it.s === 'x') return { block: `!x ${it.id} "${it.name}": campo riservato (password, carta, OTP, IBAN), lo compila l'utente nella finestra del browser` };
+        if (it.role === 'sel') throw new Error(`${it.id} e' un menu: usa "select"`);
+        if (/^(chk|rad|sw)$/.test(it.role)) throw new Error(`${it.id} e' una casella: usa "check"`);
+        const text = String(st.text ?? '');
+        let viaScript = false;
+        if (act === 'fill') {
+          try {
+            if (it.flags.includes('ro')) throw new Error('readonly');
+            await el.fill(text, { timeout: 5000 });
+          } catch (e) {
+            if (it.role === 'date') throw new Error(`data non accettata: per i campi data nativi usa il formato AAAA-MM-GG (${firstLine(e)})`);
+            if (!/readonly|not editable|editable/i.test(String(e && e.message))) throw e;
+            // campi in sola lettura gestiti da widget (es. datepicker): valore impostato via script con eventi
+            await el.evaluate((x, v) => {
+              const set = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(x), 'value');
+              if (set && set.set) set.set.call(x, v);
+              else x.value = v;
+              x.dispatchEvent(new Event('input', { bubbles: true }));
+              x.dispatchEvent(new Event('change', { bubbles: true }));
+              x.dispatchEvent(new Event('blur', { bubbles: true }));
+            }, text);
+            viaScript = true;
+          }
+        } else {
+          await el.click({ timeout: 5000 });
+          await el.evaluate((e) => {
+            if ('value' in e && typeof e.select === 'function') e.select();
+          });
+          await page.keyboard.type(text, { delay: 25 });
+        }
+        await after(act === 'type' ? 2500 : 1500);
+        const v = await el.evaluate((e) => ('value' in e ? e.value : e.innerText || '')).catch(() => null);
+        if (v !== null && act === 'fill' && v.trim() !== text.trim()) return { id: it.id, note: `${it.id} valore ora "${String(v).slice(0, 60)}" (richiesto "${text.slice(0, 40)}")` };
+        if (viaScript) return { id: it.id, note: `${it.id} e' in sola lettura: valore impostato via script, verifica che il portale lo accetti` };
+        return { id: it.id };
+      }
+      case 'select': {
+        const { it, el } = await target(st.select);
+        if (it.s === 'x') return { block: `!x ${it.id} "${it.name}": campo riservato, lo compila l'utente` };
+        if (it.role !== 'sel') throw new Error(`${it.id} non e' un <select>: per menu personalizzati usa "click" e poi "pick"`);
+        const want = (Array.isArray(st.option) ? st.option : [st.option]).map((x) => String(x ?? ''));
+        try {
+          await el.selectOption(want, { timeout: 3000 });
+        } catch {
+          const vals = await el.evaluate((s, w) => {
+            const n = (x) => (x || '').replace(/\s+/g, ' ').trim().toLowerCase();
+            return w.map((x) => {
+              const o = [...s.options].find((o) => n(o.label || o.text) === n(x)) || [...s.options].find((o) => n(o.label || o.text).includes(n(x)));
+              return o ? o.value : null;
+            });
+          }, want);
+          const miss = want.filter((_, k) => vals[k] === null);
+          if (miss.length) throw new Error(`opzione non trovata: ${miss.join(', ')} (browse_read describe ${it.id} per l'elenco)`);
+          await el.selectOption(vals.map((value) => ({ value })), { timeout: 3000 });
+        }
+        await after(1500);
+        return { id: it.id };
+      }
+      case 'check': {
+        const { it, el } = await target(st.check);
+        const want = st.on !== false;
+        if (!/^(chk|rad|sw)$/.test(it.role)) throw new Error(`${it.id} non e' una casella`);
+        if (want) {
+          const why = this.needConfirm(it, 'check', st);
+          if (why) return { block: why };
+        }
+        try {
+          await el.setChecked(want, { timeout: 3000 });
+        } catch (e) {
+          const lab = await el.evaluateHandle((x) => (x.labels && x.labels[0]) || null);
+          const le = lab.asElement();
+          if (!le) throw e;
+          const cur = await el.evaluate((x) => !!x.checked);
+          if (cur !== want) await le.click({ timeout: 3000 });
+        }
+        await after(800);
+        const now = await el.evaluate((x) => (typeof x.checked === 'boolean' ? x.checked : x.getAttribute('aria-checked') === 'true'));
+        if (now !== want) return { id: it.id, note: `${it.id} e' ancora ${now ? 'selezionato' : 'non selezionato'}` };
+        return { id: it.id };
+      }
+      case 'press': {
+        const key = String(st.press);
+        let it = null;
+        let el = null;
+        if (st.target !== undefined) ({ it, el } = await target(st.target));
+        if (key === 'Enter' && this.cfg.confirmSensitive && st.confirm !== true) {
+          const submits = el
+            ? await el.evaluate(enterSubmits)
+            : await page.evaluate(() => {
+                const a = document.activeElement;
+                if (!a || !a.form) return false;
+                const f = a.form;
+                if (f.getAttribute('role') === 'search' || f.querySelector('input[type=search]')) return false;
+                return !/search|cerca|ricerca|query|^q$/i.test([a.name, a.id, a.getAttribute('aria-label'), a.placeholder].join(' '));
+              });
+          if (submits) return { block: `!c Enter invia il modulo${it ? ' (' + it.id + ')' : ''}: chiedi conferma all'utente, poi ripeti con "confirm": true` };
+        }
+        if (el) await el.press(key, { timeout: 5000 });
+        else await page.keyboard.press(key);
+        await after(6000, 300);
+        return;
+      }
+      case 'pick': {
+        const text = String(st.pick);
+        const loc = page.locator(PICK_SEL).filter({ hasText: text });
+        await loc.first().waitFor({ state: 'visible', timeout: 4000 }).catch(() => {
+          throw new Error(`nessun suggerimento visibile con "${text}": prima "type" nel campo, poi "pick"`);
+        });
+        const n = Math.min(await loc.count(), 30);
+        let idx = 0;
+        const norm = (s) => s.replace(/\s+/g, ' ').trim().toLowerCase();
+        for (let k = 0; k < n; k++) {
+          if (norm(await loc.nth(k).innerText()) === norm(text)) {
+            idx = k;
+            break;
+          }
+        }
+        await loc.nth(idx).click({ timeout: 4000 });
+        await after(2500, 150);
+        return;
+      }
+      case 'hover': {
+        const { el } = await target(st.hover);
+        await el.hover({ timeout: 4000 });
+        await after(800);
+        return;
+      }
+      case 'scroll': {
+        const s = st.scroll;
+        if (s === 'down' || s === 'up') await page.mouse.wheel(0, (s === 'down' ? 1 : -1) * Math.round(this.stats.vh * 0.85));
+        else if (s === 'top' || s === 'bottom') await page.evaluate((b) => window.scrollTo(0, b ? document.documentElement.scrollHeight : 0), s === 'bottom');
+        else {
+          const { el } = await target(s);
+          await el.scrollIntoViewIfNeeded({ timeout: 3000 });
+        }
+        await after(800);
+        return;
+      }
+      case 'wait':
+        await page.waitForTimeout(Math.min(Math.max(0, Number(st.wait) || 0), 10000));
+        return;
+      case 'waitFor': {
+        const t = String(st.waitFor);
+        await page.getByText(t).first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => {
+          throw new Error(`testo "${t}" non apparso entro 15 s`);
+        });
+        await after(800);
+        return;
+      }
+      case 'goto': {
+        const u = this.checkUrl(String(st.goto));
+        await page.goto(u, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await after(8000, 300);
+        const ck = await this.dismissCookies(page);
+        if (ck) return { note: `cookie rifiutati (${ck})` };
+        return;
+      }
+      case 'back':
+        await page.goBack({ waitUntil: 'domcontentloaded', timeout: 15000 });
+        await after(4000, 200);
+        return;
+      case 'tab': {
+        const pages = this.ctx.pages().filter((p) => !p.isClosed());
+        if (st.tab === 'close') {
+          if (pages.length < 2) throw new Error("e' l'unica scheda aperta");
+          await page.close();
+          this.page = this.ctx.pages().filter((p) => !p.isClosed()).pop();
+        } else if (st.tab === 'list') {
+          return { note: 'schede: ' + pages.map((p, k) => `${k + 1}${p === page ? '*' : ''} ${p.url()}`).join(' | ') };
+        } else {
+          const p = pages[Number(st.tab) - 1];
+          if (!p) throw new Error(`scheda ${st.tab} inesistente (aperte: ${pages.length})`);
+          this.page = p;
+        }
+        await this.page.bringToFront().catch(() => {});
+        return;
+      }
+      case 'upload': {
+        const { it, el } = await target(st.upload);
+        if (this.cfg.confirmSensitive && st.confirm !== true) return { block: `!c caricamento di ${[].concat(st.file).join(', ')} su ${it.id} "${it.name}": chiedi conferma all'utente, poi ripeti con "confirm": true` };
+        const files = [].concat(st.file || []).map((f) => String(f).replace(/^~(?=$|[\\/])/, os.homedir()));
+        if (!files.length) throw new Error('indica "file": percorso o elenco di percorsi');
+        for (const f of files) if (!fs.existsSync(f) || !fs.statSync(f).isFile()) throw new Error('file non trovato: ' + f);
+        if (it.role === 'file') await el.setInputFiles(files, { timeout: 5000 });
+        else {
+          const [fc] = await Promise.all([page.waitForEvent('filechooser', { timeout: 6000 }), el.click({ timeout: 5000 })]);
+          await fc.setFiles(files);
+        }
+        await after(1500);
+        return { note: `caricati ${files.length} file` };
+      }
+      case 'find': {
+        const t = await this.read({ mode: 'find', query: String(st.find), max: st.max || 10 });
+        this.stats.observations--;
+        return { note: `testo con "${st.find}":\n${t}` };
+      }
+      case 'read': {
+        const ref = typeof st.target === 'string' ? st.target : undefined;
+        const t = await this.read({ mode: st.read === 'table' ? 'table' : 'text', ref, max: st.max });
+        this.stats.observations--;
+        return { note: `${st.read === 'table' ? 'tabella' : 'testo'}:\n${t}` };
+      }
+      case 'dialog': {
+        if (st.dialog === 'accept') {
+          if (this.cfg.confirmSensitive && st.confirm !== true) return { block: "accettare la prossima finestra di conferma richiede \"confirm\": true (chiedi all'utente)" };
+          this.dialogAccept = true;
+          return { note: 'la prossima finestra di conferma verra\' accettata' };
+        }
+        this.dialogAccept = false;
+        return;
+      }
+    }
+  }
+
+  // ---------- tool: read ----------
+  async read({ mode = 'text', ref, selector, query, offset = 0, max }) {
+    const page = await this.ensure();
+    this.stats.observations++;
+    let frame = page.mainFrame();
+    if (ref) {
+      const snap = await this.collect();
+      const it = snap.items.find((i) => i.id === ref);
+      if (it) frame = it.frame;
+      else {
+        const m = /^(f\d+)/.exec(ref);
+        if (m) {
+          const f = page.frames().find((x) => this.frameIds.get(x) === m[1]);
+          if (f) frame = f;
+        }
+      }
+    }
+    if (mode === 'find') {
+      if (!query) throw new Error('serve "query"');
+      const hits = [];
+      for (const f of page.frames()) {
+        try {
+          const r = await f.evaluate(P.findTextInPage, { query, max: max || 20 });
+          hits.push(...r.hits);
+        } catch {}
+        if (hits.length >= (max || 20)) break;
+      }
+      return hits.length ? hits.slice(0, max || 20).join('\n') : `nessuna riga contiene "${query}"`;
+    }
+    if (mode === 'describe') {
+      if (!ref) throw new Error('serve "ref"');
+      const r = await frame.evaluate(P.describeInPage, ref);
+      if (r.err) throw new Error(r.err);
+      const o = [`${r.tag}${r.type ? '[' + r.type + ']' : ''}`];
+      if (r.text) o.push('testo: ' + r.text);
+      if (r.value !== undefined) o.push('valore: ' + r.value);
+      if (r.selected) o.push('selezionato: ' + r.selected.join(', '));
+      if (r.options) o.push(`opzioni (${r.options.length}): ` + r.options.join(' | '));
+      if (r.href) o.push('href: ' + r.href);
+      return o.join('\n');
+    }
+    if (mode === 'table') {
+      const r = await frame.evaluate(P.readTableInPage, { ref, selector, offset, maxRows: max || 40 });
+      if (r.err) throw new Error(r.err);
+      const more = r.total - offset - r.rows.length;
+      return `righe ${offset + 1}-${offset + r.rows.length} di ${r.total}\n` + r.rows.join('\n') + (more > 0 ? `\n… altre ${more} (offset:${offset + r.rows.length})` : '');
+    }
+    const r = await frame.evaluate(P.readTextInPage, { ref, selector, offset, maxChars: max || 3000 });
+    if (r.err) throw new Error(r.err);
+    const more = r.total - offset - r.text.length;
+    return r.text + (more > 0 ? `\n… altri ${more} caratteri (offset:${offset + r.text.length})` : '');
+  }
+
+  // ---------- tool: screenshot ----------
+  async screenshot({ ref } = {}) {
+    if (!this.cfg.allowScreenshot) throw new Error('screenshot disattivati nelle impostazioni');
+    const page = await this.ensure();
+    let clip;
+    if (ref) {
+      const snap = await this.collect();
+      const it = snap.items.find((i) => i.id === ref);
+      if (!it) throw new Error(`${ref} non trovato`);
+      const el = await this.handle(it);
+      await el.scrollIntoViewIfNeeded().catch(() => {});
+      const b = await el.boundingBox();
+      if (!b) throw new Error('elemento senza area visibile');
+      clip = { x: Math.max(0, b.x - 8), y: Math.max(0, b.y - 8), width: b.width + 16, height: b.height + 16 };
+    } else {
+      const v = await page.evaluate(() => ({ w: innerWidth, h: innerHeight, x: scrollX, y: scrollY }));
+      clip = { x: v.x, y: v.y, width: v.w, height: v.h };
+    }
+    const scale = Math.min(1, 1024 / clip.width, 768 / clip.height);
+    const cdp = await page.context().newCDPSession(page);
+    try {
+      const res = await cdp.send('Page.captureScreenshot', {
+        format: 'jpeg', quality: 55, captureBeyondViewport: !!ref,
+        clip: { ...clip, scale },
+      });
+      const w = Math.round(clip.width * scale);
+      const h = Math.round(clip.height * scale);
+      const tok = Math.ceil((w * h) / 750);
+      this.stats.shots++;
+      this.stats.shotTokens += tok;
+      this.stats.observations++;
+      return { data: res.data, w, h, tok };
+    } finally {
+      await cdp.detach().catch(() => {});
+    }
+  }
+
+  // ---------- consumo ----------
+  record(text, ms) {
+    this.stats.calls++;
+    this.stats.chars += text.length;
+    this.stats.toolMs += ms;
+  }
+
+  statsText() {
+    const s = this.stats;
+    const own = estTokens('x'.repeat(s.chars)) + s.shotTokens;
+    const shotTok = Math.min(1600, Math.ceil((s.vw * s.vh) / 750));
+    const classicCalls = s.actions + s.observations;
+    const classicTok = classicCalls * shotTok;
+    const pct = classicTok ? Math.round((1 - own / classicTok) * 100) : 0;
+    return [
+      `sessione: ${s.calls} chiamate, ${s.actions} azioni, ${s.observations} osservazioni, ${s.shots} screenshot`,
+      `token prodotti dai tool: ~${own.toLocaleString('it-IT')} (stima ~3,6 caratteri/token${s.shotTokens ? ', screenshot inclusi' : ''})`,
+      `stesso lavoro con 1 screenshot per azione/osservazione: ~${classicCalls} chiamate, ~${classicTok.toLocaleString('it-IT')} token (${shotTok} token/screenshot a ${s.vw}x${s.vh})`,
+      classicTok ? `risparmio stimato sulle osservazioni: ~${pct}% e ${Math.max(0, classicCalls - s.calls)} chiamate in meno (ogni chiamata in meno evita di rileggere tutto il contesto)` : '',
+      `tempo nel browser: ${(s.toolMs / 1000).toFixed(1)} s totali`,
+    ]
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  async close() {
+    try {
+      if (this.cfg.mode === 'cdp') {
+        if (this.page && !this.page.isClosed()) await this.page.close();
+        if (this.browser) await this.browser.close();
+      } else if (this.ctx) await this.ctx.close();
+    } catch {}
+    this.reset();
+  }
+}
+
+function enterSubmits(a) {
+  if (!a || !a.form) return false;
+  const f = a.form;
+  if (f.getAttribute('role') === 'search' || f.querySelector('input[type=search]')) return false;
+  if (a.tagName === 'TEXTAREA') return false;
+  return !/search|cerca|ricerca|query|^q$/i.test([a.name, a.id, a.getAttribute('aria-label'), a.placeholder].join(' '));
+}

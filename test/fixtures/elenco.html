@@ -1,0 +1,27 @@
+<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Elenco progetti</title><link rel="stylesheet" href="style.css"></head><body>
+<div id="hdr"></div>
+<main>
+<h1>Elenco progetti</h1>
+<form role="search" aria-label="Filtri" id="flt"><label for="q">Cerca per titolo o azienda</label><input id="q" name="q">
+<label for="st">Stato</label><select id="st"><option value="">Tutti</option><option>In istruttoria</option><option>Approvato</option><option>In rendicontazione</option><option>Chiuso</option></select>
+<label for="an">Anno</label><select id="an"><option value="">Tutti</option><option>2024</option><option>2025</option><option>2026</option></select>
+<button type="submit">Cerca</button> <button type="reset">Azzera filtri</button></form>
+<p id="cnt"></p>
+<table id="tab"><thead><tr><th>Codice</th><th>Titolo</th><th>Azienda</th><th>Stato</th><th>Ore</th><th>Azioni</th></tr></thead><tbody></tbody></table>
+<nav aria-label="Paginazione"><a href="#">1</a> <a href="#">2</a> <a href="#">3</a> <a href="#">4</a> <a href="#">5</a> <a href="#">Successiva</a></nav>
+</main>
+<div id="ftr"></div>
+<script src="common.js"></script>
+<script>
+const az=['Alfa Meccanica S.r.l.','Beta Servizi S.p.A.','Gamma Logistica S.r.l.','Delta Software S.r.l.','Epsilon Hotel S.r.l.','Theta Formazione S.r.l.','Zeta Costruzioni S.r.l.','Eta Alimentari S.p.A.'];
+const tt=['Competenze digitali di base','Sicurezza sui luoghi di lavoro','Lean manufacturing','Lingua inglese B1','Cybersecurity per PMI','Gestione del cliente','Excel avanzato','Leadership e team working'];
+const stati=['In istruttoria','Approvato','In rendicontazione','Chiuso'];
+const rows=Array.from({length:25},(_,i)=>({c:'PF-2026-'+String(101+i),t:tt[i%8],a:az[(i*3)%8],s:stati[i%4],o:16+((i*7)%40),y:2024+(i%3)}));
+function draw(){ const q=document.getElementById('q').value.toLowerCase(), s=document.getElementById('st').value, y=document.getElementById('an').value;
+  const r=rows.filter(x=>(!q||(x.t+' '+x.a).toLowerCase().includes(q))&&(!s||x.s===s)&&(!y||String(x.y)===y));
+  document.getElementById('cnt').textContent=r.length+' progetti trovati';
+  document.querySelector('#tab tbody').innerHTML=r.map(x=>`<tr><td>${x.c}</td><td>${x.t}</td><td>${x.a}</td><td>${x.s}</td><td>${x.o}</td><td><a href="dettaglio.html?c=${x.c}">Visualizza</a> <button onclick="location.href='dettaglio.html?c=${x.c}&edit=1'">Modifica</button> <button onclick="if(confirm('Eliminare il progetto ${x.c}?')) this.closest('tr').remove()">Elimina</button></td></tr>`).join(''); }
+document.getElementById('flt').addEventListener('submit',e=>{e.preventDefault(); setTimeout(draw,250);});
+document.getElementById('flt').addEventListener('reset',()=>setTimeout(draw,0));
+draw();
+</script></body></html>

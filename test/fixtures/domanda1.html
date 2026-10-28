@@ -1,0 +1,74 @@
+<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Nuova domanda - passo 1 di 2</title><link rel="stylesheet" href="style.css"></head><body>
+<div id="hdr"></div>
+<main>
+<h1>Richiesta di contributo per piano formativo</h1>
+<p>Passo 1 di 2 - Compila i dati. I campi contrassegnati con * sono obbligatori.</p>
+<div id="err" role="alert"></div>
+<form id="f" name="domanda" novalidate>
+<fieldset><legend>Dati dell'azienda</legend>
+<label for="rs">Ragione sociale *</label><input id="rs" name="ragione_sociale" required>
+<label for="piva">Partita IVA *</label><input id="piva" name="partita_iva" required maxlength="11">
+<label for="cf">Codice fiscale azienda *</label><input id="cf" name="codice_fiscale" required>
+<label for="ateco">Codice ATECO *</label><select id="ateco" name="ateco" required></select>
+<label for="reg">Regione *</label><select id="reg" name="regione" required></select>
+<label for="prov">Provincia *</label><select id="prov" name="provincia" required disabled><option value="">Seleziona prima la regione</option></select>
+<label id="lcom" for="com">Comune *</label>
+<div style="position:relative"><input id="com" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="lb" aria-labelledby="lcom" autocomplete="off" required>
+<ul id="lb" role="listbox" class="listbox" hidden></ul></div>
+<label for="ind">Indirizzo sede legale *</label><input id="ind" name="indirizzo" required>
+<label for="cap">CAP *</label><input id="cap" name="cap" required maxlength="5">
+<label for="pec">PEC *</label><input id="pec" name="pec" type="email" required>
+<label for="tel">Telefono</label><input id="tel" name="telefono" type="tel">
+</fieldset>
+<fieldset><legend>Referente</legend>
+<label for="nome">Nome *</label><input id="nome" name="nome" required>
+<label for="cogn">Cognome *</label><input id="cogn" name="cognome" required>
+<label for="mail">Email *</label><input id="mail" name="email" type="email" required>
+<p>Ruolo *</p>
+<label><input type="radio" name="ruolo" value="lr"> Legale rappresentante</label>
+<label><input type="radio" name="ruolo" value="del"> Delegato</label>
+<label><input type="radio" name="ruolo" value="cons"> Consulente</label>
+</fieldset>
+<fieldset><legend>Piano formativo</legend>
+<label for="tit">Titolo del piano *</label><input id="tit" name="titolo" required>
+<label for="fondo">Fonte di finanziamento *</label><select id="fondo" name="fondo" required><option value="">Seleziona</option><option>Fondimpresa - Conto formazione</option><option>Fondimpresa - Avviso di sistema</option><option>Fondo Nuove Competenze</option><option>Fondo Conoscenza</option><option>Foncoop</option></select>
+<label for="dip">Numero dipendenti coinvolti *</label><input id="dip" name="dipendenti" type="number" min="1" required>
+<label for="ore">Ore di formazione *</label><input id="ore" name="ore" type="number" min="1" required>
+<label for="di">Data inizio *</label><input id="di" name="data_inizio" type="date" required>
+<label for="df">Data fine (gg/mm/aaaa) *</label><input id="df" name="data_fine" placeholder="gg/mm/aaaa" required>
+<label for="mod">Modalità di erogazione</label><select id="mod" name="modalita"><option>Aula</option><option>FAD sincrona</option><option>FAD asincrona</option><option>Mista</option></select>
+<label for="desc">Descrizione degli obiettivi *</label><textarea id="desc" name="descrizione" rows="5" required></textarea>
+<label for="vis">Visura camerale (PDF)</label><input id="vis" name="visura" type="file" accept=".pdf">
+</fieldset>
+<fieldset><legend>Dichiarazioni</legend>
+<input type="checkbox" id="priv" class="sr-chk" required><label for="priv">Dichiaro di aver letto l'informativa privacy e accetto il trattamento dei dati *</label>
+<input type="checkbox" id="dich" class="sr-chk" required><label for="dich">Dichiaro che i dati forniti sono veritieri ai sensi del DPR 445/2000 *</label>
+</fieldset>
+<button type="button" id="bozza">Salva bozza</button>
+<button type="submit" id="avanti">Avanti</button>
+</form>
+</main>
+<div id="ftr"></div><div id="cookie"></div>
+<script src="common.js"></script>
+<script>
+const ateco=document.getElementById('ateco'); ateco.innerHTML='<option value="">Seleziona</option>'+Array.from({length:96},(_,i)=>{const c=String(i+1).padStart(2,'0');const n=['Coltivazioni agricole','Industrie alimentari','Fabbricazione di mobili','Costruzione di edifici','Commercio al dettaglio','Servizi di alloggio','Produzione di software','Consulenza informatica','Istruzione','Assistenza sanitaria'][i%10];return `<option value="${c}">${c} - ${n} (${i+1})</option>`}).join('');
+const regs={'Campania':['Avellino','Benevento','Caserta','Napoli','Salerno'],'Lazio':['Frosinone','Latina','Rieti','Roma','Viterbo'],'Lombardia':['Bergamo','Brescia','Milano','Monza e Brianza','Varese'],'Puglia':['Bari','Brindisi','Foggia','Lecce','Taranto'],'Sicilia':['Agrigento','Catania','Messina','Palermo','Siracusa'],'Toscana':['Arezzo','Firenze','Livorno','Pisa','Siena'],'Veneto':['Padova','Treviso','Venezia','Verona','Vicenza'],'Piemonte':['Alessandria','Asti','Cuneo','Novara','Torino']};
+const reg=document.getElementById('reg'), prov=document.getElementById('prov');
+reg.innerHTML='<option value="">Seleziona</option>'+Object.keys(regs).map(r=>`<option>${r}</option>`).join('');
+reg.onchange=()=>{ setTimeout(()=>{ const p=regs[reg.value]||[]; prov.innerHTML='<option value="">Seleziona</option>'+p.map(x=>`<option>${x}</option>`).join(''); prov.disabled=!p.length; }, 300); };
+const comuni=['Napoli','Pozzuoli','Ischia','Forio','Casamicciola Terme','Lacco Ameno','Barano d\'Ischia','Serrara Fontana','Procida','Pozzuoli (frazione Arco Felice)','Portici','Ercolano','Torre del Greco','Castellammare di Stabia','Sorrento','Nola','Pomigliano d\'Arco','Casoria','Afragola','Giugliano in Campania'];
+const com=document.getElementById('com'), lb=document.getElementById('lb');
+com.addEventListener('input',()=>{ const v=com.value.toLowerCase(); clearTimeout(com._t); com._t=setTimeout(()=>{ const m=v.length<2?[]:comuni.filter(c=>c.toLowerCase().includes(v)).slice(0,8); lb.innerHTML=m.map((c,i)=>`<li role="option" id="o${i}">${c}</li>`).join(''); lb.hidden=!m.length; com.setAttribute('aria-expanded',String(!!m.length)); }, 250); });
+lb.addEventListener('click',e=>{ const li=e.target.closest('li'); if(!li) return; com.value=li.textContent; lb.hidden=true; com.setAttribute('aria-expanded','false'); com.dataset.ok='1'; });
+document.getElementById('bozza').onclick=()=>{ document.getElementById('err').textContent='Bozza salvata alle '+new Date().toLocaleTimeString('it-IT'); };
+document.getElementById('f').addEventListener('submit',e=>{
+  e.preventDefault(); const f=e.target; const bad=[];
+  f.querySelectorAll('[required]').forEach(x=>{ const ok = x.type==='checkbox'? x.checked : x.type==='radio'? true : !!x.value; x.setAttribute('aria-invalid', ok?'false':'true'); if(!ok) bad.push(x.labels&&x.labels[0]?x.labels[0].textContent.replace(' *',''):x.name); });
+  if(!f.querySelector('input[name=ruolo]:checked')) bad.push('Ruolo');
+  if(!/^\d{2}\/\d{2}\/\d{4}$/.test(document.getElementById('df').value)) { bad.push('Data fine (formato gg/mm/aaaa)'); document.getElementById('df').setAttribute('aria-invalid','true'); }
+  if(com.dataset.ok!=='1'){ bad.push('Comune (scegli dall\'elenco)'); com.setAttribute('aria-invalid','true'); }
+  if(bad.length){ document.getElementById('err').textContent='Correggi: '+bad.join(', '); window.scrollTo(0,0); return; }
+  const d={}; new FormData(f).forEach((v,k)=>{ if(typeof v==='string') d[k]=v; }); d.comune=com.value; sessionStorage.setItem('domanda',JSON.stringify(d));
+  setTimeout(()=>location.href='domanda2.html', 200);
+});
+</script></body></html>
