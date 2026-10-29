@@ -1,0 +1,28 @@
+<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Iscrizione albo fornitori</title><link rel="stylesheet" href="style.css"></head><body><main>
+<h1>Iscrizione all'albo fornitori</h1>
+<form novalidate>
+<fieldset><legend>Impresa</legend>
+<label for="den">Denominazione impresa</label><input id="den" name="denominazione">
+<label for="cfpi">C.F. / Partita IVA</label><input id="cfpi" name="cf_piva">
+<label for="forma">Forma giuridica</label><select id="forma"><option value="">Seleziona</option><option>S.r.l.</option><option>S.p.A.</option><option>S.n.c.</option><option>Ditta individuale</option></select>
+<label for="rea">Numero REA</label><input id="rea" name="rea">
+<label for="sede">Indirizzo della sede</label><input id="sede" name="indirizzo_sede">
+<label for="loc">Località</label><input id="loc" name="localita">
+<label for="cp">Codice di avviamento postale</label><input id="cp" name="cap">
+<label for="pecm">Indirizzo PEC</label><input id="pecm" name="pec" type="email">
+</fieldset>
+<fieldset><legend>Referente</legend>
+<label for="nom">Nominativo</label><input id="nom" name="nominativo">
+<label for="rec">Recapito telefonico</label><input id="rec" name="recapito" type="tel">
+<label for="mailr">E-mail del referente</label><input id="mailr" name="email_referente" type="email">
+<label for="qual">In qualità di</label><select id="qual"><option value="">Seleziona</option><option>Titolare</option><option>Legale rappresentante</option><option>Procuratore</option></select>
+<label for="nasc">Data di nascita del referente</label><input id="nasc" name="data_nascita" placeholder="gg/mm/aaaa">
+</fieldset>
+<fieldset><legend>Attività</legend>
+<label for="cat">Categoria merceologica</label><select id="cat"><option value="">Seleziona</option><option>Formazione</option><option>Consulenza</option><option>Informatica</option><option>Servizi</option></select>
+<label for="fatt">Fatturato ultimo anno (€)</label><input id="fatt" name="fatturato" type="number">
+<label for="ann">Annotazioni</label><textarea id="ann" name="annotazioni"></textarea>
+</fieldset>
+<p><input type="checkbox" id="gdpr"><label for="gdpr">Acconsento al trattamento dei dati personali ai sensi del GDPR</label></p>
+<button type="submit">Invia iscrizione</button>
+</form></main></body></html>

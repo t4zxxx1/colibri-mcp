@@ -1,0 +1,17 @@
+<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Registro lezione</title><link rel="stylesheet" href="style.css"></head><body><main>
+<h1>Registrazione lezione svolta</h1>
+<form novalidate>
+<label for="cp">Codice progetto</label><input id="cp" name="codice_progetto">
+<label for="tc">Titolo corso</label><input id="tc" name="titolo_corso">
+<label for="sd">Sede di svolgimento</label><input id="sd" name="sede">
+<label for="dl">Data della lezione</label><input id="dl" name="data_lezione" type="date">
+<label for="oi">Ora inizio (hh:mm)</label><input id="oi" name="ora_inizio" placeholder="hh:mm">
+<label for="of">Ora fine (hh:mm)</label><input id="of" name="ora_fine" placeholder="hh:mm">
+<label for="dc">Docente</label><input id="dc" name="docente">
+<label for="np">Numero partecipanti presenti</label><input id="np" name="presenti" type="number">
+<label for="md">Modalità</label><select id="md"><option value="">Seleziona</option><option>Aula</option><option>FAD sincrona</option><option>FAD asincrona</option></select>
+<label for="ar">Argomenti trattati</label><textarea id="ar" name="argomenti"></textarea>
+<label for="rp">Allegato registro presenze</label><input id="rp" name="registro" type="file">
+<p><input type="checkbox" id="ok"><label for="ok">Confermo la correttezza dei dati inseriti</label></p>
+<button type="submit">Registra lezione</button>
+</form></main></body></html>

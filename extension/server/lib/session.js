@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import { chromium } from 'playwright-core';
 import * as P from './page-script.js';
 import { renderView, renderDiff, snapKeys, lineOf, estTokens } from './render.js';
+import { fold, similarity, choice, decide, PRESETS } from './engine.js';
+import { runTask } from './task.js';
 
 const clean = (v) => (typeof v === 'string' && !v.startsWith('${') ? v.trim() : '');
 const list = (s) =>
@@ -61,6 +63,7 @@ export class Session {
     this.net = new WeakMap();
     this.dialogAccept = false;
     this.last = null; // { page, url, modal, keys }
+    this.PICK_SEL = PICK_SEL;
     this.stats = { calls: 0, chars: 0, actions: 0, observations: 0, shots: 0, shotTokens: 0, toolMs: 0, vw: 1280, vh: 800 };
   }
 
@@ -381,13 +384,14 @@ export class Session {
     }
     const qy = typeof target === 'string' ? { name: target } : target || {};
     if (!qy.name) return { err: 'target mancante: usa un ref (es. "e12") o un testo' };
-    const n = String(qy.name).toLowerCase().replace(/\s+/g, ' ').trim();
-    const row = qy.row ? String(qy.row).toLowerCase() : '';
-    const cands = snap.items.filter((i) => (!qy.role || i.role === qy.role) && (!row || (i.ctx || '').toLowerCase().includes(row)));
+    // confronto senza accenti, asterischi e punteggiatura
+    const n = fold(qy.name);
+    const row = qy.row ? fold(qy.row) : '';
+    const cands = snap.items.filter((i) => (!qy.role || i.role === qy.role) && (!row || fold(i.ctx).includes(row)));
     const isLow = (i) => !!(snap.regions[i.reg] && snap.regions[i.reg].low);
     // priorita': esatto nel contenuto principale, esatto ovunque, parziale nel principale, parziale ovunque
-    const exact = cands.filter((i) => i.name.toLowerCase() === n);
-    const part = cands.filter((i) => i.name.toLowerCase().includes(n));
+    const exact = cands.filter((i) => fold(i.name) === n);
+    const part = cands.filter((i) => fold(i.name).includes(n));
     let m = [];
     for (const tier of [exact.filter((i) => !isLow(i)), exact, part.filter((i) => !isLow(i)), part]) {
       if (tier.length) {
@@ -396,6 +400,13 @@ export class Session {
       }
     }
     if (m.length > 1 && qy.n) m = [m[qy.n - 1]].filter(Boolean);
+    if (!m.length && cands.length) {
+      // ultima possibilita': somiglianza (refusi, sinonimi, altre lingue) con confidenza, come una domanda "choice"
+      const r = choice(cands.map((i) => ({ key: i.id, logit: 7 * similarity(qy.name, i.name) - (isLow(i) ? 0.8 : 0), data: i })));
+      if (decide(r, PRESETS.balanced) === 'act') return { it: r.data, note: `"${qy.name}" → ${r.data.id} "${r.data.name}" per somiglianza (${Math.round(r.confidence * 100)}%)` };
+      const alt = r.probs.filter((x) => x.key).slice(0, 3).map((x) => `${x.key} "${x.data.name}" ${Math.round(x.p * 100)}%`).join(' · ');
+      return { err: `nessun elemento "${qy.name}"${row ? ' nella riga "' + qy.row + '"' : ''}; piu' simili: ${alt}` };
+    }
     if (!m.length) return { err: `nessun elemento "${qy.name}"${qy.role ? ' con ruolo ' + qy.role : ''}${row ? ' nella riga "' + qy.row + '"' : ''}` };
     if (m.length > 1) return { err: `"${qy.name}" ambiguo (${m.length}): ${m.slice(0, 5).map((i) => lineOf(i, true)).join(' | ')}` };
     return { it: m[0] };
@@ -499,14 +510,46 @@ export class Session {
   }
 
   async step(act, st, snap, page) {
+    const noteOut = [];
     const target = async (t) => {
       const r = this.resolve(snap, t);
       if (r.err) throw new Error(r.err);
+      if (r.note) noteOut.push(r.note);
       const el = await this.handle(r.it);
       if (!el) throw new Error(`${r.it.id} non piu' presente: ref scaduto`);
       return { it: r.it, el };
     };
     const after = async (ms = 1500, min = 0) => this.settle(page, ms, 120, min);
+    const res = await this.stepInner(act, st, snap, page, target, after);
+    if (noteOut.length) return { ...(res || {}), note: [...noteOut, res && res.note].filter(Boolean).join('; ') };
+    return res;
+  }
+
+  /** Target a coordinate relative (0..1, come la domanda "box" di Jev): test di colpo e controlli di sicurezza. */
+  async pointTarget(t, snap, page, st) {
+    const vp = await page.evaluate(() => ({ w: innerWidth, h: innerHeight }));
+    const x = Math.round(Math.min(1, Math.max(0, t.x)) * (vp.w - 1));
+    const y = Math.round(Math.min(1, Math.max(0, t.y)) * (vp.h - 1));
+    const hit = await page.mainFrame().evaluate(P.hitTestInPage, { x, y });
+    const it = hit.id ? snap.items.find((i) => i.id === hit.id) : null;
+    const what = it ? `${it.id} "${it.name}"` : `<${hit.tag}>${hit.text ? ' "' + hit.text + '"' : ''}`;
+    const s = it ? it.s : hit.s;
+    if (it && it.flags.includes('off')) throw new Error(`${what} e' disattivato`);
+    if (s === 'x') return { block: `!x ${what}: campo riservato` };
+    if (s === 'c' && this.cfg.confirmSensitive && st.confirm !== true) return { block: `!c clic a (${t.x}, ${t.y}) su ${what}: chiedi conferma all'utente, poi ripeti con "confirm": true` };
+    return { x, y, what };
+  }
+
+  async stepInner(act, st, snap, page, target, after) {
+    const pt = (t) => t && typeof t === 'object' && typeof t.x === 'number' && typeof t.y === 'number';
+    if ((act === 'click' || act === 'hover') && pt(st[act])) {
+      const r = await this.pointTarget(st[act], snap, page, st);
+      if (r.block) return r;
+      if (act === 'click') await page.mouse.click(r.x, r.y);
+      else await page.mouse.move(r.x, r.y);
+      if (!(await after(act === 'click' ? 10000 : 800, act === 'click' ? 300 : 0))) return { note: 'pagina ancora in caricamento dopo 10 s' };
+      return { note: `${act === 'click' ? 'clic' : 'puntatore'} a (${st[act].x}, ${st[act].y}) su ${r.what}` };
+    }
 
     switch (act) {
       case 'click': {
@@ -783,6 +826,7 @@ export class Session {
       if (r.selected) o.push('selezionato: ' + r.selected.join(', '));
       if (r.options) o.push(`opzioni (${r.options.length}): ` + r.options.join(' | '));
       if (r.href) o.push('href: ' + r.href);
+      if (r.box) o.push(`box (0-1): left ${r.box.l} top ${r.box.t} right ${r.box.r} bottom ${r.box.b}${r.box.in ? '' : ' (fuori dalla vista)'}`);
       return o.join('\n');
     }
     if (mode === 'table') {
@@ -798,11 +842,20 @@ export class Session {
   }
 
   // ---------- tool: screenshot ----------
-  async screenshot({ ref } = {}) {
+  async screenshot({ ref, labels, region } = {}) {
     if (!this.cfg.allowScreenshot) throw new Error('screenshot disattivati nelle impostazioni');
     const page = await this.ensure();
     let clip;
-    if (ref) {
+    if (labels) {
+      await this.collect();
+      await page.mainFrame().evaluate(P.labelsInPage).catch(() => 0);
+    }
+    if (region && region.length === 4) {
+      const v = await page.evaluate(() => ({ w: innerWidth, h: innerHeight, x: scrollX, y: scrollY }));
+      const [x0, y0, x1, y1] = region.map((n) => Math.min(1, Math.max(0, Number(n) || 0)));
+      if (x1 <= x0 || y1 <= y0) throw new Error('region: servono [sinistra, alto, destra, basso] con valori 0-1 crescenti');
+      clip = { x: v.x + x0 * v.w, y: v.y + y0 * v.h, width: (x1 - x0) * v.w, height: (y1 - y0) * v.h };
+    } else if (ref) {
       const snap = await this.collect();
       const it = snap.items.find((i) => i.id === ref);
       if (!it) throw new Error(`${ref} non trovato`);
@@ -831,7 +884,13 @@ export class Session {
       return { data: res.data, w, h, tok };
     } finally {
       await cdp.detach().catch(() => {});
+      if (labels) await page.mainFrame().evaluate(P.clearLabelsInPage).catch(() => {});
     }
+  }
+
+  // ---------- tool: task ----------
+  async task(a = {}) {
+    return runTask(this, a);
   }
 
   // ---------- consumo ----------

@@ -2,8 +2,8 @@
   "manifest_version": "0.3",
   "name": "compact-browser",
   "display_name": "Browser compatto",
-  "version": "0.1.0",
-  "description": "Claude naviga e compila siti in Chrome leggendo le pagine come testo compatto: molti meno token e passaggi rispetto agli screenshot.",
+  "version": "0.2.0",
+  "description": "Claude naviga e compila siti in Chrome leggendo le pagine come testo compatto, con un motore decisionale locale in stile Jev: molti meno token e passaggi rispetto agli screenshot.",
   "long_description": "Apre Google Chrome (o Edge) con un profilo dedicato e restituisce a Claude una tabella compatta degli elementi interattivi invece di screenshot o alberi di accessibilita' completi. Claude esegue piu' passi in una sola chiamata (compilazione moduli, menu, autocompletamenti, conferme) e riceve solo le variazioni. Le azioni con effetti (invio, conferma, salvataggio, eliminazione, pagamento, accettazione termini, caricamento file) vengono bloccate finche' l'utente non le conferma; password, carte, OTP e IBAN non sono mai compilabili da Claude. Non serve nessuna chiave API: funziona con il piano Claude dell'utente.",
   "author": {
     "name": "Roca Software"
@@ -46,6 +46,10 @@
     {
       "name": "browse_do",
       "description": "Esegue piu' passi in una sola chiamata e restituisce solo le variazioni."
+    },
+    {
+      "name": "browse_task",
+      "description": "Compito guidato in stile Jev: abbina i parametri ai campi con un motore decisionale locale, compila, invia, verifica ed estrae dati tipizzati; chiede solo i casi incerti."
     },
     {
       "name": "browse_read",

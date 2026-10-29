@@ -1,0 +1,14 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Mappa e icone</title><link rel="stylesheet" href="style.css"></head><body><main>
+<h1>Mappa e icone</h1>
+<canvas id="cv" width="600" height="300" style="position:absolute;left:20px;top:120px;border:0"></canvas><div style="height:430px"></div>
+<p id="cvo" role="status"></p>
+<p><button class="btn btn-icon" onclick="document.getElementById('io').textContent='modifica ok'"><svg class="icon icon-pencil" width="16" height="16"></svg></button>
+<button class="btn btn-icon" onclick="document.getElementById('io').textContent='cestino ok'"><i class="fa fa-trash"></i></button>
+<button class="btn btn-icon"><svg width="16" height="16"><title>Stampa ricevuta</title></svg></button></p>
+<p id="io" role="status"></p>
+<button id="inv" style="position:absolute;left:640px;top:120px;width:160px;height:40px" onclick="document.getElementById('io').textContent='inviato'">Invia pratica</button>
+</main><script>
+const cv = document.getElementById('cv'), g = cv.getContext('2d');
+g.fillStyle = '#cfe0f1'; g.fillRect(0, 0, 600, 300); g.fillStyle = '#1f4e79'; g.fillRect(400, 200, 120, 60); g.fillStyle = '#fff'; g.font = '16px sans-serif'; g.fillText('Sede Napoli', 410, 236);
+cv.addEventListener('click', e => { const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top; document.getElementById('cvo').textContent = (x >= 400 && x <= 520 && y >= 200 && y <= 260) ? 'sede selezionata' : 'clic fuori: ' + Math.round(x) + ',' + Math.round(y); });
+</script></body></html>

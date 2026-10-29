@@ -1,7 +1,8 @@
 // Benchmark: stessi compiti eseguiti con tre metodi, misurando chiamate, token e tempi reali.
 //  M1 screenshot: un'azione per chiamata, uno screenshot dopo ogni azione (stile computer use / Claude in Chrome a screenshot)
 //  M2 albero di accessibilita': Playwright MCP 0.0.83 reale (snapshot YAML + fill_form)
-//  M3 browser compatto: questo server MCP
+//  M3 browser compatto: questo server MCP (passi espliciti)
+//  M3t browser compatto con browse_task: Claude passa i dati dell'utente, il server decide campi e passi
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright-core';
@@ -81,6 +82,47 @@ async function m3(task) {
     await call('browse_open', { url: base + '/index.html' });
     const t = await call('browse_do', { steps: [{ click: 'Elenco progetti' }, { find: 'progetti trovati' }], view: 'none' });
     okTask = /25 progetti trovati/.test(t);
+  }
+  await c.close();
+  return { calls: out, tools, ok: okTask };
+}
+
+// ---------------- M3t: browser compatto con browse_task ----------------
+async function m3t(task) {
+  fs.rmSync(SCR + '/prof-bench', { recursive: true, force: true });
+  const c = await connect({ CB_PROFILE_DIR: SCR + '/prof-bench' });
+  const tools = (await c.client.listTools()).tools;
+  const out = [];
+  const call = async (name, args) => {
+    const r = await c.call(name, args);
+    out.push({ name, args, text: r.text, ms: r.ms, img: 0 });
+    return r.text;
+  };
+  let okTask = false;
+  if (task === 'T1') {
+    // i dati arrivano con le etichette dell'utente: la pagina non e' ancora stata vista
+    await call('browse_task', {
+      url: base + '/domanda1.html',
+      params: {
+        'ragione sociale': 'Alfa Meccanica S.r.l.', 'P.IVA': '01234567890', 'codice fiscale': '01234567890', ateco: '62', regione: 'Campania', provincia: 'Napoli',
+        comune: 'Ischia', indirizzo: 'Via Roma 1', cap: '80077', pec: 'alfa@pec.it', nome: 'Mario', cognome: 'Rossi', email: 'mario@alfa.it', ruolo: 'Legale rappresentante',
+        'titolo del piano': 'Competenze digitali 2026', fondo: 'Fondo Nuove Competenze', 'numero dipendenti': 12, ore: 40, 'data inizio': '03/11/2026', 'data fine': '15/12/2026',
+        obiettivi: 'Sviluppare competenze digitali di base per 12 dipendenti.',
+      },
+    });
+    // [conferma utente per le dichiarazioni]
+    await call('browse_task', { params: { 'informativa privacy': true, 'dichiarazione veridicità': true }, confirm: true, submit: 'Avanti', read: 'table' });
+    // [conferma utente per l'invio]
+    const t = await call('browse_task', { submit: ['Invia domanda', 'Conferma invio'], confirm: true, expect: 'Protocollo', extract: { protocollo: 'text' } });
+    okTask = /protocollo = "2026\/004512/.test(t);
+  } else if (task === 'T2') {
+    await call('browse_task', { url: base + '/elenco.html' });
+    const t = await call('browse_task', { before: [{ click: { name: 'Visualizza', row: 'PF-2026-115' } }], extract: { edizioni: 'table' } });
+    okTask = /Ed\. 6/.test(t) && t.includes('PF-2026-115');
+  } else if (task === 'T3') {
+    // il nome del collegamento e' quello della richiesta dell'utente ("apri l'elenco progetti")
+    const t = await call('browse_task', { url: base + '/index.html', before: [{ click: 'Elenco progetti' }], extract: { 'numero di progetti': 'number' } });
+    okTask = /= 25 \(/.test(t);
   }
   await c.close();
   return { calls: out, tools, ok: okTask };
@@ -319,12 +361,13 @@ const NAMES = {
   M1: 'Screenshot',
   M2: 'Playwright MCP',
   M3: 'Browser compatto',
+  M3t: 'Browser compatto, browse_task',
   M4: 'agent-browser CLI',
   M5: 'agent-browser MCP',
   M6: 'Fast Playwright MCP',
   M4b: 'agent-browser CLI senza guida',
 };
-const ONLY = (process.env.METHODS || 'M1,M2,M3,M4,M5,M6').split(',');
+const ONLY = (process.env.METHODS || 'M1,M2,M3,M3t,M4,M5,M6').split(',');
 const results = {};
 const defs = {
   M1: 1500, // ipotesi: definizione del tool computer/screenshot
@@ -337,6 +380,7 @@ for (const task of ['T1', 'T2', 'T3']) {
     M1: () => m1(task),
     M2: () => m2(task),
     M3: () => m3(task),
+    M3t: () => m3t(task),
     M4: () => m4(task, base),
     M5: () => m5(task, base),
     M6: () => m6(task, base, { VW, VH }),

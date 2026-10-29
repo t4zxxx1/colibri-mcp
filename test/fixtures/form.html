@@ -1,0 +1,23 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Form</title><link rel="stylesheet" href="style.css"></head><body>
+<main><h1 id="h"></h1><div id="ck"></div><form id="f" novalidate></form><p id="out" role="status"></p></main>
+<script>
+// stesso modulo di registrazione in 4 lingue: ?lang=en|fr|es|de (insieme di verifica, mai usato per calibrare)
+const L = {
+  en: { h: 'Supplier registration', company: 'Company name', vat: 'VAT ID', street: 'Street address', zip: 'Postcode', city: 'Town / City', country: 'Country', first: 'Contact first name', last: 'Contact last name', email: 'Email address', phone: 'Phone number', birth: 'Date of birth (DD/MM/YYYY)', emp: 'Number of employees', msg: 'Message', pwd: 'Password', card: 'Card number', terms: 'I accept the terms and conditions', next: 'Next', send: 'Submit application', cookie: ['Accept all', 'Reject all'], c: ['Italy', 'France', 'Spain', 'Germany'] },
+  fr: { h: 'Inscription fournisseur', company: 'Raison sociale', vat: 'Numéro de TVA', street: 'Adresse', zip: 'Code postal', city: 'Ville', country: 'Pays', first: 'Prénom du contact', last: 'Nom de famille du contact', email: 'Adresse e-mail', phone: 'Téléphone', birth: 'Date de naissance (JJ/MM/AAAA)', emp: 'Effectif (salariés)', msg: 'Commentaire', pwd: 'Mot de passe', card: 'Numéro de carte', terms: "J'accepte les conditions générales", next: 'Suivant', send: 'Envoyer la demande', cookie: ['Tout accepter', 'Tout refuser'], c: ['Italie', 'France', 'Espagne', 'Allemagne'] },
+  es: { h: 'Registro de proveedor', company: 'Razón social', vat: 'Número de IVA', street: 'Dirección', zip: 'Código postal', city: 'Ciudad', country: 'País', first: 'Nombre del contacto', last: 'Apellidos del contacto', email: 'Correo electrónico', phone: 'Teléfono', birth: 'Fecha de nacimiento (DD/MM/AAAA)', emp: 'Número de empleados', msg: 'Comentarios', pwd: 'Contraseña', card: 'Número de tarjeta', terms: 'Acepto los términos y condiciones', next: 'Siguiente', send: 'Enviar solicitud', cookie: ['Aceptar todo', 'Rechazar todo'], c: ['Italia', 'Francia', 'España', 'Alemania'] },
+  de: { h: 'Lieferantenregistrierung', company: 'Firmenname', vat: 'USt-IdNr.', street: 'Straße und Hausnummer', zip: 'Postleitzahl', city: 'Ort', country: 'Land', first: 'Vorname Ansprechpartner', last: 'Nachname Ansprechpartner', email: 'E-Mail-Adresse', phone: 'Telefonnummer', birth: 'Geburtsdatum (TT.MM.JJJJ)', emp: 'Anzahl Mitarbeiter', msg: 'Anmerkungen', pwd: 'Kennwort', card: 'Kartennummer', terms: 'Ich akzeptiere die AGB und die Datenschutzerklärung', next: 'Weiter', send: 'Antrag absenden', cookie: ['Alle akzeptieren', 'Alle ablehnen'], c: ['Italien', 'Frankreich', 'Spanien', 'Deutschland'] },
+};
+const lang = new URLSearchParams(location.search).get('lang') || 'en'; const t = L[lang]; document.documentElement.lang = lang;
+document.title = t.h; document.getElementById('h').textContent = t.h;
+const fld = (id, label, type = 'text') => `<label for="${id}">${label}</label><input id="${id}" name="${id}" type="${type}">`;
+document.getElementById('f').innerHTML =
+  fld('company', t.company) + fld('vat', t.vat) + fld('street', t.street) + fld('zip', t.zip) + fld('city', t.city) +
+  `<label for="country">${t.country}</label><select id="country"><option value="">--</option>${t.c.map(c => `<option>${c}</option>`).join('')}</select>` +
+  fld('first', t.first) + fld('last', t.last) + fld('email', t.email, 'email') + fld('phone', t.phone, 'tel') + fld('birth', t.birth) + fld('emp', t.emp, 'number') +
+  `<label for="msg">${t.msg}</label><textarea id="msg"></textarea>` + fld('pwd', t.pwd, 'password') + fld('card', t.card) +
+  `<p><input type="checkbox" id="terms"><label for="terms">${t.terms}</label></p><button type="submit" id="next">${t.next}</button> <button type="button" id="send">${t.send}</button>`;
+document.getElementById('f').addEventListener('submit', e => { e.preventDefault(); document.getElementById('out').textContent = 'ok:' + lang; });
+document.getElementById('send').onclick = () => document.getElementById('out').textContent = 'sent:' + lang;
+if (!sessionStorage.getItem('ck-' + lang)) { const ck = document.getElementById('ck'); ck.innerHTML = `<div role="dialog" aria-label="cookie" class="cookie-consent" style="position:fixed;bottom:0;left:0;right:0;background:#333;color:#fff;padding:16px">Cookies <button>${t.cookie[0]}</button> <button>${t.cookie[1]}</button></div>`; ck.querySelectorAll('button').forEach(b => b.onclick = () => { sessionStorage.setItem('ck-' + lang, '1'); ck.innerHTML = ''; }); }
+</script></body></html>

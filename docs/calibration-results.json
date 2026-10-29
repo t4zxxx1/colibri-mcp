@@ -1,0 +1,55 @@
+{
+ "EPS": 0.01,
+ "T": 0.85,
+ "NONE": 4,
+ "train": {
+  "n": 141,
+  "nll": 0.05537413236262521,
+  "acc": 1,
+  "ece": 0.0480759012742997,
+  "acted": 131,
+  "actedOk": 131,
+  "asked": 10,
+  "wrong": []
+ },
+ "test": {
+  "n": 140,
+  "nll": 0.0719390363833216,
+  "acc": 1,
+  "ece": 0.06643559172967681,
+  "acted": 116,
+  "actedOk": 116,
+  "asked": 24,
+  "wrong": []
+ },
+ "test2": {
+  "n": 41,
+  "nll": 0.09655221498265189,
+  "acc": 0.975609756097561,
+  "ece": 0.06297434696635032,
+  "acted": 35,
+  "actedOk": 35,
+  "asked": 6,
+  "wrong": [
+   "referente -> Nominativo: scelto e199 39%"
+  ]
+ },
+ "test3": {
+  "n": 29,
+  "nll": 0.9424194256089996,
+  "acc": 0.7586206896551724,
+  "ece": 0.18571462729411295,
+  "acted": 16,
+  "actedOk": 16,
+  "asked": 13,
+  "wrong": [
+   "luogo -> Sede di svolgimento: scelto nessuno 91%",
+   "dalle ore -> Ora inizio (hh:mm): scelto nessuno 91%",
+   "alle ore -> Ora fine (hh:mm): scelto nessuno 91%",
+   "formatore -> Docente: scelto nessuno 90%",
+   "contenuti della lezione -> Argomenti trattati: scelto nessuno 79%",
+   "foglio firme -> Allegato registro presenze: scelto nessuno 88%",
+   "dichiarazione di correttezza -> Confermo la correttezza dei dati inseriti: scelto nessuno 62%"
+  ]
+ }
+}
