@@ -1,55 +1,156 @@
 {
  "EPS": 0.01,
- "T": 0.85,
+ "T": 0.9,
  "NONE": 4,
  "train": {
   "n": 141,
-  "nll": 0.05537413236262521,
+  "nll": 0.05937932295543966,
   "acc": 1,
-  "ece": 0.0480759012742997,
+  "ece": 0.05168863202194022,
   "acted": 131,
   "actedOk": 131,
   "asked": 10,
-  "wrong": []
+  "wrong": [],
+  "auroc": null,
+  "task": {
+   "tasks": 9,
+   "params": 234,
+   "ok": 234,
+   "wrong": 0,
+   "asked": 0,
+   "noneAsked": 90,
+   "noneActed": 0,
+   "wrongList": [],
+   "ms": 759.2433999999998
+  }
  },
  "test": {
   "n": 140,
-  "nll": 0.0719390363833216,
+  "nll": 0.08490778886771957,
   "acc": 1,
-  "ece": 0.06643559172967681,
+  "ece": 0.07749470436503315,
   "acted": 116,
   "actedOk": 116,
   "asked": 24,
-  "wrong": []
+  "wrong": [],
+  "auroc": null,
+  "task": {
+   "tasks": 12,
+   "params": 168,
+   "ok": 168,
+   "wrong": 0,
+   "asked": 0,
+   "noneAsked": 72,
+   "noneActed": 0,
+   "wrongList": [],
+   "ms": 105.96970000000002
+  }
  },
  "test2": {
   "n": 41,
-  "nll": 0.09655221498265189,
+  "nll": 0.10553931925956753,
   "acc": 0.975609756097561,
-  "ece": 0.06297434696635032,
+  "ece": 0.07082441414985666,
   "acted": 35,
   "actedOk": 35,
   "asked": 6,
   "wrong": [
-   "referente -> Nominativo: scelto e199 39%"
-  ]
+   "referente -> Nominativo: scelto e199 38%"
+  ],
+  "auroc": 1,
+  "task": {
+   "tasks": 3,
+   "params": 51,
+   "ok": 51,
+   "wrong": 0,
+   "asked": 0,
+   "noneAsked": 15,
+   "noneActed": 0,
+   "wrongList": [],
+   "ms": 39.287
+  }
  },
  "test3": {
   "n": 29,
-  "nll": 0.9424194256089996,
-  "acc": 0.7586206896551724,
-  "ece": 0.18571462729411295,
-  "acted": 16,
-  "actedOk": 16,
-  "asked": 13,
+  "nll": 0.059420341769636,
+  "acc": 1,
+  "ece": 0.0516726121752555,
+  "acted": 23,
+  "actedOk": 23,
+  "asked": 6,
+  "wrong": [],
+  "auroc": null,
+  "task": {
+   "tasks": 2,
+   "params": 24,
+   "ok": 23,
+   "wrong": 0,
+   "asked": 1,
+   "noneAsked": 10,
+   "noneActed": 0,
+   "wrongList": [],
+   "ms": 13.0313
+  }
+ },
+ "test4": {
+  "n": 35,
+  "nll": 0.18112291340728046,
+  "acc": 0.9714285714285714,
+  "ece": 0.05572403455578523,
+  "acted": 29,
+  "actedOk": 29,
+  "asked": 6,
   "wrong": [
-   "luogo -> Sede di svolgimento: scelto nessuno 91%",
-   "dalle ore -> Ora inizio (hh:mm): scelto nessuno 91%",
-   "alle ore -> Ora fine (hh:mm): scelto nessuno 91%",
-   "formatore -> Docente: scelto nessuno 90%",
-   "contenuti della lezione -> Argomenti trattati: scelto nessuno 79%",
-   "foglio firme -> Allegato registro presenze: scelto nessuno 88%",
-   "dichiarazione di correttezza -> Confermo la correttezza dei dati inseriti: scelto nessuno 62%"
-  ]
+   "dipendente -> Cognome e nome: scelto nessuno 83%"
+  ],
+  "auroc": 0.9117647058823529,
+  "task": {
+   "tasks": 2,
+   "params": 30,
+   "ok": 29,
+   "wrong": 0,
+   "asked": 1,
+   "noneAsked": 10,
+   "noneActed": 0,
+   "wrongList": [],
+   "ms": 22.679299999999998
+  }
+ },
+ "test5": {
+  "n": 33,
+  "nll": 0.38623232903508753,
+  "acc": 0.8787878787878788,
+  "ece": 0.045598425844259424,
+  "acted": 24,
+  "actedOk": 24,
+  "asked": 9,
+  "wrong": [
+   "referente -> Persona da contattare: scelto nessuno 82%",
+   "nome del contatto -> Persona da contattare: scelto nessuno 65%",
+   "categoria del problema -> Tipo di guasto: scelto nessuno 50%",
+   "data appuntamento -> Giorno preferito: scelto nessuno 75%"
+  ],
+  "auroc": 0.9224137931034483,
+  "task": {
+   "tasks": 2,
+   "params": 28,
+   "ok": 24,
+   "wrong": 0,
+   "asked": 4,
+   "noneAsked": 10,
+   "noneActed": 0,
+   "wrongList": [],
+   "ms": 19.8277
+  }
+ },
+ "overall": {
+  "n": 419,
+  "acc": 0.9856801909307876,
+  "ece": 0.058853743734063116,
+  "auroc": 0.9483454398708636,
+  "coverage": 0.8544152744630071,
+  "precision": 1,
+  "p50ms": 1.6502,
+  "p95ms": 8.3442
  }
 }

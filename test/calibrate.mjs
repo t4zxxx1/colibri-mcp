@@ -4,7 +4,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { Session, loadConfig } from '../extension/server/lib/session.js';
-import { fieldsFrom, paramLogits, fold, PRESETS } from '../extension/server/lib/engine.js';
+import * as engine from '../extension/server/lib/engine.js';
+const { fieldsFrom, paramLogits, fold, PRESETS, assign, resetCaches } = engine;
 import { serve } from './server.mjs';
 import { TEST_ENV, TMP } from './mcp-client.mjs';
 
@@ -81,6 +82,50 @@ const TEST2 = {
   none: [['codice ATECO', '62'], ['data inizio', '03/11/2026'], ['IBAN', 'IT60X0542811101000000123456'], ['numero dipendenti', '12'], ['provincia', 'Napoli']],
 };
 const TEST_NONE = [['PEC', 'alfa@pec.it'], ['codice ATECO', '62'], ['ore di formazione', '40'], ['data inizio', '03/11/2026'], ['provincia', 'Napoli'], ['IBAN', 'IT60X0542811101000000123456']];
+// verifica 4: dominio nuovo (trasferte), nomi tecnici dei campi (fld_01...), scritta prima delle modifiche della v0.4
+// e misurata una volta prima e una dopo, senza correzioni guardando i suoi errori
+const TEST4 = {
+  page: '/rimborso.html',
+  cases: {
+    Matricola: [['matricola', 'numero di matricola'], 'A10234'],
+    'Cognome e nome': [['nominativo', 'dipendente'], 'Rossi Mario'],
+    'Ufficio di appartenenza': [['ufficio', 'servizio'], 'Ragioneria'],
+    'Recapito telefonico': [['telefono', 'cellulare'], '3331234567'],
+    Destinazione: [['destinazione', 'luogo della missione'], 'Roma'],
+    'Motivo della missione': [['motivo', 'finalita della trasferta'], 'Partecipazione al convegno nazionale sulla contabilita pubblica.'],
+    'Data partenza': [['data partenza', 'giorno di partenza'], '14/11/2026'],
+    'Ora partenza': [['ora partenza', 'orario di partenza'], '07:30'],
+    'Data rientro': [['data rientro', 'data di ritorno'], '15/11/2026'],
+    'Ora rientro': [['ora rientro', 'orario di ritorno'], '21:10'],
+    'Mezzo di trasporto': [['mezzo di trasporto', 'mezzo'], 'Treno'],
+    'Chilometri percorsi': [['chilometri', 'km percorsi'], '320'],
+    'Importo totale richiesto (€)': [['importo', 'totale da rimborsare'], '184,50'],
+    'Giustificativi di spesa': [['giustificativi', 'ricevute'], 'C:\\documenti\\ricevute.pdf'],
+    'Dichiaro che le spese sono state effettivamente sostenute': [['dichiarazione spese', 'spese sostenute'], true],
+  },
+  none: [['codice fiscale', 'RSSMRA80A01H501U'], ['IBAN', 'IT60X0542811101000000123456'], ['email', 'mario.rossi@ente.it'], ['data di nascita', '01/01/1980'], ['partita iva', '01234567890']],
+};
+// verifica 5: scritta dopo le modifiche al motore della v0.4 e prima del nuovo vocabolario; misurata una sola volta
+const TEST5 = {
+  page: '/intervento.html',
+  cases: {
+    'Codice cliente': [['codice cliente', 'numero cliente'], 'CL-88231'],
+    'Persona da contattare': [['referente', 'nome del contatto'], 'Giulia Verdi'],
+    'Indirizzo e-mail': [['email', 'posta elettronica'], 'giulia.verdi@example.it'],
+    'Numero di cellulare': [['cellulare', 'telefono'], '3409876543'],
+    'Via e numero civico': [['indirizzo', 'via'], 'Via Roma 12'],
+    Comune: [['citta', 'comune'], 'Salerno'],
+    CAP: [['cap', 'codice postale'], '84121'],
+    'Tipo di guasto': [['tipo di guasto', 'categoria del problema'], 'Idraulico'],
+    'Descrivi il problema': [['descrizione', 'dettagli del problema'], 'Perdita d acqua sotto il lavello della cucina da due giorni.'],
+    'Fotografia del guasto': [['foto', 'immagine del guasto'], 'C:\\foto\\lavello.jpg'],
+    'Giorno preferito': [['data appuntamento', 'giorno'], '20/11/2026'],
+    'Fascia oraria': [['fascia oraria', 'fascia'], 'Mattina'],
+    'Orario di arrivo desiderato': [['ora di arrivo', 'orario preferito'], '10:30'],
+    'Accetto le condizioni del servizio di assistenza': [['condizioni', 'accettazione condizioni'], true],
+  },
+  none: [['partita iva', '01234567890'], ['data di nascita', '05/05/1985'], ['IBAN', 'IT60X0542811101000000123456'], ['ragione sociale', 'Beta S.r.l.'], ['provincia', 'Salerno']],
+};
 
 const srv = await serve();
 const base = 'http://127.0.0.1:' + srv.address().port;
@@ -91,14 +136,14 @@ async function fieldsOf(url) {
   return fieldsFrom(snap.items, snap.regions);
 }
 const keyOf = (f) => (f.kind === 'radio' ? 'radio:' + fold(f.name) : fold(f.name));
-function cases(fields, spec, none, idOf) {
+function cases(fields, spec, none, idOf, page = '') {
   const out = [];
   for (const [name, [keys, value]] of Object.entries(spec)) {
     const target = idOf(name);
     if (!target) throw new Error('campo non trovato nel modulo: ' + name);
-    for (const k of keys) out.push({ logits: paramLogits({ key: k, value }, fields), target, label: `${k} -> ${name}` });
+    keys.forEach((k, vi) => out.push({ logits: paramLogits({ key: k, value }, fields), target, label: `${k} -> ${name}`, param: { key: k, value }, fields, page, field: name, vi, nv: keys.length }));
   }
-  for (const [k, value] of none) out.push({ logits: paramLogits({ key: k, value }, fields), target: null, label: `${k} -> nessuno` });
+  for (const [k, value] of none) out.push({ logits: paramLogits({ key: k, value }, fields), target: null, label: `${k} -> nessuno`, param: { key: k, value }, fields, page, field: null, vi: 0, nv: 0 });
   return out;
 }
 function probs(c, T, NONE) {
@@ -132,7 +177,7 @@ function evaluate(set, T, NONE, preset = PRESETS.balanced) {
 // insieme di addestramento: domanda1
 const f1 = await fieldsOf(base + TRAIN.page);
 const byName1 = (name) => (name === 'Ruolo' ? f1.find((f) => f.kind === 'radio') : f1.find((f) => f.kind === 'field' && fold(f.name) === fold(name)))?.id;
-const train = cases(f1, TRAIN.cases, TRAIN.none, byName1);
+const train = cases(f1, TRAIN.cases, TRAIN.none, byName1, 'domanda1');
 // insieme di verifica: form.html in 4 lingue, chiavi in italiano
 const test = [];
 for (const lang of ['en', 'fr', 'es', 'de']) {
@@ -142,7 +187,7 @@ for (const lang of ['en', 'fr', 'es', 'de']) {
     const el = snapIds.items.find((i) => i.gx && i.gx.nm === id) || snapIds.items.find((i) => i.role === 'chk');
     return f.find((x) => x.id === el.id)?.id;
   };
-  test.push(...cases(f, TEST_FIELDS, TEST_NONE, (name) => byId(name)).map((c) => ({ ...c, label: `[${lang}] ${c.label}` })));
+  test.push(...cases(f, TEST_FIELDS, TEST_NONE, (name) => byId(name), 'form-' + lang).map((c) => ({ ...c, label: `[${lang}] ${c.label}` })));
 }
 // verifica 3: creata dopo tutte le correzioni, misurata una sola volta
 const TEST3 = {
@@ -164,9 +209,13 @@ const TEST3 = {
   none: [['partita iva', '01234567890'], ['email', 'mario@alfa.it'], ['IBAN', 'IT60X0542811101000000123456'], ['comune', 'Ischia'], ['ragione sociale', 'Alfa Meccanica S.r.l.']],
 };
 const f4 = await fieldsOf(base + TEST3.page);
-const test3 = cases(f4, TEST3.cases, TEST3.none, (name) => f4.find((f) => f.kind === 'field' && fold(f.texts[0]) === fold(name))?.id);
+const test3 = cases(f4, TEST3.cases, TEST3.none, (name) => f4.find((f) => f.kind === 'field' && fold(f.texts[0]) === fold(name))?.id, 'registro');
 const f3 = await fieldsOf(base + TEST2.page);
-const test2 = cases(f3, TEST2.cases, TEST2.none, (name) => f3.find((f) => f.kind === 'field' && fold(f.full || f.name).startsWith(fold(name).slice(0, 25)))?.id || f3.find((f) => f.kind === 'field' && fold(f.texts[0]).startsWith(fold(name).slice(0, 25)))?.id);
+const test2 = cases(f3, TEST2.cases, TEST2.none, (name) => f3.find((f) => f.kind === 'field' && fold(f.full || f.name).startsWith(fold(name).slice(0, 25)))?.id || f3.find((f) => f.kind === 'field' && fold(f.texts[0]).startsWith(fold(name).slice(0, 25)))?.id, 'iscrizione');
+const f5 = await fieldsOf(base + TEST4.page);
+const test4 = cases(f5, TEST4.cases, TEST4.none, (name) => (name === 'Mezzo di trasporto' ? f5.find((f) => f.kind === 'radio') : f5.find((f) => f.kind === 'field' && fold(f.texts[0]) === fold(name)))?.id, 'rimborso');
+const f6 = await fieldsOf(base + TEST5.page);
+const test5 = cases(f6, TEST5.cases, TEST5.none, (name) => (name === 'Fascia oraria' ? f6.find((f) => f.kind === 'radio') : f6.find((f) => f.kind === 'field' && fold(f.texts[0]) === fold(name)))?.id, 'intervento');
 await S.close();
 srv.close();
 
@@ -209,4 +258,80 @@ console.log(rep('verifica 3 (modulo nuovo, misurato una sola volta)', te3));
 console.log('errori in verifica 2:\n  ' + (te2.wrong.join('\n  ') || 'nessuno'));
 console.log('errori in verifica 3:\n  ' + (te3.wrong.join('\n  ') || 'nessuno'));
 console.log('errori in addestramento:\n  ' + (tr.wrong.join('\n  ') || 'nessuno'));
-fs.writeFileSync(path.join(TMP, 'calibration.json'), JSON.stringify({ EPS: best.EPS, T: best.T, NONE: best.NONE, train: tr, test: te, test2: te2, test3: te3 }, null, 1));
+const te4 = evaluate(test4, best.T, best.NONE);
+console.log(rep('verifica 4 (dominio nuovo, nomi dei campi tecnici)', te4));
+console.log('errori in verifica 4:\n  ' + (te4.wrong.join('\n  ') || 'nessuno'));
+
+// metriche nello stile di System One Bench: ECE, AUROC della confidenza, copertura e precisione delle azioni autonome
+function extra(set) {
+  const rows = set.map((c) => { const pr = probs(c, best.T, best.NONE); return { conf: pr[0].p, ok: pr[0].key === c.target }; });
+  const pos = rows.filter((r) => r.ok), neg = rows.filter((r) => !r.ok);
+  let au = 0;
+  for (const p of pos) for (const q of neg) au += p.conf > q.conf ? 1 : p.conf === q.conf ? 0.5 : 0;
+  return { auroc: pos.length && neg.length ? au / (pos.length * neg.length) : null };
+}
+// compito intero: tutti i parametri di un modulo insieme (una variante per ogni sinonimo), con la stessa
+// assegnazione usata da browse_task. Conta campi compilati bene, sbagliati e domande a Claude.
+function taskSim(set) {
+  const byPage = new Map();
+  for (const c of set) { if (!byPage.has(c.page)) byPage.set(c.page, []); byPage.get(c.page).push(c); }
+  const t = { tasks: 0, params: 0, ok: 0, wrong: 0, asked: 0, noneAsked: 0, noneActed: 0, wrongList: [] };
+  for (const [, cs] of byPage) {
+    const withTarget = cs.filter((c) => c.target);
+    const nones = cs.filter((c) => !c.target);
+    const nVar = Math.max(1, ...withTarget.map((c) => c.nv));
+    for (let j = 0; j < nVar; j++) {
+      const pick = withTarget.filter((c) => c.vi === j % c.nv);
+      const all = [...pick, ...nones];
+      if (resetCaches) resetCaches();
+      const t0 = process.hrtime.bigint();
+      const { acts } = assign(all.map((c) => c.param), cs[0].fields);
+      t.ms = (t.ms || 0) + Number(process.hrtime.bigint() - t0) / 1e6;
+      const actOf = new Map(acts.map((a) => [a.p, a.f.id]));
+      t.tasks++;
+      for (const c of all) {
+        const got = actOf.get(c.param);
+        if (!c.target) { if (got) { t.noneActed++; t.wrongList.push(`${c.label}: compilato ${got}`); } else t.noneAsked++; continue; }
+        t.params++;
+        if (got === c.target) t.ok++;
+        else if (got) { t.wrong++; t.wrongList.push(`${c.label}: compilato ${got}`); } else t.asked++;
+      }
+    }
+  }
+  return t;
+}
+const sets = { train, test, test2, test3, test4 };
+const out = { EPS: best.EPS, T: best.T, NONE: best.NONE, train: tr, test: te, test2: te2, test3: te3, test4: te4 };
+// la verifica 5 si guarda solo alla fine (VERIFY5=1), per non correggere il motore sui suoi errori
+if (process.env.VERIFY5) {
+  const te5 = evaluate(test5, best.T, best.NONE);
+  console.log(rep('verifica 5 (dominio nuovo, misurata una sola volta)', te5));
+  console.log('errori in verifica 5:\n  ' + (te5.wrong.join('\n  ') || 'nessuno'));
+  sets.test5 = test5;
+  out.test5 = te5;
+}
+console.log('\ncompito intero (preset balanced):');
+for (const [k, s] of Object.entries(sets)) {
+  const t = taskSim(s);
+  Object.assign(out[k], extra(s), { task: t });
+  console.log(`  ${k.padEnd(6)} ${t.tasks} compiti · ${t.params} campi: ${t.ok} compilati da solo (${pct(t.ok / t.params)}), ${t.asked} chiesti, ${t.wrong} sbagliati · parametri senza campo: ${t.noneAsked} segnalati, ${t.noneActed} compilati per errore · ${(t.ms / t.tasks).toFixed(1)} ms a compito`);
+  for (const w of t.wrongList) console.log('    ✗ ' + w);
+}
+// riepilogo su tutti i casi, con le stesse metriche di System One Bench (accuratezza, ECE, AUROC, latenza)
+{
+  const all = Object.values(sets).flat();
+  const ev = evaluate(all, best.T, best.NONE);
+  const lat = [];
+  for (let rep3 = 0; rep3 < 3; rep3++) for (const c of all) {
+    if (resetCaches) resetCaches();
+    const t0 = process.hrtime.bigint();
+    paramLogits(c.param, c.fields);
+    lat.push(Number(process.hrtime.bigint() - t0) / 1e6);
+  }
+  lat.sort((a, b) => a - b);
+  const q = (x) => lat[Math.min(lat.length - 1, Math.floor(x * lat.length))];
+  out.overall = { n: ev.n, acc: ev.acc, ece: ev.ece, auroc: extra(all).auroc, coverage: ev.acted / ev.n, precision: ev.actedOk / ev.acted, p50ms: q(0.5), p95ms: q(0.95) };
+  const o = out.overall;
+  console.log(`\ntutti i casi: ${o.n} · accuratezza ${pct(o.acc)} · ECE ${pct(o.ece)} · AUROC ${o.auroc.toFixed(2)} · eseguiti da solo ${pct(o.coverage)} con precisione ${pct(o.precision)} · latenza p50 ${o.p50ms.toFixed(2)} ms, p95 ${o.p95ms.toFixed(2)} ms`);
+}
+fs.writeFileSync(path.join(TMP, 'calibration.json'), JSON.stringify(out, null, 1));

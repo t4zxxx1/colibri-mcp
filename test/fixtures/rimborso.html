@@ -1,0 +1,30 @@
+<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Rimborso trasferta</title><link rel="stylesheet" href="style.css"></head><body><main>
+<h1>Richiesta di rimborso spese di trasferta</h1>
+<form novalidate>
+<fieldset><legend>Richiedente</legend>
+<label for="f01">Matricola</label><input id="f01" name="fld_01">
+<label for="f02">Cognome e nome</label><input id="f02" name="fld_02">
+<label for="f03">Ufficio di appartenenza</label><select id="f03" name="fld_03"><option value="">Seleziona</option><option>Amministrazione</option><option>Ragioneria</option><option>Ufficio tecnico</option><option>Personale</option></select>
+<label for="f04">Recapito telefonico</label><input id="f04" name="fld_04" type="tel">
+</fieldset>
+<fieldset><legend>Missione</legend>
+<label for="f05">Destinazione</label><input id="f05" name="fld_05">
+<label for="f06">Motivo della missione</label><textarea id="f06" name="fld_06"></textarea>
+<label for="f07">Data partenza</label><input id="f07" name="fld_07" placeholder="gg/mm/aaaa">
+<label for="f08">Ora partenza</label><input id="f08" name="fld_08" placeholder="hh:mm">
+<label for="f09">Data rientro</label><input id="f09" name="fld_09" placeholder="gg/mm/aaaa">
+<label for="f10">Ora rientro</label><input id="f10" name="fld_10" placeholder="hh:mm">
+<p>Mezzo di trasporto</p>
+<label><input type="radio" name="fld_11" value="p"> Mezzo proprio</label>
+<label><input type="radio" name="fld_11" value="t"> Treno</label>
+<label><input type="radio" name="fld_11" value="a"> Aereo</label>
+<label><input type="radio" name="fld_11" value="s"> Auto di servizio</label>
+<label for="f12">Chilometri percorsi</label><input id="f12" name="fld_12" type="number">
+</fieldset>
+<fieldset><legend>Spese</legend>
+<label for="f13">Importo totale richiesto (€)</label><input id="f13" name="fld_13">
+<label for="f14">Giustificativi di spesa</label><input id="f14" name="fld_14" type="file">
+<p><input type="checkbox" id="f15" name="fld_15"><label for="f15">Dichiaro che le spese sono state effettivamente sostenute</label></p>
+</fieldset>
+<button type="submit">Invia richiesta</button>
+</form></main></body></html>

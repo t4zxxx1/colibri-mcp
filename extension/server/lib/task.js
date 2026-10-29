@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as P from './page-script.js';
 import { renderView, renderDiff, shortUrl } from './render.js';
-import { PRESETS, fold, fieldsFrom, groundParam, decide, chooseOption, valueKind, formatDateFor, truthy, extractField, similarity, choice, optionScore } from './engine.js';
+import { PRESETS, fold, fieldsFrom, groundParam, assign, decide, chooseOption, valueKind, formatDateFor, truthy, extractField, similarity, choice, optionScore } from './engine.js';
 
 const pct = (p) => Math.round(p * 100) + '%';
 const firstLine = (e) => String((e && e.message) || e).split('\n')[0].replace(/^\w+Error: /, '').slice(0, 200);
@@ -243,9 +243,9 @@ export async function runTask(S, a) {
   const memory = loadMemory(S)[host] || {};
   const errors = [];
   const fields = fieldsFrom(snap.items, snap.regions);
-  const plan = [];
+  const fixed = [];
   const learned = [];
-  const unsure = [];
+  const toGround = [];
   for (const p of params) {
     if (SECRET_KEY.test(fold(p.key + ' ' + p.about))) {
       errors.push(`✗ "${p.key}": campo riservato (!x), lo inserisce l'utente nella finestra`);
@@ -262,26 +262,15 @@ export async function runTask(S, a) {
         continue;
       }
       if (!isRef(p.key)) learned.push([p.key, f.name]);
-      plan.push({ p, f, conf: 1 });
+      fixed.push({ p, f, conf: 1 });
       continue;
     }
-    const r = groundParam(p, fields, memory);
-    if (decide(r, preset) === 'act') plan.push({ p, f: r.data.f, conf: r.confidence, r });
-    else unsure.push([p, r, '']);
+    toGround.push(p);
   }
-  // due parametri sullo stesso campo: resta il piu' sicuro
-  const byField = new Map();
-  for (const st of plan) {
-    const o = byField.get(st.f.id);
-    if (!o || st.conf > o.conf) {
-      if (o) unsure.push([o.p, o.r || { probs: [] }, ' (campo conteso)']);
-      byField.set(st.f.id, st);
-    } else unsure.push([st.p, st.r || { probs: [] }, ' (campo conteso)']);
-  }
-  const taken = new Set(byField.keys());
+  const { acts, asks: unsure, taken } = assign(toGround, fields, { memory, preset, fixed });
   for (const [p, r, extra] of unsure) asks.push(question(p, r, extra, taken));
   const order = new Map(snap.items.map((it, i) => [it.id, i]));
-  const todo = [...byField.values()].sort((x, y) => (order.get(x.f.id) ?? 0) - (order.get(y.f.id) ?? 0));
+  const todo = [...acts].sort((x, y) => (order.get(x.f.id) ?? 0) - (order.get(y.f.id) ?? 0));
 
   // ---- agisci + verifica ----
   const touched = new Map();
@@ -306,7 +295,9 @@ export async function runTask(S, a) {
       else {
         ok++;
         if (r.fill || /^(chk|sw|rad)$/.test(st.f.role) || st.f.kind === 'radio') touched.set(r.id, 'fill');
-        const conf = st.conf < 0.97 && !r.note ? `"${st.p.key}" → ${st.f.id} "${st.f.name}" ${pct(st.conf)}` : '';
+        // nota solo per gli abbinamenti non ovvi: etichetta diversa dalla chiave o confidenza non alta
+        const obvious = st.conf >= 0.9 && st.r && st.r.data && st.r.data.name >= 0.95;
+        const conf = st.conf < 0.97 && !obvious && !r.note ? `"${st.p.key}" → ${st.f.id} "${st.f.name}" ${pct(st.conf)}` : '';
         if (r.note || conf) notes.push(r.note || conf);
       }
     } catch (e) {

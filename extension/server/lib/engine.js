@@ -4,7 +4,7 @@
 // Come in Jev: c'e' sempre l'opzione "nessuno"; la confidenza decide se agire o chiedere a Claude.
 
 /** Temperatura e punteggio dell'opzione "nessuno": stimati da test/calibrate.mjs su casi etichettati. */
-export const CAL = { T: 0.85, NONE: 4 };
+export const CAL = { T: 0.9, NONE: 4 };
 
 /** Soglie per tipo di decisione (stessi preset di jev-mcp): act = agisce, escalate = sotto chiede. */
 export const PRESETS = {
@@ -42,9 +42,11 @@ const CONCEPTS = {
   address: ['indirizzo', 'via', 'indirizzo sede legale', 'sede legale', 'indirizzo sede', 'address', 'street', 'street address', 'adresse', 'rue', 'direccion', 'calle', 'domicilio', 'strasse', 'anschrift', 'endereco', 'morada', 'rua'],
   firstname: ['nome', 'first name', 'given name', 'firstname', 'prenom', 'nombre', 'vorname', 'primeiro nome', 'nome proprio'],
   lastname: ['cognome', 'last name', 'surname', 'family name', 'lastname', 'nom de famille', 'nom', 'apellido', 'apellidos', 'nachname', 'familienname', 'sobrenome', 'apelido'],
-  fullname: ['nome e cognome', 'nominativo', 'nome del referente', 'referente', 'full name', 'nom complet', 'nombre completo', 'vollstandiger name', 'nome completo'],
+  fullname: ['nome e cognome', 'cognome e nome', 'cognome nome', 'nome cognome', 'nominativo', 'nome del referente', 'referente', 'full name', 'nom complet', 'nombre completo', 'vollstandiger name', 'nome completo'],
   birthdate: ['data di nascita', 'nato il', 'date of birth', 'birth date', 'birthday', 'date de naissance', 'fecha de nacimiento', 'geburtsdatum', 'data de nascimento'],
   birthplace: ['luogo di nascita', 'comune di nascita', 'nato a', 'place of birth', 'lieu de naissance', 'lugar de nacimiento', 'geburtsort', 'local de nascimento'],
+  timestart: ['ora inizio', 'ora di inizio', 'orario inizio', 'orario di inizio', 'dalle ore', 'start time', 'heure de debut', 'hora de inicio', 'hora inicio', 'startzeit', 'beginnzeit', 'uhrzeit von'],
+  timeend: ['ora fine', 'ora di fine', 'orario fine', 'orario di fine', 'alle ore', 'end time', 'heure de fin', 'hora de fin', 'hora fin', 'endzeit', 'uhrzeit bis'],
   datestart: ['data inizio', 'inizio', 'data di inizio', 'dal', 'data avvio', 'start date', 'start', 'from', 'date de debut', 'debut', 'fecha de inicio', 'inicio', 'startdatum', 'beginn', 'data de inicio'],
   dateend: ['data fine', 'fine', 'data di fine', 'al', 'data termine', 'scadenza', 'end date', 'end', 'to', 'date de fin', 'fin', 'fecha de fin', 'enddatum', 'ende', 'data de fim', 'termino'],
   description: ['descrizione', 'descrizione degli obiettivi', 'obiettivi', 'note', 'dettagli', 'description', 'details', 'notes', 'commentaire', 'descripcion', 'beschreibung', 'anmerkungen', 'descricao', 'observacoes'],
@@ -64,6 +66,18 @@ const CONCEPTS = {
   terms: ['termini e condizioni', 'condizioni', 'condizioni generali', 'termini', 'terms', 'terms and conditions', 'conditions generales', 'conditions', 'terminos y condiciones', 'condiciones', 'agb', 'allgemeine geschaftsbedingungen', 'geschaftsbedingungen', 'termos e condicoes'],
   privacy: ['privacy', 'informativa privacy', 'trattamento dei dati', 'trattamento dati', 'consenso privacy', 'dati personali', 'data protection', 'privacy policy', 'protection des donnees', 'donnees personnelles', 'proteccion de datos', 'datos personales', 'datenschutz', 'datenschutzerklarung', 'gdpr', 'rgpd', 'dsgvo'],
   truthful: ['dichiarazione sostitutiva', 'veridicita', 'dati veritieri', 'dpr 445', 'dpr 445 2000', 'autocertificazione'],
+  // v0.4: concetti generici dei moduli (persone, luoghi, importi, uffici, viaggi)
+  place: ['luogo', 'sede', 'sede di svolgimento', 'destinazione', 'luogo di svolgimento', 'location', 'venue', 'place', 'destination', 'lieu', 'lugar', 'destino', 'veranstaltungsort', 'zielort', 'reiseziel', 'local'],
+  teacher: ['docente', 'formatore', 'insegnante', 'relatore', 'istruttore', 'tutor', 'teacher', 'trainer', 'instructor', 'speaker', 'formateur', 'enseignant', 'intervenant', 'profesor', 'formador', 'ponente', 'dozent', 'lehrer', 'referent', 'professor'],
+  topics: ['argomenti', 'argomenti trattati', 'contenuti', 'contenuto', 'programma', 'temi', 'topics', 'contents', 'content', 'agenda', 'sujets', 'contenu', 'programme', 'temas', 'contenidos', 'temario', 'themen', 'inhalte', 'inhalt', 'conteudo'],
+  purpose: ['motivo', 'motivazione', 'finalita', 'scopo', 'causale', 'purpose', 'reason', 'motif', 'raison', 'proposito', 'finalidad', 'zweck', 'grund', 'anlass', 'finalidade'],
+  amount: ['importo', 'importo totale', 'totale', 'somma', 'ammontare', 'amount', 'total', 'total amount', 'sum', 'montant', 'montant total', 'importe', 'importe total', 'betrag', 'gesamtbetrag', 'summe', 'valor total'],
+  department: ['ufficio', 'servizio', 'reparto', 'dipartimento', 'unita organizzativa', 'struttura di appartenenza', 'department', 'office', 'division', 'service', 'departement', 'departamento', 'abteilung', 'dienststelle'],
+  departure: ['partenza', 'andata', 'departure', 'outbound', 'depart', 'aller', 'salida', 'ida', 'abreise', 'abfahrt', 'hinreise'],
+  return: ['rientro', 'ritorno', 'return', 'inbound', 'retour', 'regreso', 'vuelta', 'ruckkehr', 'ruckreise', 'volta'],
+  distance: ['chilometri', 'km', 'distanza', 'kilometers', 'kilometres', 'miles', 'mileage', 'distance', 'kilometrage', 'distancia', 'kilometros', 'kilometer', 'entfernung', 'strecke'],
+  receipts: ['giustificativi', 'giustificativi di spesa', 'ricevute', 'scontrini', 'fatture', 'documentazione di spesa', 'receipts', 'invoices', 'justificatifs', 'factures', 'recibos', 'justificantes', 'facturas', 'belege', 'quittungen', 'rechnungen'],
+  confirm: ['confermo', 'conferma', 'attesto', 'correttezza', 'i confirm', 'confirm', 'je confirme', 'confirmo', 'ich bestatige', 'bestatigung'],
 };
 // parole generiche: contano poco da sole (numero, codice, data, nome...)
 // parole di domanda ignorate nelle chiavi di estrazione ("quanti progetti", "how many projects")
@@ -79,7 +93,11 @@ for (const [c, list] of Object.entries(CONCEPTS)) for (const p of list) {
 const PHRASES = [...PMAP.entries()].sort((a, b) => b[0].length - a[0].length);
 
 /** Concetti riconosciuti in un testo: la frase piu' lunga assorbe le piu' corte ("tipo di societa" non e' anche "societa"). */
+const CC = new Map();
 export function concepts(s) {
+  const key = String(s ?? '');
+  const hit = CC.get(key);
+  if (hit) return hit;
   let f = ` ${fold(s)} `;
   const out = new Set();
   for (const [p, cs] of PHRASES) {
@@ -89,10 +107,19 @@ export function concepts(s) {
       f = f.split(k).join(' | ');
     }
   }
+  if (CC.size > 5000) CC.clear();
+  CC.set(key, out);
   return out;
 }
+/** Svuota le cache (le misure di latenza partono "a freddo"). */
+export function resetCaches() {
+  CC.clear();
+  SC.clear();
+}
 
-const tokens = (s) => fold(s).split(' ').filter((t) => t && !STOP.has(t));
+// varianti della stessa parola che la radice di 5 lettere non unisce
+const ALIAS = { orario: 'ora', orari: 'ora', horaire: 'heure', horario: 'hora' };
+const tokens = (s) => fold(s).split(' ').filter((t) => t && !STOP.has(t)).map((t) => ALIAS[t] || t);
 const stem = (t) => (t.length > 5 ? t.slice(0, 5) : t);
 function bigrams(s) {
   const f = fold(s).replace(/ /g, '');
@@ -113,7 +140,17 @@ function dice(a, b) {
 }
 
 /** Somiglianza 0..1 tra due etichette (uguaglianza, sinonimi, parole, refusi). */
+const SC = new Map();
 export function similarity(a, b) {
+  const key = `${a}\u0000${b}`;
+  const hit = SC.get(key);
+  if (hit !== undefined) return hit;
+  const v = similarityRaw(a, b);
+  if (SC.size > 20000) SC.clear();
+  SC.set(key, v);
+  return v;
+}
+function similarityRaw(a, b) {
   const fa = fold(a);
   const fb = fold(b);
   if (!fa || !fb) return 0;
@@ -187,12 +224,14 @@ export function parseDate(v) {
 }
 const pad = (n) => String(n).padStart(2, '0');
 
-/** Kind del valore richiesto: date, email, number, bool, long, text. */
+/** Kind del valore richiesto: date, time, email, path, number, bool, long, text. */
 export function valueKind(v) {
   if (typeof v === 'boolean') return 'bool';
   const s = String(v ?? '').trim();
   if (/^(true|false|si|sì|no|yes)$/i.test(s)) return 'bool';
   if (parseDate(s)) return 'date';
+  if (/^([01]?\d|2[0-3]):[0-5]\d$/.test(s)) return 'time';
+  if (s.length < 260 && !/\n/.test(s) && /^([a-z]:)?[\\/]|[\\/][^\\/]+\.[a-z0-9]{2,5}$/i.test(s)) return 'path';
   if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) return 'email';
   if (/^[+-]?\d+([.,]\d+)?$/.test(s)) return 'number';
   if (s.length > 50) return 'long';
@@ -255,6 +294,8 @@ function valueFit(value, f) {
   switch (f.role) {
     case 'chk':
     case 'sw':
+    case 'rad':
+      // una casella o un radio singolo si spuntano con un si/no, mai con un testo
       return k === 'bool' ? 0.8 : -0.8;
     case 'sel': {
       const opts = gx.opts || [];
@@ -262,18 +303,22 @@ function valueFit(value, f) {
       return best >= 0.9 ? 1 : best >= 0.6 ? 0.5 : -0.4;
     }
     case 'date':
-      return k === 'date' ? 1 : -0.8;
+      return k === 'date' || (k === 'time' && gx.ty === 'time') ? 1 : -0.8;
     case 'num':
       return k === 'number' ? 0.6 : -0.6;
     case 'file':
-      return /[\\/]/.test(String(value)) ? 0.5 : -1;
+      return k === 'path' ? 0.8 : /[\\/]/.test(String(value)) ? 0.3 : -1;
     case 'area':
       return k === 'long' ? 0.6 : k === 'text' ? 0.1 : 0;
     default: {
       const ph = fold(gx.ph);
+      const timeField = gx.ty === 'time' || /\b(hh|oo) mm\b/.test(ph) || concepts(f.name).has('timestart') || concepts(f.name).has('timeend');
+      if (k === 'time') return timeField ? 1 : -0.1;
+      if (timeField) return -0.4;
       if (k === 'date') return /(gg|dd|aaaa|yyyy|jj|tt)/.test(ph) || concepts(f.name).has('datestart') || concepts(f.name).has('dateend') || concepts(f.name).has('birthdate') ? 0.8 : -0.2;
       if (k === 'email') return gx.ty === 'email' || concepts(f.name).has('email') || concepts(f.name).has('pec') ? 0.8 : -0.3;
       if (k === 'bool') return -0.8;
+      if (k === 'path') return -0.2;
       if (k === 'number' && gx.ty === 'tel') return 0.3;
       return 0.1;
     }
@@ -313,7 +358,53 @@ export function paramLogits(param, fields, memory = {}) {
     const leg = f.leg ? 0.8 * Math.max(...query.map((q) => similarity(q, f.leg))) : 0;
     return { key: f.id, logit: 7 * name + 2 * fit + 9 * remembered + req + low + leg, data: { f, name, fit, remembered } };
   });
+  // esclusivita': un valore di forma inconfondibile (orario, file, data, email, si/no) con un solo campo adatto
+  // va quasi certamente li', anche se l'etichetta usa parole diverse ("foglio firme" -> "Allegato registro presenze")
+  const minName = EXCL_KINDS[valueKind(param.value)];
+  if (minName !== undefined) {
+    const fitting = opts.filter((o) => o.data.fit >= 0.8 && !o.data.f.low);
+    if (fitting.length === 1 && fitting[0].data.name >= minName) {
+      fitting[0].logit += EXCL;
+      fitting[0].data.excl = true;
+    }
+  }
   return opts;
+}
+// tipi di valore per l'esclusivita' -> somiglianza minima dell'etichetta richiesta
+// (orari e file sono inconfondibili; date, email e si/no hanno molti parametri "senza campo" e chiedono un indizio nel nome)
+const EXCL_KINDS = { time: 0, path: 0, date: 0.3, email: 0.3, bool: 0.3 };
+const EXCL = 2.5;
+
+/**
+ * Assegna i parametri ai campi per un intero compito. fixed: abbinamenti gia' certi ({ p, f, conf }).
+ * Prima ogni parametro da solo; poi i parametri incerti o in conflitto si riabbinano sui soli campi rimasti
+ * liberi (assegnazione congiunta), finche' non cambia piu' nulla.
+ * Restituisce { acts: [{ p, f, conf, r }], asks: [[p, r, extra]], taken: Set di id dei campi assegnati }.
+ */
+export function assign(params, fields, { memory = {}, preset = PRESETS.balanced, fixed = [] } = {}) {
+  const byField = new Map();
+  for (const st of fixed) byField.set(st.f.id, st);
+  let pending = params.map((p) => [p, null, '']);
+  let pool = fields.filter((f) => !byField.has(f.id));
+  for (let round = 0; round < 4 && pending.length; round++) {
+    const plan = [];
+    const next = [];
+    for (const [p, , extra] of pending) {
+      const r = groundParam(p, pool, memory);
+      if (decide(r, preset) === 'act') plan.push({ p, f: r.data.f, conf: r.confidence, r, extra });
+      else next.push([p, r, extra]);
+    }
+    // due parametri sullo stesso campo: resta il piu' sicuro, l'altro riprova sui campi rimasti
+    let added = 0;
+    for (const st of plan.sort((a, b) => b.conf - a.conf)) {
+      if (byField.has(st.f.id)) next.push([st.p, st.r, ' (campo conteso)']);
+      else { byField.set(st.f.id, { p: st.p, f: st.f, conf: st.conf, r: st.r }); added++; }
+    }
+    pending = next;
+    if (!added) break;
+    pool = fields.filter((f) => !byField.has(f.id));
+  }
+  return { acts: [...byField.values()], asks: pending, taken: new Set(byField.keys()) };
 }
 
 /** Sceglie l'opzione di menu (o il suggerimento di autocompletamento) piu' vicina al valore. */

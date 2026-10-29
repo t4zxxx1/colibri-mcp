@@ -1,6 +1,6 @@
 {
   "name": "compact-browser-mcp",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "Estensione per Claude Desktop: Claude naviga e compila siti in Chrome leggendo le pagine come testo compatto invece che con screenshot.",
   "license": "MIT",

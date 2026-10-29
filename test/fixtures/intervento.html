@@ -1,0 +1,29 @@
+<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Richiesta intervento tecnico</title><link rel="stylesheet" href="style.css"></head><body><main>
+<h1>Richiesta di intervento tecnico</h1>
+<form novalidate>
+<fieldset><legend>Cliente</legend>
+<label for="q1">Codice cliente</label><input id="q1" name="q_1">
+<label for="q2">Persona da contattare</label><input id="q2" name="q_2">
+<label for="q3">Indirizzo e-mail</label><input id="q3" name="q_3" type="email">
+<label for="q4">Numero di cellulare</label><input id="q4" name="q_4" type="tel">
+</fieldset>
+<fieldset><legend>Luogo dell'intervento</legend>
+<label for="q5">Via e numero civico</label><input id="q5" name="q_5">
+<label for="q6">Comune</label><input id="q6" name="q_6">
+<label for="q7">CAP</label><input id="q7" name="q_7">
+</fieldset>
+<fieldset><legend>Problema</legend>
+<label for="q8">Tipo di guasto</label><select id="q8" name="q_8"><option value="">Seleziona</option><option>Elettrico</option><option>Idraulico</option><option>Riscaldamento</option><option>Altro</option></select>
+<label for="q9">Descrivi il problema</label><textarea id="q9" name="q_9"></textarea>
+<label for="q10">Fotografia del guasto</label><input id="q10" name="q_10" type="file">
+</fieldset>
+<fieldset><legend>Appuntamento</legend>
+<label for="q11">Giorno preferito</label><input id="q11" name="q_11" placeholder="gg/mm/aaaa">
+<p>Fascia oraria</p>
+<label><input type="radio" name="q_12" value="m"> Mattina</label>
+<label><input type="radio" name="q_12" value="p"> Pomeriggio</label>
+<label for="q13">Orario di arrivo desiderato</label><input id="q13" name="q_13" placeholder="hh:mm">
+<p><input type="checkbox" id="q14" name="q_14"><label for="q14">Accetto le condizioni del servizio di assistenza</label></p>
+</fieldset>
+<button type="submit">Invia richiesta</button>
+</form></main></body></html>

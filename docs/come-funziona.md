@@ -1,6 +1,6 @@
 # Browser compatto: cosa fa e come funziona
 
-Documento di riferimento sul server MCP **compact-browser** (versione 0.2.x): cosa offre a Claude, come è costruito dentro, come si comporta sulle pagine, come si misura e dove ha limiti. Per l'installazione e l'uso quotidiano vedi il [README](../README.md); per i numeri del confronto con altri strumenti [benchmark.md](benchmark.md); per la calibrazione del motore dei compiti guidati [calibrazione.md](calibrazione.md).
+Documento di riferimento sul server MCP **compact-browser** (versione 0.4.x): cosa offre a Claude, come è costruito dentro, come si comporta sulle pagine, come si misura e dove ha limiti. Per l'installazione e l'uso quotidiano vedi il [README](../README.md); per i numeri del confronto con altri strumenti [benchmark.md](benchmark.md); per la calibrazione del motore dei compiti guidati [calibrazione.md](calibrazione.md).
 
 ## 1. In una frase
 
@@ -115,7 +115,7 @@ Se la pagina cambia (navigazione o finestra), restituisce la vista completa nuov
 Il ciclo per ogni compito:
 
 1. **Osserva**: raccoglie la pagina (senza mostrarla a Claude).
-2. **Decide**: per ogni dato calcola una probabilità per ciascun campo. Il punteggio combina somiglianza dell'etichetta (sinonimi, refusi, altre lingue), compatibilità del valore con il tipo di campo (data, numero, testo), memoria delle risposte già date su quel sito e piccoli bonus (obbligatorio, contesto del gruppo). I punteggi diventano probabilità con una softmax a temperatura calibrata e c'è sempre l'opzione "nessuno" (nessun campo).
+2. **Decide**: per ogni dato calcola una probabilità per ciascun campo. Il punteggio combina somiglianza dell'etichetta (sinonimi, refusi, altre lingue), compatibilità del valore con il tipo di campo (data, orario, numero, file, sì/no, testo), esclusività (un valore inconfondibile con un solo campo adatto), memoria delle risposte già date su quel sito e piccoli bonus (obbligatorio, contesto del gruppo). I punteggi diventano probabilità con una softmax a temperatura calibrata e c'è sempre l'opzione "nessuno" (nessun campo). I dati incerti o in conflitto riprovano poi sui soli campi rimasti liberi (assegnazione congiunta).
 3. **Agisce** solo se la confidenza supera la soglia del preset:
 
 | Preset | Agisce da sola sopra | Zona intermedia | Note |

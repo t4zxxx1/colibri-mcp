@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "compact-browser",
   "display_name": "Browser compatto",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Claude naviga e compila siti in Chrome leggendo le pagine come testo compatto, con un motore decisionale locale in stile Jev: molti meno token e passaggi rispetto agli screenshot.",
   "long_description": "Apre Google Chrome (o Edge) con un profilo dedicato e restituisce a Claude una tabella compatta degli elementi interattivi invece di screenshot o alberi di accessibilita' completi. Claude esegue piu' passi in una sola chiamata (compilazione moduli, menu, autocompletamenti, conferme) e riceve solo le variazioni. Le azioni con effetti (invio, conferma, salvataggio, eliminazione, pagamento, accettazione termini, caricamento file) vengono bloccate finche' l'utente non le conferma; password, carte, OTP e IBAN non sono mai compilabili da Claude. Non serve nessuna chiave API: funziona con il piano Claude dell'utente.",
   "author": {

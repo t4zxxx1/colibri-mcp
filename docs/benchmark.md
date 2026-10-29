@@ -40,7 +40,7 @@ Colonne: chiamate al tool; token restituiti dai tool; risposta singola più gran
 | agent-browser CLI senza guida | 5 | 9.358 | 4.576 | 17.794 | 84.124 | 1.291 | 9,1 s | 39,6 s |
 | Fast Playwright MCP | 7 | 11.151 | 5.283 | 20.160 | 115.624 | 1.748 | 16,0 s | 57,1 s |
 | **Browser compatto** | 4 | 1.141 | 628 | 8.072 | 36.923 | 734 | 4,0 s | 23,7 s |
-| **Browser compatto, `browse_task`** | 3 | 677 | 342 | 7.425 | 27.856 | 551 | 4,0 s | 19,2 s |
+| **Browser compatto, `browse_task`** | 3 | 645 | 342 | 7.393 | 27.760 | 551 | 3,8 s | 19,0 s |
 
 ### T2 — Elenco → dettaglio
 
@@ -93,7 +93,7 @@ La differenza viene da: menu, intestazione e piè di pagina compressi; opzioni d
 
 ## In sintesi
 
-- **Compito lungo (T1).** Con `browse_task` bastano 3 chiamate: 677 token di risposte, 27.856 di contesto riletto, circa 19 secondi. Rispetto al concorrente migliore (agent-browser CLI senza guida) sono il 93% di token in meno nelle risposte, il 67% in meno di contesto riletto e circa 20 secondi in meno. Rispetto al browser compatto a passi espliciti: una chiamata e il 25% di contesto in meno, perché Claude non deve leggere il modulo per poi riscriverne le etichette.
+- **Compito lungo (T1).** Con `browse_task` bastano 3 chiamate: 645 token di risposte, 27.760 di contesto riletto, circa 19 secondi. Rispetto al concorrente migliore (agent-browser CLI senza guida) sono il 93% di token in meno nelle risposte, il 67% in meno di contesto riletto e circa 20 secondi in meno. Rispetto al browser compatto a passi espliciti: una chiamata e il 25% di contesto in meno, perché Claude non deve leggere il modulo per poi riscriverne le etichette.
 - **Elenco → dettaglio (T2).** `browse_task` non aiuta: Claude deve comunque vedere l'elenco per sapere quale collegamento aprire. Due chiamate, come i metodi a blocchi migliori; il browser compatto resta il più leggero in token (20.764 di contesto riletto contro 36.987).
 - **Navigazione (T3).** Una sola chiamata (apertura, clic e numero estratto) e 73 token di risposta: 12.849 di contesto riletto contro 26.555 del concorrente migliore, e su questo compito supera anche lo screenshot, che prima era il più veloce (8,2 s contro 10,0 s).
 - **Definizioni (0.3)**: i 7 tool e le istruzioni del server pesano 1.347 token a ogni turno (erano 2.914 nella 0.2): schemi JSON minimi e descrizioni in inglese per il modello, validazione completa sul server. Dalla 0.3 il benchmark conta anche le istruzioni del server; sono già comprese in tutti i numeri del browser compatto qui sopra.

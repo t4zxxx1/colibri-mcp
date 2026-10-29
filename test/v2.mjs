@@ -55,13 +55,14 @@ r = await c.call('browse_task', { url: base + '/dettaglio.html?c=PF-2026-101', e
 ok(has(r.text, 'codice CUP: non trovato'), 'estrazione: opzione "non trovato" quando il dato non c\'e\'', r.text);
 
 // ---------- 3. domande, risposte e memoria per sito ----------
-r = await c.call('browse_task', { url: base + '/registro.html', params: { luogo: 'Napoli, via Toledo 1', docente: 'Anna Bianchi' } });
-const q = r.text.match(/\? "luogo": (?:nessuno \d+% · )?((?:f\d+)?e\d+) "Sede di svolgimento"/) || r.text.match(/\? "luogo":[^\n]*?((?:f\d+)?e\d+) "Sede di svolgimento"/);
+// "ubicazione" non e' nel vocabolario: deve diventare una domanda con il campo giusto tra i candidati
+r = await c.call('browse_task', { url: base + '/registro.html', params: { ubicazione: 'Napoli, via Toledo 1', docente: 'Anna Bianchi' } });
+const q = r.text.match(/\? "ubicazione": (?:nessuno \d+% · )?((?:f\d+)?e\d+) "Sede di svolgimento"/) || r.text.match(/\? "ubicazione":[^\n]*?((?:f\d+)?e\d+) "Sede di svolgimento"/);
 ok(has(r.text, '1/2 impostati, 1 da chiarire') && q, 'sinonimo sconosciuto: domanda con candidati e probabilita\' (e il campo giusto tra i candidati)', r.text);
 if (q) {
-  r = await c.call('browse_task', { params: { luogo: 'Napoli, via Toledo 1' }, answers: { luogo: q[1] } });
+  r = await c.call('browse_task', { params: { ubicazione: 'Napoli, via Toledo 1' }, answers: { ubicazione: q[1] } });
   ok(has(r.text, '1/1 impostati'), 'risposta alla domanda: campo compilato', r.text);
-  r = await c.call('browse_task', { url: base + '/registro.html', params: { luogo: 'Salerno' } });
+  r = await c.call('browse_task', { url: base + '/registro.html', params: { ubicazione: 'Salerno' } });
   ok(has(r.text, '1/1 impostati') && !has(r.text, '? "'), 'memoria per sito: la seconda volta nessuna domanda', r.text);
 }
 ok(fs.existsSync(path.join(TMP, 'site-memory.json')), 'memoria salvata su disco accanto al profilo');

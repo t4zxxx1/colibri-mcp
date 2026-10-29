@@ -42,7 +42,7 @@ flowchart LR
 2. **La pagina diventa testo compatto.** Uno script dentro la pagina raccoglie solo ciò che serve per agire: campi, menu, pulsanti, link, caselle, con nome, valore, stato (obbligatorio, non valido, disattivato) e un'indicazione se l'azione è delicata. Ogni elemento diventa una riga. Menu, intestazioni e piè di pagina vengono compressi; le righe di tabella ripetute vengono riassunte.
 3. **Molti passi in una sola chiamata.** Claude manda un elenco di passi (compila, scegli, spunta, clicca, aspetta, leggi) che può proseguire anche dopo un cambio pagina, perché gli elementi si indicano anche per nome. Il server li esegue uno dopo l'altro e aspetta che la pagina sia stabile (DOM fermo e nessuna richiesta di rete in corso).
 4. **Solo le differenze.** Dopo i passi Claude non rilegge la pagina intera: riceve i campi verificati, gli elementi nuovi o cambiati, gli errori del modulo e il testo comparso (es. "Domanda inviata, protocollo n. …").
-5. **Compiti guidati.** Con `browse_task` Claude non deve nemmeno guardare il modulo: passa i dati con le etichette dell'utente (`"P.IVA": "01234567890"`, `"data inizio": "03/11/2026"`) e il motore locale decide quale campo è quale, con una probabilità calibrata. Sopra la soglia agisce, sotto chiede. Dettagli e numeri: [docs/calibrazione.md](docs/calibrazione.md).
+5. **Compiti guidati.** Con `browse_task` Claude non deve nemmeno guardare il modulo: passa i dati con le etichette dell'utente (`"P.IVA": "01234567890"`, `"data inizio": "03/11/2026"`) e il motore locale decide quale campo è quale, con una probabilità calibrata. Sopra la soglia agisce, sotto chiede. Su un modulo mai visto (Test 5) compila da solo l'86% dei campi e chiede gli altri, senza nessuna azione sbagliata, in meno di 2 ms per dato. Dettagli e numeri, con il confronto con Jev: [docs/calibrazione.md](docs/calibrazione.md).
 
 Perché si risparmia: uno screenshot costa circa 1.366 token, quanto un modulo intero di 30 campi in formato testo; e ogni chiamata in meno evita di far rileggere a Claude tutta la conversazione.
 
@@ -183,7 +183,7 @@ npm run build     # crea dist/compact-browser.mcpb
 
 Struttura: `extension/` (manifest, icona, server MCP; il motore è in `server/lib/engine.js` e `server/lib/task.js`), `test/` (pagine di prova, test, benchmark, calibrazione), `scripts/build.mjs`.
 
-Nuova versione: aggiorna `version` in `package.json`, `extension/manifest.json` ed `extension/server/package.json`, poi `git tag v0.3.0 && git push --tags`. GitHub Actions esegue i test, crea il `.mcpb` e lo pubblica nella release; il link di download in cima resta sempre lo stesso.
+Nuova versione: aggiorna `version` in `package.json`, `extension/manifest.json` ed `extension/server/package.json`, poi `git tag v0.4.0 && git push --tags`. GitHub Actions esegue i test, crea il `.mcpb` e lo pubblica nella release; il link di download in cima resta sempre lo stesso.
 
 ## Licenza
 
