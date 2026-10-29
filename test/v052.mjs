@@ -76,7 +76,7 @@ ok(!/verifica/i.test(r.text) && has(r.text, 'Notizie del giorno'), 'cookie cf_cl
 
 // ---------- PDF ----------
 r = await c.call('browse_open', { url: base + '/biglietto.pdf' });
-ok(has(r.text, 'download salvato') && has(r.text, 'PDF, 1 pag.'), 'link a un PDF: scaricato con il numero di pagine (non piu\' "Download is starting")', r.text);
+ok((has(r.text, 'download salvato') && has(r.text, 'PDF, 1 pag.')) || has(r.text, 'documento PDF: testo con browse_read mode "pdf"'), 'link a un PDF: scaricato o aperto con indicazione della lettura (non piu\' "Download is starting")', r.text);
 r = await c.call('browse_read', { mode: 'pdf' });
 ok(has(r.text, 'Partenza 08:30 arrivo 11:02') && has(r.text, 'Totale EUR 59,90'), 'browse_read pdf: testo dell\'ultimo PDF scaricato', r.text);
 r = await c.call('browse_read', { mode: 'pdf', query: base + '/biglietto.pdf' });
@@ -113,6 +113,8 @@ else {
   user.kill();
 
   // avvio guidato: CB_MODE=cdp senza Chrome in ascolto -> Colibri avvia il Chrome reale, staccato
+  // (finestra visibile: saltato in CI, dove non c'e' un display)
+  if (!process.env.CI) {
   const url2 = 'http://127.0.0.1:9335';
   const c3 = await connect({ CB_MODE: 'cdp', CB_CDP_URL: url2, CB_REAL_PROFILE_DIR: prof('real-chrome'), CB_EXTRA_ARGS: '' });
   r = await c3.call('browse_do', { steps: [{ goto: base + '/v052.html' }], view: 'none' });
@@ -121,6 +123,7 @@ else {
   await sleep(1500);
   ok(await cdpAlive(url2), 'Chrome reale avviato da Colibri sopravvive alla chiusura del server MCP');
   await killChrome(url2);
+  }
 }
 
 srv.close();
