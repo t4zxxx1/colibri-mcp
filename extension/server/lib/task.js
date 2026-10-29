@@ -406,7 +406,8 @@ export async function runTask(S, a) {
   }
   if (a.read) {
     try {
-      notes.push((a.read === 'table' ? 'tabella:\n' : 'testo:\n') + (await S.read({ mode: a.read === 'table' ? 'table' : 'text' })));
+      const mode = ['table', 'cards'].includes(a.read) ? a.read : 'text';
+      notes.push({ table: 'tabella:\n', cards: 'schede:\n', text: 'testo:\n' }[mode] + (await S.read({ mode })));
     } catch (e) {
       notes.push('lettura: ' + firstLine(e));
     }

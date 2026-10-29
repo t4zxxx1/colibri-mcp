@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="it">
+<head><meta charset="utf-8"><title>Notizie del giorno</title></head>
+<body>
+<script>
+  // con ?ok la verifica Cloudflare risulta gia' superata (cookie cf_clearance)
+  if (location.search.includes('ok')) document.cookie = 'cf_clearance=test123; path=/';
+</script>
+<!-- resto dello script di verifica rimasto visibile in fondo alla pagina -->
+<div id="cf-please-wait" style="padding:4px">Please wait...</div>
+<main>
+  <h1>Notizie del giorno</h1>
+  <nav id="links"></nav>
+  <article id="txt"></article>
+</main>
+<script>
+  const nav = document.getElementById('links');
+  for (let i = 1; i <= 15; i++) nav.insertAdjacentHTML('beforeend', `<a href="#a${i}">Articolo ${i}</a> `);
+  document.getElementById('txt').textContent = 'Contenuto vero della pagina con molte informazioni utili per il lettore. '.repeat(30);
+</script>
+</body>
+</html>

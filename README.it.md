@@ -301,7 +301,7 @@ ok 22/22
 | `browse_open` | Apre un URL (avvia Chrome da solo), rifiuta i cookie non essenziali, restituisce le righe |
 | `browse_view` | Righe della pagina corrente, con `filter`, `scope:"all"` e paginazione |
 | `browse_do` | Fino a 40 passi in ordine; restituisce solo le differenze |
-| `browse_read` | Legge senza agire: `text`, `table`, `find`, `describe` |
+| `browse_read` | Legge senza agire: `text`, `table`, `find`, `describe`, `cards` (una riga per risultato: `10:05 \| 13:40 \| 3h35 \| 1 cambio \| 29,90 €`), `pdf` (testo di un PDF scaricato o aperto, a pagine) |
 | `browse_task` | Compito guidato in stile Jev: dati per etichetta, `answers`, `submit`, `expect`, `extract` tipizzato (testo, numero, importo, data, url, tabella) |
 | `browse_screenshot` | JPEG ridotto (~900 token) della finestra, di un elemento o di una regione — solo quando il testo non basta |
 | `browse_stats` | Token usati nella sessione rispetto agli screenshot |
@@ -312,7 +312,7 @@ ok 22/22
 
 ## Sicurezza
 
-- **`!c` azioni con effetti** — invio, conferma, salvataggio, eliminazione, pagamento, accettazione di termini, caricamento: bloccate finché l'utente non dà l'ok, poi ripetute con `"confirm": true`.
+- **`!c` azioni con effetti** — invio, conferma, salvataggio, eliminazione, pagamento, accettazione di termini, caricamento: bloccate finché l'utente non dà l'ok, poi ripetute con `"confirm": true`. I pulsanti che aprono solo un menu (`aria-haspopup` / `aria-expanded`) e i contatori di quantità ("rimuovi passeggero") non vengono bloccati.
 - **`!x` dati riservati** — password, numeri di carta, CVV, OTP, IBAN: l'AI non può mai scriverli, nemmeno con conferma. Li inserisci tu nella finestra.
 - **Compiti guidati**: il motore agisce da solo solo sopra la soglia di confidenza; l'invio non parte con domande aperte, errori o campi obbligatori vuoti.
 - **Domini consentiti**, niente `file://` / `javascript:`, testo delle pagine trattato come dato non fidato (resistente alla prompt injection), riferimenti unici per sessione.
@@ -334,7 +334,9 @@ ok 22/22
 | `CB_ALLOW_SCREENSHOT` | `true` | |
 | `CB_HUMAN_WAIT` | `50` | secondi di attesa mentre risolvi un CAPTCHA / una verifica (`0` = non aspettare) |
 | `CB_HUMAN_SHOW` | `true` | se il browser è invisibile e la verifica non si supera da sola, riapre Chrome visibile sulla stessa pagina |
-| `CB_MODE` / `CB_CDP_URL` | `launch` | `cdp` si collega al **tuo Chrome già aperto** con `--remote-debugging-port=9222` |
+| `CB_MODE` / `CB_CDP_URL` | `launch` | `cdp` = **modalità Chrome reale**: si collega a un Chrome normale su `--remote-debugging-port=9222` (vedi FAQ) |
+| `CB_AUTO_CHROME` | `true` | in modalità `cdp`, avvia da solo il Chrome reale se sulla porta non risponde nessuno |
+| `CB_REAL_PROFILE_DIR` | `~/.colibri/real-chrome` | profilo del Chrome reale avviato da Colibri |
 
 <div align="right"><a href="#top">↑ torna su</a></div>
 
@@ -387,7 +389,18 @@ Colibri riconosce la verifica (Cloudflare "Just a moment" / Turnstile, reCAPTCHA
 3. riprende **da solo** appena l'hai risolta e prosegue con i passi rimanenti;
 4. con un CAPTCHA dentro un modulo compila tutto il resto e aspetta te prima di premere *Invia*.
 
-Se non la risolvi entro `CB_HUMAN_WAIT` secondi (default 50) l'agente viene avvisato di chiedertelo, e `browse_view` riprende ad aspettare. Per i siti con protezioni anti-bot molto severe conviene `CB_MODE=cdp` con il tuo Chrome di tutti i giorni.
+Se non la risolvi entro `CB_HUMAN_WAIT` secondi (default 50) l'agente viene avvisato di chiedertelo, e `browse_view` riprende ad aspettare. Per i siti con protezioni anti-bot molto severe conviene la **modalità Chrome reale** (domanda seguente).
+</details>
+
+<details>
+<summary><b>La verifica Cloudflare va in loop. Cos'è la "modalità Chrome reale"?</b></summary>
+
+Di default Colibri avvia Chrome tramite Playwright, che lo marca come automatizzato: alcuni siti ripetono all'infinito "verifica di essere umano". In modalità Chrome reale Colibri usa invece un **Chrome normale**. Nessun trucco per nascondere l'automazione: è semplicemente un browser normale.
+
+1. Aggiungi `"env": { "CB_MODE": "cdp" }` alla voce di Colibri nella configurazione MCP del tuo agente.
+2. Fatto: alla prima chiamata Colibri avvia un Chrome normale sulla porta 9222 (profilo in `~/.colibri/real-chrome`). Per avviarlo tu: `npx -y github:t4zxxx1/colibri-mcp --chrome`.
+
+In questa modalità Colibri **non chiude mai il tuo Chrome**: alla riconnessione (`/mcp`) chiude solo le schede aperte da lui. Quando una verifica blocca in modalità normale, è Colibri stesso a suggerirti di passare a questa modalità.
 </details>
 
 <details>

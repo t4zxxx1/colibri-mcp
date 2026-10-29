@@ -25,8 +25,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
+          V="${TAG#v}"
+          awk -v h="## $V" '$0 == h {f=1; next} /^## /{f=0} f' CHANGELOG.md > notes.md
+          if [ -s notes.md ]; then printf '\n---\n\n' >> notes.md; fi
+          cat .github/release-notes.md >> notes.md
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" dist/colibri.mcpb --clobber
           else
-            gh release create "$TAG" dist/colibri.mcpb --title "Colibri $TAG" --notes-file .github/release-notes.md
+            gh release create "$TAG" dist/colibri.mcpb --title "Colibri $TAG" --notes-file notes.md
           fi

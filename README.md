@@ -301,7 +301,7 @@ ok 22/22
 | `browse_open` | Open a URL (auto-starts Chrome), reject non-essential cookies, return the rows |
 | `browse_view` | Rows of the current page, with `filter`, `scope:"all"` and paging |
 | `browse_do` | Up to 40 steps in order; returns only the diff |
-| `browse_read` | Read without acting: `text`, `table`, `find`, `describe` |
+| `browse_read` | Read without acting: `text`, `table`, `find`, `describe`, `cards` (one row per result card: `10:05 \| 13:40 \| 3h35 \| 1 change \| €29.90`), `pdf` (text of a downloaded or open PDF, paged) |
 | `browse_task` | Jev-style guided task: params by human labels, `answers`, `submit`, `expect`, typed `extract` (text, number, money, date, url, table) |
 | `browse_screenshot` | Small JPEG (~900 tokens) of the window, an element or a region — only when text is not enough |
 | `browse_stats` | Tokens used this session vs screenshots |
@@ -312,7 +312,7 @@ ok 22/22
 
 ## Safety
 
-- **`!c` side effects** — submit, confirm, save, delete, pay, accept terms, upload: blocked until the user says OK, then repeated with `"confirm": true`.
+- **`!c` side effects** — submit, confirm, save, delete, pay, accept terms, upload: blocked until the user says OK, then repeated with `"confirm": true`. Buttons that only open a menu (`aria-haspopup` / `aria-expanded`) and quantity steppers ("remove passenger") are not blocked.
 - **`!x` secrets** — passwords, card numbers, CVV, OTP, IBAN: the AI can never type them, not even with confirmation. You type them in the window.
 - **Guided tasks** act alone only above the confidence threshold; submit never fires with open questions, errors or empty required fields.
 - **Allowed domains**, no `file://` / `javascript:`, page text treated as untrusted data (prompt-injection resistant), refs unique per session.
@@ -334,7 +334,9 @@ ok 22/22
 | `CB_ALLOW_SCREENSHOT` | `true` | |
 | `CB_HUMAN_WAIT` | `50` | seconds Colibri waits for you to solve a CAPTCHA / human check (`0` = don't wait) |
 | `CB_HUMAN_SHOW` | `true` | when headless and a check doesn't clear on its own, reopen Chrome visibly on the same page |
-| `CB_MODE` / `CB_CDP_URL` | `launch` | `cdp` attaches to **your own running Chrome** started with `--remote-debugging-port=9222` |
+| `CB_MODE` / `CB_CDP_URL` | `launch` | `cdp` = **real Chrome mode**: attaches to a normal Chrome on `--remote-debugging-port=9222` (see FAQ) |
+| `CB_AUTO_CHROME` | `true` | in `cdp` mode, start the real Chrome by itself if nothing is listening on the port |
+| `CB_REAL_PROFILE_DIR` | `~/.colibri/real-chrome` | profile used by the real Chrome that Colibri starts |
 
 <div align="right"><a href="#top">↑ back to top</a></div>
 
@@ -387,7 +389,18 @@ Colibri recognises the check (Cloudflare "Just a moment" / Turnstile, reCAPTCHA,
 3. resumes **automatically** as soon as you solve it, and continues the remaining steps;
 4. for a CAPTCHA inside a form it fills everything else, then waits for you before pressing *Submit*.
 
-If you don't solve it within `CB_HUMAN_WAIT` seconds (default 50) the agent is told to ask you, and `browse_view` resumes waiting. Sites with very strict bot protection work best with `CB_MODE=cdp` on your own everyday Chrome.
+If you don't solve it within `CB_HUMAN_WAIT` seconds (default 50) the agent is told to ask you, and `browse_view` resumes waiting. Sites with very strict bot protection work best in **real Chrome mode** (next question).
+</details>
+
+<details>
+<summary><b>The Cloudflare check keeps looping. What is "real Chrome mode"?</b></summary>
+
+By default Colibri starts Chrome through Playwright, which marks the browser as automated, so some sites loop on "verify you are human". Real Chrome mode makes Colibri drive a **normal Chrome** instead. No stealth tricks: it is simply a regular browser.
+
+1. Add `"env": { "CB_MODE": "cdp" }` to the Colibri entry in your agent's MCP config.
+2. That's it: on the first call Colibri starts a normal Chrome on port 9222 (profile in `~/.colibri/real-chrome`). To start it yourself: `npx -y github:t4zxxx1/colibri-mcp --chrome`.
+
+In this mode Colibri **never closes your Chrome**: on reconnect (`/mcp`) it only closes the tabs it opened. When a check blocks in the default mode, Colibri itself suggests switching.
 </details>
 
 <details>

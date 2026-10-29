@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="it">
+<head><meta charset="utf-8"><title>Prenota treno</title></head>
+<body>
+<main>
+  <h1>Prenota treno</h1>
+  <form id="f" onsubmit="event.preventDefault(); document.getElementById('out').textContent='Prenotazione inviata'">
+    <div id="pax">
+      <button type="button" id="paxbtn" aria-haspopup="dialog" aria-expanded="false" onclick="document.getElementById('dlg').hidden=false;this.setAttribute('aria-expanded','true')">Conferma passeggeri: 3</button>
+    </div>
+    <div id="dlg" hidden role="dialog" aria-label="Passeggeri">
+      <button type="button" onclick="setN(-1)">Remove passenger</button>
+      <span id="n">3</span>
+      <button type="button" onclick="setN(1)">Aggiungi passeggero</button>
+    </div>
+    <div id="slot"><button type="button" onclick="pickDate()">Data partenza</button></div>
+    <button type="button" onclick="redraw()">Aggiorna</button>
+    <button type="button" onclick="document.getElementById('out').textContent='Account eliminato'">Elimina account</button>
+    <button type="submit">Invia prenotazione</button>
+  </form>
+  <p id="out"></p>
+  <div id="spin" class="spinner" style="width:30px;height:30px;background:#ccc" hidden></div>
+  <button type="button" onclick="load()">Cerca treni</button>
+  <section id="res"></section>
+</main>
+<script>
+  let n = 3;
+  function setN(d) { n = Math.max(1, n + d); document.getElementById('n').textContent = n; document.getElementById('paxbtn').textContent = 'Conferma passeggeri: ' + n; }
+  function pickDate() { document.getElementById('out').textContent = 'Data scelta'; }
+  // come i campi che aprono una finestra: il vecchio pulsante resta nascosto, uno nuovo con lo stesso nome compare nel dialogo
+  function redraw() { document.getElementById('slot').hidden = true; document.body.insertAdjacentHTML('beforeend', '<div role="dialog" aria-label="Calendario"><button type="button" onclick="pickDate()">Data partenza</button></div>'); }
+  function load() {
+    const s = document.getElementById('spin'); s.hidden = false;
+    setTimeout(() => {
+      s.hidden = true;
+      const rows = [['08:30', '11:02', '2 h 32', '0 cambi', '€ 29,90'], ['09:30', '12:02', '2 h 32', '1 cambio', '€ 34,90'], ['10:30', '13:05', '2 h 35', '0 cambi', '€ 19,90'], ['11:30', '14:02', '2 h 32', '0 cambi', '€ 59,90']];
+      document.getElementById('res').innerHTML = rows.map((r) => `<article class="train-card"><div class="times"><span>${r[0]}</span> <span>→</span> <span>${r[1]}</span></div><div class="meta"><span>${r[2]}</span><span>${r[3]}</span></div><div class="price"><b>${r[4]}</b></div></article>`).join('');
+    }, 1500);
+  }
+</script>
+</body>
+</html>

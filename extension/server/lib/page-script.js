@@ -367,6 +367,12 @@ export function collectInPage(opts) {
       const isSubmit = (tag === 'button' || tag === 'input') && el.type === 'submit' && !!el.form;
       if ((STRONG.test(fname) && !LOGIN.test(fname)) || ACC.test(fname)) s = 'c';
       else if (isSubmit && !NAVW.test(fname) && !isSearchForm(el.form)) s = 'c';
+      // apre un menu/finestra o modifica un contatore locale: nessun invio, niente conferma
+      if (s === 'c' && !isSubmit && !ACC.test(fname)) {
+        const opener = (el.getAttribute('aria-haspopup') && el.getAttribute('aria-haspopup') !== 'false') || el.hasAttribute('aria-expanded');
+        const stepper = /^(rimuov|togli|remove|entfernen|quitar|retirer)/.test(fname) && /(passegger|passenger|viaggiator|travel+er|adult|bambin|child|infant|neonat|ospit|guest|person|camer|room|quantit|quantity|passagier|reisend|gast|pasajer|voyageur|bagagl|luggage|bag)/.test(fname);
+        if (opener || stepper) s = '';
+      }
     }
     if ((role === 'chk' || role === 'sw') && TERMS.test(fname)) s = 'c';
 
@@ -570,6 +576,82 @@ export function describeInPage(id) {
   return o;
 }
 
+/**
+ * Risultati ripetuti (treni, voli, prodotti, offerte) come righe compatte: una riga per scheda con i testi
+ * visibili separati da " | ". Le schede si trovano da sole (gruppo di fratelli simili con piu' testo) oppure con selector.
+ */
+export function readCardsInPage(a) {
+  const vis = (e) => {
+    const r = e.getBoundingClientRect();
+    if (r.width < 2 || r.height < 2) return false;
+    const s = getComputedStyle(e);
+    return s.visibility !== 'hidden' && s.display !== 'none';
+  };
+  const root = (a.ref && window.__cb && window.__cb.byId.get(a.ref)) || document.body;
+  if (!root) return { err: 'pagina vuota' };
+  const len = (e) => (e.innerText || '').replace(/\s+/g, ' ').trim().length;
+  let cards = [];
+  let how = '';
+  if (a.selector) {
+    try {
+      cards = [...root.querySelectorAll(a.selector)].filter(vis);
+    } catch (e) {
+      return { err: 'selector non valido' };
+    }
+    how = a.selector;
+  } else {
+    const sig = (e) => e.tagName + '.' + [...e.classList].map((c) => c.replace(/[-_]?\d+/g, '')).filter((c) => !/active|selected|open|odd|even|first|last|hover|focus/i.test(c)).sort().slice(0, 3).join('.');
+    let best = null;
+    const all = [root, ...root.querySelectorAll('*')].slice(0, 8000);
+    for (const p of all) {
+      if (p.children.length < 3 || /^(SELECT|DATALIST|HEAD|SCRIPT|STYLE|SVG)$/i.test(p.tagName)) continue;
+      if (p.closest('nav,header,footer,[role=navigation],[role=banner],[role=contentinfo]')) continue;
+      const groups = new Map();
+      for (const c of p.children) {
+        const k = sig(c);
+        if (!groups.has(k)) groups.set(k, []);
+        groups.get(k).push(c);
+      }
+      for (const g of groups.values()) {
+        if (g.length < 3) continue;
+        const shown = g.filter(vis);
+        if (shown.length < 3) continue;
+        const lens = shown.map(len);
+        const avg = lens.reduce((x, y) => x + y, 0) / lens.length;
+        // le schede hanno piu' informazioni (orari, prezzi): servono almeno ~3 pezzi di testo
+        const parts = shown.slice(0, 5).map((c) => [...c.querySelectorAll('*')].filter((x) => !x.children.length && (x.textContent || '').trim()).length);
+        const avgParts = parts.reduce((x, y) => x + y, 0) / parts.length;
+        if (avg < 15 || avgParts < 2.5) continue;
+        const score = shown.length * Math.min(avg, 250) * Math.min(avgParts, 8);
+        if (!best || score > best.score) best = { score, els: shown };
+      }
+    }
+    if (best) {
+      cards = best.els;
+      const f = cards[0];
+      how = f.tagName.toLowerCase() + (f.classList.length ? '.' + [...f.classList].slice(0, 2).join('.') : '');
+    }
+  }
+  if (!cards.length) return { err: 'nessun gruppo di schede ripetute: usa selector, oppure mode "table"/"text"' };
+  const rows = cards.map((c) => {
+    const parts = [];
+    const w = document.createTreeWalker(c, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode()) {
+      const t = n.textContent.replace(/\s+/g, ' ').trim();
+      if (!t || t.length < 1) continue;
+      const pe = n.parentElement;
+      if (!pe || pe.closest('[aria-hidden=true],script,style,noscript,svg') || !vis(pe)) continue;
+      const v = t.length > 60 ? t.slice(0, 59) + '…' : t;
+      if (parts[parts.length - 1] !== v && !parts.includes(v)) parts.push(v);
+    }
+    const s = parts.join(' | ');
+    return s.length > 320 ? s.slice(0, 319) + '…' : s;
+  });
+  const off = a.offset || 0;
+  const max = a.max || 20;
+  return { total: rows.length, sel: how, rows: rows.slice(off, off + max) };
+}
+
 /** Elemento sotto un punto (coordinate CSS del viewport): ref noto, tag, testo e sensibilita'. */
 export function hitTestInPage(a) {
   const norm = (s) => (s || '').replace(/\s+/g, ' ').trim();
@@ -688,7 +770,7 @@ export function challengeInPage() {
   const puzzle = any('iframe[src*="recaptcha/api2/bframe"],iframe[src*="recaptcha/enterprise/bframe"],iframe[src*="hcaptcha"][src*="frame=challenge"]');
   if (puzzle && puzzle.getBoundingClientRect().height > 120) return { kind: kindOf(puzzle.src), block: true };
   const shortPage = body.length < 900 && document.querySelectorAll('input:not([type=hidden]),select,textarea').length < 3 && document.links.length < 8;
-  if (WALL.test(title) || (shortPage && WALL.test(body))) return { kind: 'anti-bot', block: true };
+  if (WALL.test(title) ? body.length < 2500 || shortPage : shortPage && WALL.test(body)) return { kind: 'anti-bot', block: true };
 
   // 2) riquadri dentro un modulo
   const RESP = '[name="g-recaptcha-response"],[name="h-captcha-response"],[name="cf-turnstile-response"],[name="frc-captcha-solution"],[name="mtcaptcha-verifiedtoken"]';
