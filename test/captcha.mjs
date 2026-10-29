@@ -49,6 +49,10 @@ r = await c.call('browse_open', { url: base + '/recaptcha-badge.html' });
 ok(!/CAPTCHA|VERIFICA|verifica/.test(r.text.replace(/come funziona un captcha/i, '')), 'nessun falso allarme con reCAPTCHA invisibile', r.text);
 r = await c.call('browse_do', { steps: [{ fill: 'Cerca prodotto', text: 'scarpe' }, { press: 'Enter', confirm: true }], view: 'none' });
 ok(has(r.text, 'ok 2/2') && r.ms < 8000, 'Enter in un modulo con reCAPTCHA invisibile non aspetta', `${r.ms | 0} ms\n${r.text}`);
+// 6b. nessun falso allarme: _cf_chl_opt resta nella pagina dopo che la verifica Cloudflare e' stata superata
+r = await c.call('browse_open', { url: base + '/cf-passed.html' });
+ok(!/VERIFICA|verifica/.test(r.text) && has(r.text, 'Aggiungi adulto') && r.ms < 8000, 'nessun falso allarme con _cf_chl_opt residuo in una pagina normale', `${r.ms | 0} ms
+${r.text}`);
 await c.close();
 
 // 7. verifica che non si supera: attesa breve configurabile, passi non eseguiti, istruzioni per l'agente

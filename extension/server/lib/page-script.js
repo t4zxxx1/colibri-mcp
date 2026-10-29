@@ -677,7 +677,7 @@ export function challengeInPage() {
     /challenges\.cloudflare|turnstile/i.test(src) ? 'Turnstile' : /hcaptcha/i.test(src) ? 'hCaptcha' : /recaptcha/i.test(src) ? 'reCAPTCHA' : 'CAPTCHA';
 
   // 1) muri a pagina intera
-  if (window._cf_chl_opt || any('#challenge-form,#challenge-running,#challenge-stage,#cf-challenge-running,.cf-browser-verification,#cf-please-wait,#cf-wrapper #challenge-body-text'))
+  if ((window._cf_chl_opt && (WALL.test(title + ' ' + body) || body.length < 150)) || any('#challenge-form,#challenge-running,#challenge-stage,#cf-challenge-running,.cf-browser-verification,#cf-please-wait,#cf-wrapper #challenge-body-text'))
     return { kind: 'Cloudflare', block: true };
   if (any('iframe[src*="captcha-delivery.com"],iframe[src*="geo.captcha-delivery"]')) return { kind: 'DataDome', block: true };
   if (any('#px-captcha,#px-captcha-wrapper,iframe[src*="px-cloud.net"],iframe[src*="perimeterx"]')) return { kind: 'PerimeterX', block: true };
