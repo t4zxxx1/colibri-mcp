@@ -28,6 +28,8 @@ Se è attivo anche Claude in Chrome, conviene dire esplicitamente *"usa il brows
 
 ## Come funziona
 
+Descrizione completa di architettura, tool, passi, motore dei compiti guidati, sicurezza e limiti: [docs/come-funziona.md](docs/come-funziona.md).
+
 ```mermaid
 flowchart LR
   C[Claude Desktop] -- "più passi in una chiamata" --> S[Server locale<br/>Browser compatto]
@@ -166,7 +168,7 @@ Le pagine di prova sono state costruite durante lo sviluppo di questo strumento,
 
 ```bash
 npm ci            # dipendenze di sviluppo e del server
-npm test          # 115 test end-to-end via protocollo MCP (Chrome o Edge installato)
+npm test          # oltre 120 test end-to-end via protocollo MCP (Chrome o Edge installato)
 npm run bench     # confronto con screenshot, Playwright MCP, agent-browser, Fast Playwright MCP
 npm run calibrate # calibrazione del motore di browse_task (docs/calibrazione.md)
 npm run build     # crea dist/compact-browser.mcpb

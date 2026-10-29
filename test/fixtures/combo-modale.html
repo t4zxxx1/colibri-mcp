@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><title>Cerca voli</title>
+<style>
+  body { font: 15px sans-serif; margin: 20px; }
+  #dlg { position: fixed; top: 60px; left: 60px; background: #fff; border: 2px solid #444; padding: 12px; z-index: 9; width: 320px; }
+  li { cursor: pointer; padding: 4px; list-style: none; }
+  input { font-size: 15px; padding: 4px; }
+</style></head>
+<body>
+<!-- Imita i campi "Da/A" dei motori di ricerca voli: il clic apre una finestra con un proprio campo (il focus si sposta dopo
+     un attimo: i tasti premuti subito vanno persi) e, scelto un suggerimento, tutta la pagina viene ricostruita (nodi nuovi). -->
+<div id="app"></div>
+<div id="echo" aria-live="polite">eco:</div>
+<div id="esito"></div>
+<script>
+const DATA = {
+  da: ['Zurich Airport (ZRH)', 'Zürich, Svizzera', 'Zürich HB, stazione'],
+  a: ['Londra, Regno Unito', 'Londra Heathrow (LHR)', 'Londra Gatwick (LGW)'],
+};
+const fold = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const state = { da: '', a: '' };
+function render() {
+  const app = document.getElementById('app');
+  app.innerHTML = '';
+  for (const [k, label] of [['da', 'Da dove?'], ['a', 'Verso dove?']]) {
+    const w = document.createElement('div');
+    const l = document.createElement('label');
+    l.textContent = label + ' ';
+    const i = document.createElement('input');
+    i.setAttribute('role', 'combobox');
+    i.setAttribute('aria-label', label);
+    i.setAttribute('aria-haspopup', 'dialog');
+    i.readOnly = true;
+    i.value = state[k];
+    i.addEventListener('click', () => openDlg(k, label));
+    l.appendChild(i);
+    w.appendChild(l);
+    app.appendChild(w);
+  }
+  const b = document.createElement('button');
+  b.textContent = 'Cerca';
+  b.addEventListener('click', () => {
+    document.getElementById('esito').textContent = `Ricerca: ${state.da} -> ${state.a}`;
+  });
+  app.appendChild(b);
+}
+function openDlg(k, label) {
+  if (document.getElementById('dlg')) return;
+  // il campo della finestra compare e prende il focus dopo ~80 ms
+  setTimeout(() => {
+    const d = document.createElement('div');
+    d.id = 'dlg';
+    d.setAttribute('role', 'dialog');
+    d.setAttribute('aria-modal', 'true');
+    d.innerHTML = '<input id="q" role="combobox" aria-label="Dove?" autocomplete="off"><ul role="listbox" id="sug"></ul>';
+    document.body.appendChild(d);
+    const q = d.querySelector('#q');
+    q.focus();
+    q.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') d.remove(); // come fanno i siti reali
+    });
+    q.addEventListener('input', () => {
+      document.getElementById('echo').textContent = 'eco: ' + q.value;
+      const ul = d.querySelector('#sug');
+      ul.innerHTML = '';
+      if (fold(q.value).length < 3) return;
+      for (const s of DATA[k].filter((x) => fold(x).startsWith(fold(q.value).slice(0, 3)))) {
+        const li = document.createElement('li');
+        li.setAttribute('role', 'option');
+        li.textContent = s;
+        li.addEventListener('click', () => {
+          state[k] = s;
+          d.remove();
+          render(); // tutti i nodi nuovi: i vecchi riferimenti non esistono piu'
+        });
+        ul.appendChild(li);
+      }
+    });
+  }, 80);
+}
+render();
+</script>
+</body></html>

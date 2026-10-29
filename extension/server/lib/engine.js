@@ -10,7 +10,8 @@ export const CAL = { T: 0.85, NONE: 4 };
 export const PRESETS = {
   cautious: { act: 0.9, escalate: 0.7, margin: 0.3 },
   balanced: { act: 0.85, escalate: 0.55, margin: 0.25 },
-  autonomous: { act: 0.6, escalate: 0.2, margin: 0.1 },
+  // pickFirstOnTie: con suggerimenti ugualmente buoni (citta' / aeroporto / stazione) sceglie il primo, che e' quello che il sito mette in testa
+  autonomous: { act: 0.6, escalate: 0.2, margin: 0.1, pickFirstOnTie: true },
 };
 
 const STOP = new Set('di del della dello dei degli delle dell all dall nell sull il lo la i gli le l d e ed a ad da in per con su un una the of and or to for a an de du des la le les el los las y en der die das und von zu mit do da dos das o no na em'.split(' '));

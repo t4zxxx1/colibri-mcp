@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><title>Attesa testo</title></head>
+<body>
+<!-- Come su molti siti: la stessa frase compare prima in un elemento nascosto (menu chiuso, modello) e poi, dopo un po', in uno visibile. -->
+<div style="display:none">Risultati pronti</div>
+<nav hidden><a href="#">Risultati pronti</a></nav>
+<h1>Ricerca</h1>
+<p id="stato">in corso...</p>
+<script>
+// con ?nascosto la copia visibile non compare mai
+if (!location.search.includes('nascosto')) {
+  setTimeout(() => {
+    const p = document.createElement('p');
+    p.id = 'ris';
+    p.innerHTML = 'Trovati <b>3</b> risultati: <span>Risultati pronti</span> per Zurigo';
+    document.body.appendChild(p);
+  }, 400);
+}
+</script>
+</body></html>

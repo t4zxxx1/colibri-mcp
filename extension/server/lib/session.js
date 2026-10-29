@@ -598,10 +598,44 @@ export class Session {
           }
         } else {
           await el.click({ timeout: 5000 });
-          await el.evaluate((e) => {
-            if ('value' in e && typeof e.select === 'function') e.select();
-          });
+          // campi che aprono una finestra (motori di ricerca voli, selettori di luogo): il focus passa a un altro campo
+          // dopo un attimo e i tasti premuti subito andrebbero persi. Si attende che il cursore sia in un campo
+          // modificabile (subito, per un campo normale) e si scrive li'.
+          const frame = (await el.ownerFrame().catch(() => null)) || page.mainFrame();
+          // firma di cio' che ha il cursore e delle finestre aperte: finche' cambia, il focus sta ancora spostandosi.
+          // I campi normali sono stabili subito (nessun ritardo); un campo a finestra richiede 2-3 letture uguali.
+          const sig = () =>
+            frame
+              .evaluate(() => {
+                const a = document.activeElement;
+                const ed = !!a && ((/^(input|textarea)$/i.test(a.tagName) && !a.readOnly && !a.disabled) || a.isContentEditable);
+                const dlg = document.querySelectorAll('[role=dialog],dialog,[aria-modal=true]').length;
+                return `${ed ? 1 : 0}|${a ? a.tagName + '#' + a.id + '|' + (a.getAttribute('aria-label') || a.name || '') : ''}|${dlg}`;
+              })
+              .catch(() => 'x');
+          const popup = it.role === 'combo' || /^(menu|clk)$/.test(it.role);
+          let last = '';
+          let same = 0;
+          for (let k = 0; k < 12; k++) {
+            const s = await sig();
+            same = s === last ? same + 1 : 0;
+            last = s;
+            if (s.startsWith('1') && (!popup || same >= 2)) break;
+            await page.waitForTimeout(60);
+          }
+          await frame
+            .evaluate(() => {
+              const a = document.activeElement;
+              if (a && typeof a.select === 'function') a.select();
+            })
+            .catch(() => {});
           await page.keyboard.type(text, { delay: 25 });
+          // verifica: se il focus si e' spostato durante la digitazione manca qualche carattere; si riscrive tutto in un colpo
+          const got = await frame.evaluate(() => (document.activeElement && 'value' in document.activeElement ? document.activeElement.value : null)).catch(() => null);
+          if (got !== null && got !== text) {
+            await frame.evaluate(() => document.activeElement && typeof document.activeElement.select === 'function' && document.activeElement.select()).catch(() => {});
+            await page.keyboard.insertText(text);
+          }
         }
         await after(act === 'type' ? 2500 : 1500);
         const v = await el.evaluate((e) => ('value' in e ? e.value : e.innerText || '')).catch(() => null);
@@ -677,7 +711,7 @@ export class Session {
       }
       case 'pick': {
         const text = String(st.pick);
-        const loc = page.locator(PICK_SEL).filter({ hasText: text });
+        const loc = page.locator(PICK_SEL).filter({ hasText: text }).filter({ visible: true });
         await loc.first().waitFor({ state: 'visible', timeout: 4000 }).catch(() => {
           throw new Error(`nessun suggerimento visibile con "${text}": prima "type" nel campo, poi "pick"`);
         });
@@ -716,9 +750,18 @@ export class Session {
         return;
       case 'waitFor': {
         const t = String(st.waitFor);
-        await page.getByText(t).first().waitFor({ state: 'visible', timeout: 15000 }).catch(() => {
-          throw new Error(`testo "${t}" non apparso entro 15 s`);
-        });
+        const ms = Math.min(Math.max(Number(st.timeout) || 15000, 300), 15000);
+        // il testo compare spesso prima in elementi nascosti (menu chiusi, modelli): si attende la prima copia VISIBILE
+        await page
+          .getByText(t)
+          .filter({ visible: true })
+          .first()
+          .waitFor({ state: 'visible', timeout: ms })
+          .catch(async () => {
+            const n = await page.getByText(t).count().catch(() => 0);
+            const s = ms >= 1000 && ms % 1000 === 0 ? `${ms / 1000} s` : `${ms} ms`;
+            throw new Error(n ? `testo "${t}" presente (${n}) ma non visibile entro ${s}` : `testo "${t}" non apparso entro ${s}`);
+          });
         await after(800);
         return;
       }

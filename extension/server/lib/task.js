@@ -67,15 +67,23 @@ async function waitOptions(S, page, id, value) {
   return { snap, it: snap.items.find((i) => i.id === id) };
 }
 
-/** Suggerimenti visibili di un autocompletamento (attesa massima ~2 s). */
+/** Suggerimenti visibili di un autocompletamento. Arrivano dalla rete (anche 1-3 s su un motore voli): si attende fino a ~4 s
+ *  e, appena compaiono, si rilegge dopo un attimo perche' la lista e' completa solo quando smette di cambiare. */
 async function suggestions(S, page) {
-  for (let k = 0; k < 10; k++) {
-    const loc = page.locator(S.PICK_SEL);
+  const read = async () => {
+    const loc = page.locator(S.PICK_SEL).filter({ visible: true });
     const n = Math.min(await loc.count(), 30);
-    if (n) {
-      const texts = [];
-      for (let i = 0; i < n; i++) texts.push((await loc.nth(i).innerText().catch(() => '')).replace(/\s+/g, ' ').trim());
-      return { loc, texts };
+    const texts = [];
+    for (let i = 0; i < n; i++) texts.push((await loc.nth(i).innerText().catch(() => '')).replace(/\s+/g, ' ').trim());
+    return { loc, texts };
+  };
+  for (let k = 0; k < 20; k++) {
+    let cur = await read();
+    if (cur.texts.length) {
+      await page.waitForTimeout(150);
+      const again = await read();
+      if (again.texts.length >= cur.texts.length) cur = again;
+      return cur;
     }
     await page.waitForTimeout(200);
   }
@@ -120,13 +128,50 @@ async function fillOne(S, page, snap, st, ctx) {
     case 'combo': {
       await S.step('type', { type: it.id, text: String(p.value) }, snap, page);
       const sug = await suggestions(S, page);
-      if (!sug.texts.length) return { ok: true, id: it.id, note: `"${p.key}" → ${it.id}: nessun suggerimento, lasciato il testo digitato` };
-      const r = chooseOption(String(p.value), sug.texts);
-      if (decide(r, ctx.preset) !== 'act') return { ask: `? "${p.key}" suggerimenti per ${it.id}: ${r.probs.slice(0, 3).map((x) => (x.key === null ? `nessuno ${pct(x.p)}` : `"${x.data}" ${pct(x.p)}`)).join(' · ')}` };
-      await sug.loc.nth(r.choice).click({ timeout: 4000 });
+      // un popup lasciato aperto nasconde gli altri campi: lo si chiude (Esc) quando non si sceglie nulla
+      const closePopup = () => page.keyboard.press('Escape').catch(() => {});
+      if (!sug.texts.length) {
+        // se il campo ha aperto una finestra, il testo non e' stato confermato: non si dichiara riuscito
+        const inDialog = await page.evaluate(() => !!(document.activeElement && document.activeElement.closest('[role=dialog],dialog,[aria-modal=true]'))).catch(() => false);
+        if (inDialog) {
+          await closePopup();
+          return { error: `${it.id}: nessun suggerimento per "${p.value}" (finestra chiusa senza scegliere)` };
+        }
+        return { ok: true, id: it.id, note: `"${p.key}" → ${it.id}: nessun suggerimento, lasciato il testo digitato` };
+      }
+      let idx;
+      let tieNote = '';
+      if (p.pick) {
+        // risposta dell'utente a una domanda precedente: testo (anche parziale) del suggerimento
+        const w = fold(p.pick);
+        idx = sug.texts.findIndex((t) => fold(t) === w);
+        if (idx < 0) idx = sug.texts.findIndex((t) => fold(t).includes(w));
+        if (idx < 0) {
+          await closePopup();
+          return { ask: `? "${p.key}": nessun suggerimento contiene "${p.pick}" (disponibili: ${sug.texts.slice(0, 4).map((t) => `"${t}"`).join(' · ')})` };
+        }
+      } else {
+        const r = chooseOption(String(p.value), sug.texts);
+        idx = r.choice;
+        if (decide(r, ctx.preset) !== 'act') {
+          // piu' suggerimenti ugualmente buoni ("Zurich" → citta', aeroporto, stazione): con il preset autonomo si prende il primo
+          const sc = sug.texts.map((t) => optionScore(p.value, t));
+          const best = Math.max(...sc);
+          const tied = sc.map((s, i) => (s >= best - 0.02 ? i : -1)).filter((i) => i >= 0);
+          if (ctx.preset.pickFirstOnTie && best >= 0.85 && tied.length > 1) {
+            idx = tied[0];
+            tieNote = ` (${tied.length} suggerimenti equivalenti, scelto il primo)`;
+          } else {
+            await closePopup();
+            const alts = r.probs.slice(0, 3).map((x) => (x.key === null ? `nessuno ${pct(x.p)}` : `"${x.data}" ${pct(x.p)}`)).join(' · ');
+            return { ask: `? "${p.key}" suggerimenti per ${it.id}: ${alts} · rispondi con answers: {"${p.key}": "testo del suggerimento"}` };
+          }
+        }
+      }
+      await sug.loc.nth(idx).click({ timeout: 4000 });
       await S.settle(page, 2500, 120, 150);
-      const t = sug.texts[r.choice];
-      return { ok: true, id: it.id, note: fold(t) !== fold(p.value) ? `"${p.key}" → ${it.id} suggerimento "${t}"` : '' };
+      const t = sug.texts[idx];
+      return { ok: true, id: it.id, note: fold(t) !== fold(p.value) || tieNote ? `"${p.key}" → ${it.id} suggerimento "${t}"${tieNote}` : '' };
     }
     case 'file': {
       if (!ctx.allowIrrev) return { ask: `? "${p.key}" → ${it.id} caricamento file !c: serve l'ok dell'utente, poi confirm: true` };
@@ -198,7 +243,10 @@ export async function runTask(S, a) {
       errors.push(`✗ "${p.key}": campo riservato (!x), lo inserisce l'utente nella finestra`);
       continue;
     }
-    const ref = isRef(p.key) ? p.key : a.answers && a.answers[p.key] && isRef(a.answers[p.key]) ? a.answers[p.key] : null;
+    // risposta a una domanda sui suggerimenti: testo del suggerimento da scegliere (non un riferimento)
+    const ans = a.answers && a.answers[p.key];
+    if (ans && !isRef(ans)) p.pick = String(ans);
+    const ref = isRef(p.key) ? p.key : ans && isRef(ans) ? ans : null;
     if (ref) {
       const f = fields.find((x) => x.id === ref || (x.items && x.items.some((i) => i.id === ref)));
       if (!f) {
@@ -232,6 +280,17 @@ export async function runTask(S, a) {
   let ok = 0;
   for (const st of todo) {
     snap = await S.freshSnap(snap, page);
+    // dopo la scelta di un suggerimento molti siti ricostruiscono la pagina: i riferimenti dei campi successivi non
+    // esistono piu'. Il campo si ritrova per nome nella pagina nuova invece di fallire.
+    const here = (f) => (f.kind === 'radio' ? f.items.some((x) => snap.items.some((i) => i.id === x.id)) : snap.items.some((i) => i.id === f.id));
+    if (!here(st.f)) {
+      const r2 = groundParam(st.p, fieldsFrom(snap.items, snap.regions), memory);
+      if (decide(r2, preset) === 'act') st.f = r2.data.f;
+      else {
+        asks.push(question(st.p, r2, ' (la pagina e\' cambiata)', taken));
+        continue;
+      }
+    }
     try {
       const r = await fillOne(S, page, snap, st, ctx);
       if (r.ask) asks.push(r.ask);
@@ -315,6 +374,7 @@ export async function runTask(S, a) {
   if (a.expect) {
     const found = await page
       .getByText(String(a.expect))
+      .filter({ visible: true })
       .first()
       .waitFor({ state: 'visible', timeout: 10000 })
       .then(() => true)
@@ -372,7 +432,7 @@ export async function runTask(S, a) {
   }
   S.remember(after);
   const lines = [...head, ...errors, ...asks];
-  if (asks.length) lines.push('rispondi con answers: {"parametro": "ref"} (vengono ricordate per questo sito) oppure usa browse_do');
+  if (asks.length) lines.push('rispondi con answers: {"parametro": "ref"} per un campo (ricordato per questo sito) o {"parametro": "testo del suggerimento"} per un autocompletamento, oppure usa browse_do');
   lines.push(...notes, ...S.events.splice(0), ...extracted);
   return lines.join('\n') + (body ? '\n---\n' + body : '');
 }
