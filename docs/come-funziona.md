@@ -1,6 +1,6 @@
 # Browser compatto: cosa fa e come funziona
 
-Documento di riferimento sul server MCP **compact-browser** (versione 0.4.x): cosa offre a Claude, come è costruito dentro, come si comporta sulle pagine, come si misura e dove ha limiti. Per l'installazione e l'uso quotidiano vedi il [README](../README.md); per i numeri del confronto con altri strumenti [benchmark.md](benchmark.md); per la calibrazione del motore dei compiti guidati [calibrazione.md](calibrazione.md).
+Documento di riferimento sul server MCP **Colibri** (versione 0.4.x): cosa offre a Claude, come è costruito dentro, come si comporta sulle pagine, come si misura e dove ha limiti. Per l'installazione e l'uso quotidiano vedi il [README](../README.md); per i numeri del confronto con altri strumenti [benchmark.md](benchmark.md); per la calibrazione del motore dei compiti guidati [calibrazione.md](calibrazione.md).
 
 ## 1. In una frase
 
@@ -159,7 +159,7 @@ Dopo una domanda sugli autocompletamenti il popup viene chiuso, così gli altri 
 |---|---|
 | Domini consentiti | tutti |
 | Conferma per le azioni con effetti | attiva (consigliata) |
-| Cartella del profilo | `~/.compact-browser/profile` |
+| Cartella del profilo | `~/.colibri/profile` |
 | Cartella download | Download |
 | Percorso di Chrome | automatico (Chrome o Edge) |
 | Browser invisibile | no |

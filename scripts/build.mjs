@@ -1,4 +1,4 @@
-// Crea dist/compact-browser.mcpb: copia extension/, installa solo le dipendenze di esecuzione e impacchetta.
+// Crea dist/colibri.mcpb: copia extension/, installa solo le dipendenze di esecuzione e impacchetta.
 import fs from 'node:fs';
 import path from 'node:path';
 import url from 'node:url';
@@ -29,5 +29,5 @@ execFileSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['ci', '--omit=de
 fs.rmSync(path.join(build, 'server/node_modules/playwright-core/lib/vite'), { recursive: true, force: true });
 
 execFileSync(process.execPath, [mcpb, 'validate', path.join(build, 'manifest.json')], { stdio: 'inherit' });
-execFileSync(process.execPath, [mcpb, 'pack', build, path.join(out, 'compact-browser.mcpb')], { stdio: 'inherit' });
-console.log(`\nPronto: ${path.join(out, 'compact-browser.mcpb')} (versione ${pkg.version})`);
+execFileSync(process.execPath, [mcpb, 'pack', build, path.join(out, 'colibri.mcpb')], { stdio: 'inherit' });
+console.log(`\nPronto: ${path.join(out, 'colibri.mcpb')} (versione ${pkg.version})`);

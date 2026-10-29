@@ -39,7 +39,7 @@
   <rect x=".75" y=".75" width="998.5" height="474.5" rx="13.5" fill="none" stroke="#30363d" stroke-width="1.5"/>
   <path d="M0 14a14 14 0 0 1 14-14h972a14 14 0 0 1 14 14v26H0z" fill="#161b22"/>
   <circle cx="22" cy="20" r="6" fill="#ff5f57"/><circle cx="42" cy="20" r="6" fill="#febc2e"/><circle cx="62" cy="20" r="6" fill="#28c840"/>
-  <text class="ui" x="500" y="25" text-anchor="middle" font-size="13" fill="#8b949e">compact-browser-mcp — real output (abridged), task T1</text>
+  <text class="ui" x="500" y="25" text-anchor="middle" font-size="13" fill="#8b949e">Colibri MCP — real output (abridged), task T1</text>
   <text x="28" y="82"><tspan fill="#34d399">$ </tspan><tspan fill="#67e8f9">browse_task</tspan></text>
   <rect class="cover l0" x="26" y="66" width="116" height="22" fill="#0d1117"/>
   <text x="28" y="104"><tspan fill="#e6edf3">  params: { "P.IVA": "01234567890", "ateco": "62", "comune": "Ischia",</tspan></text>

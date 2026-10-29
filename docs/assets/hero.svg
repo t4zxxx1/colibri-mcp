@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="480" viewBox="0 0 1280 480" role="img" aria-label="compact-browser-mcp: your AI drives Chrome reading pages as compact text. 89 times fewer tokens than screenshots.">
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="480" viewBox="0 0 1280 480" role="img" aria-label="Colibri MCP, the hummingbird browser for AI agents: reads pages as compact text. 89 times fewer tokens than screenshots.">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#0b1020"/>
@@ -55,6 +55,11 @@
     @keyframes fadein { 0%,26% { opacity: 0; } 32%,94% { opacity: 1; } 100% { opacity: 0; } }
     .cursor { animation: blink 1s steps(1) infinite; }
     @keyframes blink { 50% { opacity: 0; } }
+    .wing { transform-box: fill-box; transform-origin: 30% 100%; animation: flap .18s ease-in-out infinite alternate; }
+    .wing2 { transform-box: fill-box; transform-origin: 50% 100%; animation: flap .18s ease-in-out infinite alternate-reverse; }
+    @keyframes flap { from { transform: scaleY(1); } to { transform: scaleY(-.55); } }
+    .hover { animation: hover 2.4s ease-in-out infinite; }
+    @keyframes hover { 0%,100% { transform: translate(0,0); } 50% { transform: translate(3px,-5px); } }
   </style>
 
   <g clip-path="url(#frame)">
@@ -68,10 +73,24 @@
       <circle class="pulse" cx="18" cy="69" r="5" fill="#34d399"/>
       <text x="32" y="74" font-size="14" fill="#cbd5e1">MCP server · works with any agent</text>
 
-      <text x="0" y="140" font-size="54" font-weight="800" fill="url(#title)" letter-spacing="-1.5">compact-browser-mcp</text>
-      <text x="0" y="184" font-size="23" fill="#e2e8f0">Your AI drives Chrome by <tspan fill="#67e8f9" font-weight="700">reading text</tspan>, not screenshots.</text>
-      <text x="0" y="214" font-size="17" fill="#94a3b8">Claude · Copilot · Cursor · Codex · Windsurf — plus a local Jev-style form engine.</text>
-
+      <g transform="translate(0,84)">
+        <g class="hover">
+          <polygon class="wing2" points="30,30 14,2 40,10" fill="url(#title)" opacity=".45"/>
+          <polygon points="4,52 14,38 22,42" fill="#7c3aed"/>
+          <polygon points="0,44 14,38 12,46" fill="#a78bfa"/>
+          <polygon points="14,38 46,24 50,36 24,44" fill="url(#title)"/>
+          <polygon points="24,44 50,36 38,48" fill="#0e7490"/>
+          <circle cx="52" cy="26" r="8" fill="#22d3ee"/>
+          <circle cx="55" cy="24" r="1.8" fill="#0b1020"/>
+          <polygon points="58,24 82,16 59,28" fill="#e2e8f0"/>
+          <polygon class="wing" points="30,30 22,-4 46,8" fill="url(#title)"/>
+        </g>
+      </g>
+      <text x="98" y="140" font-size="60" font-weight="800" fill="url(#title)" letter-spacing="-1.5">Colibri</text>
+      <rect x="298" y="104" width="64" height="30" rx="8" fill="#1e293b" stroke="#475569"/>
+      <text x="330" y="125" font-size="16" font-weight="800" fill="#cbd5e1" text-anchor="middle">MCP</text>
+      <text x="0" y="184" font-size="22" fill="#e2e8f0">The hummingbird browser for AI agents: <tspan fill="#67e8f9" font-weight="700">tiny, fast, precise.</tspan></text>
+      <text x="0" y="214" font-size="15.5" fill="#94a3b8">Reads pages as text, not screenshots · Claude · Copilot · Cursor · Codex · Windsurf</text>
       <text x="0" y="268" font-size="13" fill="#94a3b8" letter-spacing="1.5">TOTAL CONTEXT TOKENS · 22-FIELD FORM ON 2 PAGES</text>
       <text x="0" y="298" font-size="15" fill="#e2e8f0">Screenshots</text>
       <rect x="150" y="285" width="420" height="18" rx="9" fill="#1e293b"/>
@@ -83,7 +102,7 @@
       <rect class="grow" x="150" y="337" width="54" height="18" rx="9" fill="#f59e0b"/>
       <text class="fadein mono" x="214" y="351" font-size="13" fill="#fcd34d">318,910</text>
 
-      <text x="0" y="402" font-size="15" font-weight="700" fill="#ffffff">compact-browser</text>
+      <text x="0" y="402" font-size="15" font-weight="700" fill="#ffffff">Colibri</text>
       <rect x="150" y="389" width="420" height="18" rx="9" fill="#1e293b"/>
       <rect class="pulse" x="150" y="389" width="6" height="18" rx="3" fill="#34d399" filter="url(#glow)"/>
       <rect class="grow" x="150" y="389" width="6" height="18" rx="3" fill="url(#good)"/>

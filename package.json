@@ -1,5 +1,5 @@
 {
-  "name": "compact-browser-mcp",
+  "name": "colibri-mcp",
   "version": "0.4.0",
   "private": true,
   "description": "MCP server that lets Claude, Copilot, Cursor and any AI agent drive Chrome by reading pages as compact text instead of screenshots, with a local Jev-style form engine (browse_task).",
@@ -16,16 +16,16 @@
     "token-efficient",
     "jev"
   ],
-  "homepage": "https://github.com/t4zxxx1/compact-browser-mcp#readme",
-  "bugs": "https://github.com/t4zxxx1/compact-browser-mcp/issues",
+  "homepage": "https://github.com/t4zxxx1/colibri-mcp#readme",
+  "bugs": "https://github.com/t4zxxx1/colibri-mcp/issues",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/t4zxxx1/compact-browser-mcp.git"
+    "url": "git+https://github.com/t4zxxx1/colibri-mcp.git"
   },
   "license": "MIT",
   "type": "module",
   "bin": {
-    "compact-browser-mcp": "extension/server/index.js"
+    "colibri-mcp": "extension/server/index.js"
   },
   "files": [
     "extension/server/index.js",

@@ -8,7 +8,7 @@ import url from 'node:url';
 const here = path.dirname(url.fileURLToPath(import.meta.url));
 
 /** Cartella temporanea per profili, download e risultati dei test. */
-export const TMP = path.join(os.tmpdir(), 'compact-browser-test');
+export const TMP = path.join(os.tmpdir(), 'colibri-test');
 
 /**
  * Ambiente di test. Per default Chrome o Edge vengono trovati da soli, senza finestra.

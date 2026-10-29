@@ -26,7 +26,7 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/compact-browser.mcpb --clobber
+            gh release upload "$TAG" dist/colibri.mcpb --clobber
           else
-            gh release create "$TAG" dist/compact-browser.mcpb --title "Compact Browser $TAG" --notes-file .github/release-notes.md
+            gh release create "$TAG" dist/colibri.mcpb --title "Colibri $TAG" --notes-file .github/release-notes.md
           fi

@@ -23,12 +23,15 @@ const firstLine = (e) => String((e && e.message) || e).split('\n')[0].replace(/^
 export function loadConfig(env = process.env) {
   const home = os.homedir();
   const dl = path.join(home, 'Downloads');
+  // cartella delle versioni precedenti al nome Colibri: se esiste si tiene, per non perdere gli accessi fatti
+  const legacy = path.join(home, '.compact-browser');
+  const base = fs.existsSync(legacy) ? legacy : path.join(home, '.colibri');
   return {
     mode: clean(env.CB_MODE) === 'cdp' ? 'cdp' : 'launch',
     cdpUrl: clean(env.CB_CDP_URL) || 'http://127.0.0.1:9222',
     chromePath: clean(env.CB_CHROME_PATH),
-    profileDir: clean(env.CB_PROFILE_DIR) || path.join(home, '.compact-browser', 'profile'),
-    downloadsDir: clean(env.CB_DOWNLOADS_DIR) || (fs.existsSync(dl) ? dl : path.join(home, '.compact-browser', 'downloads')),
+    profileDir: clean(env.CB_PROFILE_DIR) || path.join(base, 'profile'),
+    downloadsDir: clean(env.CB_DOWNLOADS_DIR) || (fs.existsSync(dl) ? dl : path.join(base, 'downloads')),
     headless: yes(env.CB_HEADLESS, false),
     allowed: list(env.CB_ALLOWED_DOMAINS),
     confirmSensitive: yes(env.CB_CONFIRM_SENSITIVE, true),

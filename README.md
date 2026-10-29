@@ -1,21 +1,21 @@
 <div align="center">
 
-<img src="docs/assets/hero.svg" alt="compact-browser-mcp — your AI drives Chrome by reading text, not screenshots" width="100%"/>
+<img src="docs/assets/hero.svg" alt="Colibri MCP — the hummingbird browser for AI agents" width="100%"/>
 
-<h3>The token-frugal browser for AI agents.<br/>Same tasks. <b>89× fewer tokens</b> than screenshots, <b>11× fewer</b> than Playwright MCP.</h3>
+<h3>🐦 The hummingbird browser for AI agents — tiny, fast, precise.<br/>Same tasks. <b>89× fewer tokens</b> than screenshots, <b>11× fewer</b> than Playwright MCP.</h3>
 
 <p>
-<a href="https://github.com/t4zxxx1/compact-browser-mcp/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/t4zxxx1/compact-browser-mcp?style=for-the-badge&color=22d3ee&labelColor=0d1117"/></a>
+<a href="https://github.com/t4zxxx1/colibri-mcp/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/t4zxxx1/colibri-mcp?style=for-the-badge&color=22d3ee&labelColor=0d1117"/></a>
 <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-a78bfa?style=for-the-badge&labelColor=0d1117"/></a>
 <a href="https://modelcontextprotocol.io"><img alt="MCP" src="https://img.shields.io/badge/MCP-stdio-34d399?style=for-the-badge&labelColor=0d1117"/></a>
 <img alt="Jev tokens" src="https://img.shields.io/badge/Jev%20tokens-0-f59e0b?style=for-the-badge&labelColor=0d1117"/>
-<a href="https://github.com/t4zxxx1/compact-browser-mcp/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/t4zxxx1/compact-browser-mcp?style=for-the-badge&color=f472b6&labelColor=0d1117"/></a>
+<a href="https://github.com/t4zxxx1/colibri-mcp/stargazers"><img alt="Stars" src="https://img.shields.io/github/stars/t4zxxx1/colibri-mcp?style=for-the-badge&color=f472b6&labelColor=0d1117"/></a>
 </p>
 
 <p>
-<a href="https://insiders.vscode.dev/redirect/mcp/install?name=compact-browser&config=%7B%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22github%3At4zxxx1%2Fcompact-browser-mcp%22%5D%7D"><img alt="Install in VS Code" src="https://img.shields.io/badge/VS_Code-Install-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white"/></a>
-<a href="https://cursor.com/en/install-mcp?name=compact-browser&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsImdpdGh1Yjp0NHp4eHgxL2NvbXBhY3QtYnJvd3Nlci1tY3AiXX0="><img alt="Install in Cursor" src="https://img.shields.io/badge/Cursor-Install-000000?style=flat-square&logo=cursor&logoColor=white"/></a>
-<a href="https://github.com/t4zxxx1/compact-browser-mcp/releases/latest/download/compact-browser.mcpb"><img alt="Claude Desktop" src="https://img.shields.io/badge/Claude_Desktop-.mcpb-D97757?style=flat-square&logo=anthropic&logoColor=white"/></a>
+<a href="https://insiders.vscode.dev/redirect/mcp/install?name=colibri&config=%7B%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22github%3At4zxxx1%2Fcolibri-mcp%22%5D%7D"><img alt="Install in VS Code" src="https://img.shields.io/badge/VS_Code-Install-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white"/></a>
+<a href="https://cursor.com/en/install-mcp?name=colibri&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsImdpdGh1Yjp0NHp4eHgxL2NvbGlicmktbWNwIl19"><img alt="Install in Cursor" src="https://img.shields.io/badge/Cursor-Install-000000?style=flat-square&logo=cursor&logoColor=white"/></a>
+<a href="https://github.com/t4zxxx1/colibri-mcp/releases/latest/download/colibri.mcpb"><img alt="Claude Desktop" src="https://img.shields.io/badge/Claude_Desktop-.mcpb-D97757?style=flat-square&logo=anthropic&logoColor=white"/></a>
 </p>
 
 **English** · [Italiano](README.it.md)
@@ -24,11 +24,14 @@
 
 ---
 
-## Why
+## Why Colibri
+
+A hummingbird weighs about 3 grams, beats its wings around 50 times a second and hovers with millimetric precision. That is the idea: **the lightest possible browser for an AI agent**, fast and exact.
+
 
 AI agents browse the web in the most expensive way possible: a **screenshot costs ~1,366 tokens**, an accessibility-tree dump **4,400–7,700 tokens per page**, and every extra tool call makes the model **re-read the whole conversation**.
 
-**compact-browser-mcp** turns each page into a few hundred tokens of plain rows — fields, values, state, risk flags — runs **many steps in one call**, answers with **only what changed**, and fills forms with a **local Jev-style engine** that needs no API key and costs **zero tokens**.
+**Colibri** turns each page into a few hundred tokens of plain rows — fields, values, state, risk flags — runs **many steps in one call**, answers with **only what changed**, and fills forms with a **local Jev-style engine** that needs no API key and costs **zero tokens**.
 
 - ⚡ **27,760 tokens** for a 22-field, two-page application — vs 318,910 with Playwright MCP and 2.48 M with screenshots
 - 🧠 **Jev-style typed decisions, locally**: 98.6% accuracy, AUROC 0.95, **1.7 ms** per match, **$0**
@@ -45,13 +48,13 @@ AI agents browse the web in the most expensive way possible: a **screenshot cost
 Requires **Node.js ≥ 18** and **Google Chrome or Microsoft Edge**. The server starts with:
 
 ```bash
-npx -y github:t4zxxx1/compact-browser-mcp
+npx -y github:t4zxxx1/colibri-mcp
 ```
 
 <details open>
 <summary><b>Claude Desktop</b> — one click</summary>
 
-Download **[compact-browser.mcpb](https://github.com/t4zxxx1/compact-browser-mcp/releases/latest/download/compact-browser.mcpb)** and double-click it. Settings (allowed domains, headless, profile folder…) appear in *Settings → Extensions*.
+Download **[colibri.mcpb](https://github.com/t4zxxx1/colibri-mcp/releases/latest/download/colibri.mcpb)** and double-click it. Settings (allowed domains, headless, profile folder…) appear in *Settings → Extensions*.
 
 </details>
 
@@ -59,7 +62,7 @@ Download **[compact-browser.mcpb](https://github.com/t4zxxx1/compact-browser-mcp
 <summary><b>Claude Code</b></summary>
 
 ```bash
-claude mcp add compact-browser -- npx -y github:t4zxxx1/compact-browser-mcp
+claude mcp add colibri -- npx -y github:t4zxxx1/colibri-mcp
 ```
 </details>
 
@@ -71,10 +74,10 @@ Click the **Install in VS Code** badge above, or add to `.vscode/mcp.json`:
 ```json
 {
   "servers": {
-    "compact-browser": {
+    "colibri": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "github:t4zxxx1/compact-browser-mcp"]
+      "args": ["-y", "github:t4zxxx1/colibri-mcp"]
     }
   }
 }
@@ -89,9 +92,9 @@ Click the **Install in VS Code** badge above, or add to `.vscode/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "compact-browser": {
+    "colibri": {
       "command": "npx",
-      "args": ["-y", "github:t4zxxx1/compact-browser-mcp"],
+      "args": ["-y", "github:t4zxxx1/colibri-mcp"],
       "env": { "CB_ALLOWED_DOMAINS": "" }
     }
   }
@@ -105,9 +108,9 @@ Click the **Install in VS Code** badge above, or add to `.vscode/mcp.json`:
 `~/.codex/config.toml`:
 
 ```toml
-[mcp_servers.compact-browser]
+[mcp_servers.colibri]
 command = "npx"
-args = ["-y", "github:t4zxxx1/compact-browser-mcp"]
+args = ["-y", "github:t4zxxx1/colibri-mcp"]
 ```
 </details>
 
@@ -115,27 +118,27 @@ args = ["-y", "github:t4zxxx1/compact-browser-mcp"]
 <summary><b>From source</b> (no npx, fastest startup)</summary>
 
 ```bash
-git clone https://github.com/t4zxxx1/compact-browser-mcp
-cd compact-browser-mcp && npm ci --omit=dev
-# then point your client to:  node /path/to/compact-browser-mcp/extension/server/index.js
+git clone https://github.com/t4zxxx1/colibri-mcp
+cd colibri-mcp && npm ci --omit=dev
+# then point your client to:  node /path/to/colibri-mcp/extension/server/index.js
 ```
 </details>
 
-> **Windows tip:** if your client can't find `npx`, use `"command": "cmd", "args": ["/c", "npx", "-y", "github:t4zxxx1/compact-browser-mcp"]`.
+> **Windows tip:** if your client can't find `npx`, use `"command": "cmd", "args": ["/c", "npx", "-y", "github:t4zxxx1/colibri-mcp"]`.
 
-Then just ask: *"Open the supplier portal and fill in the application with these details: …"* — or *"Use the compact browser to read the editions of project PF-2026-115"*.
+Then just ask: *"Open the supplier portal and fill in the application with these details: …"* — or *"Use Colibri to read the editions of project PF-2026-115"*.
 
 ## Better than Jev — with real numbers
 
 [Jev](https://jevai.net) popularised the **"System One" idea**: answer typed questions with a calibrated confidence and act only above a threshold. It is excellent — and it is a **paid cloud model** with its own tokens and API key.
 
-compact-browser-mcp ships **the same idea as a local engine** inside the MCP server, specialised for the one decision a browsing agent makes all the time: *which form field does this piece of data go into?* Your existing Claude/Copilot subscription is all you pay.
+Colibri ships **the same idea as a local engine** inside the MCP server, specialised for the one decision a browsing agent makes all the time: *which form field does this piece of data go into?* Your existing Claude/Copilot subscription is all you pay.
 
 <div align="center">
 <img src="docs/assets/jev-vs-local.svg" alt="Jev 1.14 vs local engine: accuracy, calibration, AUROC, latency, cost" width="100%"/>
 </div>
 
-| | Jev 1.14 ([System One Bench](https://systemonebench.dev)) | **compact-browser local engine v0.4** |
+| | Jev 1.14 ([System One Bench](https://systemonebench.dev)) | **Colibri local engine v0.4** |
 |---|---|---|
 | Choice accuracy | 75.7% | **98.6%** (419 cases) · **87.9%** on the independent Test 5 |
 | Calibration error (ECE) | 8.4% (choice) · 6.0% overall | **5.9%** · **4.6%** on Test 5 |
@@ -155,7 +158,7 @@ Same pages, same tasks, eight methods. Every method completed every task. **"Tot
 <img src="docs/assets/token-race.svg" alt="Total context tokens for task T1 across eight browser methods" width="100%"/>
 </div>
 
-| Task | Screenshots | Playwright MCP | agent-browser MCP | Fast Playwright MCP | **compact-browser** |
+| Task | Screenshots | Playwright MCP | agent-browser MCP | Fast Playwright MCP | **Colibri** |
 |---|---|---|---|---|---|
 | **T1** 22-field form, 2 pages | 2,480,688 · 154 s | 318,910 · 52 s | 1,373,730 · 108 s | 115,624 · 57 s | **27,760 · 19 s** |
 | **T2** list → detail table | 34,630 · 13 s | 73,333 · 15 s | 167,751 · 18 s | 37,480 · 12 s | **20,700 · 10 s** |
@@ -168,7 +171,7 @@ Full tables, assumptions and caveats (the test pages were built alongside this t
 ## How it works
 
 <div align="center">
-<img src="docs/assets/pipeline.svg" alt="Agent → compact-browser-mcp (rows, engine, safety gate) → Chrome" width="100%"/>
+<img src="docs/assets/pipeline.svg" alt="Agent → Colibri (rows, engine, safety gate) → Chrome" width="100%"/>
 </div>
 
 1. **Page → rows.** A script inside the page keeps only what you can act on: fields, menus, buttons, links, checkboxes — with name, value, state (`req`, `inv`, `off`) and a risk flag. Header, nav and footer are folded; repeated table rows are compressed.
@@ -232,7 +235,7 @@ ok 22/22
 | `CB_ALLOWED_DOMAINS` | all | comma-separated allow-list |
 | `CB_CONFIRM_SENSITIVE` | `true` | keep it on |
 | `CB_HEADLESS` | `false` | invisible browser |
-| `CB_PROFILE_DIR` | `~/.compact-browser/profile` | logins and cookies live here |
+| `CB_PROFILE_DIR` | `~/.colibri/profile` | logins and cookies live here |
 | `CB_DOWNLOADS_DIR` | `~/Downloads` | |
 | `CB_CHROME_PATH` | auto | only if Chrome/Edge is not found |
 | `CB_ALLOW_SCREENSHOT` | `true` | |
@@ -243,7 +246,7 @@ ok 22/22
 - Charts, canvas and maps have no text: the agent falls back to the small screenshot (with refs drawn on it) and relative-coordinate clicks.
 - The `browse_task` engine is a calibrated vocabulary, not a trained model: with unknown jargon it asks more often (never acts wrongly). Answers are remembered per site.
 - CAPTCHAs and logins are done by you, in the window.
-- Tested on pages modelled on public-administration portals: please report sites that don't work in [Issues](https://github.com/t4zxxx1/compact-browser-mcp/issues).
+- Tested on pages modelled on public-administration portals: please report sites that don't work in [Issues](https://github.com/t4zxxx1/colibri-mcp/issues).
 
 ## Development
 
@@ -252,7 +255,7 @@ npm ci            # dev + runtime deps
 npm test          # 120+ end-to-end tests over the real MCP protocol (needs Chrome or Edge)
 npm run bench     # vs screenshots, Playwright MCP, agent-browser, Fast Playwright MCP
 npm run calibrate # engine calibration (VERIFY5=1 adds the independent Test 5)
-npm run build     # dist/compact-browser.mcpb
+npm run build     # dist/colibri.mcpb
 ```
 
 Docs (Italian): [how it works](docs/come-funziona.md) · [benchmark](docs/benchmark.md) · [calibration & Jev comparison](docs/calibrazione.md).
@@ -260,7 +263,7 @@ Release: bump `version` in `package.json`, `extension/manifest.json`, `extension
 
 ## Support the project
 
-If it saves you tokens, **⭐ star the repo** — it's the best way to help others find it. Ideas, bugs and sites to support: [open an issue](https://github.com/t4zxxx1/compact-browser-mcp/issues). Made with care in Italy by **[@t4zxxx1](https://github.com/t4zxxx1)** · Roca Software.
+If it saves you tokens, **⭐ star the repo** — it's the best way to help others find it. Ideas, bugs and sites to support: [open an issue](https://github.com/t4zxxx1/colibri-mcp/issues). Made with care in Italy by **[@t4zxxx1](https://github.com/t4zxxx1)** · Roca Software.
 
 ## License
 
