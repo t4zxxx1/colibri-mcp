@@ -91,7 +91,7 @@ if (!exe) ok(false, 'Chrome non trovato per i test CDP');
 else {
   const url1 = 'http://127.0.0.1:9334';
   const user = spawn(exe, ['--remote-debugging-port=9334', `--user-data-dir=${prof('cdp-user')}`, '--headless=new', '--no-first-run', ...(process.platform === 'linux' ? ['--no-sandbox'] : []), base + '/title-moment.html'], { stdio: 'ignore' });
-  for (let k = 0; k < 40 && !(await cdpAlive(url1, 300)); k++) await sleep(250);
+  for (let k = 0; k < 80 && !(await cdpAlive(url1, 300)); k++) await sleep(250);
   const c1 = await connect({ CB_MODE: 'cdp', CB_CDP_URL: url1 });
   r = await c1.call('browse_open', { url: base + '/v052.html' });
   ok(has(r.text, 'Prenota treno'), 'cdp: collegato al Chrome dell\'utente', r.text.slice(0, 200));

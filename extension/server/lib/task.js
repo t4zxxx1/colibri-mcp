@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as P from './page-script.js';
 import { renderView, renderDiff, shortUrl } from './render.js';
-import { PRESETS, fold, fieldsFrom, groundParam, assign, decide, chooseOption, valueKind, formatDateFor, truthy, extractField, similarity, choice, optionScore } from './engine.js';
+import { PRESETS, fold, fieldsFrom, groundParam, assign, decide, chooseOption, valueKind, formatDateFor, truthy, extractField, similarity, choice, optionScore, parseDateTime, monthOf } from './engine.js';
 
 const pct = (p) => Math.round(p * 100) + '%';
 const firstLine = (e) => String((e && e.message) || e).split('\n')[0].replace(/^\w+Error: /, '').slice(0, 200);
@@ -98,6 +98,48 @@ async function suggestions(S, page) {
   return { loc: null, texts: [] };
 }
 
+/** Data in piu' campi: ogni parte (giorno, mese, anno, ore, minuti) nel suo menu o campo di testo. */
+async function fillDateParts(S, page, snap, st) {
+  const { p, f } = st;
+  const v = parseDateTime(p.value);
+  if (!v) return { error: `"${p.value}" non e' una data` };
+  const want = { d: v.d, mo: v.mo, y: v.y, h: v.h, mi: v.mi };
+  const shown = [];
+  const notes = [];
+  const ids = [];
+  for (const { part, it: orig } of f.parts) {
+    if (want[part] === undefined) continue;
+    snap = await S.freshSnap(snap, page);
+    const it = snap.items.find((i) => i.id === orig.id);
+    if (!it) return { error: `${orig.id} (parte ${part}) non piu' presente` };
+    const n = want[part];
+    if (it.role === 'sel') {
+      const opts = (it.gx && it.gx.opts) || [];
+      const val = (o) => (part === 'mo' ? monthOf(o) : /^\s*\d{1,4}\s*$/.test(o) ? parseInt(o, 10) : null);
+      let idx = opts.findIndex((o) => val(o) === n || (part === 'y' && /^\s*\d{2}\s*$/.test(o) && val(o) === n % 100));
+      if (idx < 0 && part === 'mi') {
+        // minuti a passi (00, 15, 30, 45): il piu' vicino
+        let best = Infinity;
+        opts.forEach((o, i) => {
+          const x = val(o);
+          if (x !== null && Math.abs(x - n) < best) [best, idx] = [Math.abs(x - n), i];
+        });
+        if (idx >= 0) notes.push(`minuti ${opts[idx]} invece di ${n}`);
+      }
+      if (idx < 0) return { error: `${it.id} "${it.name}": nessuna opzione per ${n}` };
+      await S.step('select', { select: it.id, option: opts[idx] }, snap, page);
+      shown.push(opts[idx]);
+    } else {
+      const ph = fold((it.gx && it.gx.ph) || '');
+      const text = part === 'y' ? (/^(yy|aa|jj)$/.test(ph) ? String(n % 100).padStart(2, '0') : String(n)) : String(n).padStart(2, '0');
+      await S.step('fill', { fill: it.id, text }, snap, page);
+      shown.push(text);
+    }
+    ids.push(it.id);
+  }
+  return { ok: true, id: ids[0], ids, note: `"${p.key}" → ${f.name}: ${shown.join(' | ')}${notes.length ? ' (' + notes.join(', ') + ')' : ''}` };
+}
+
 /** Esegue un parametro gia' abbinato. Restituisce { ok, note } oppure { ask } oppure { error }. */
 async function fillOne(S, page, snap, st, ctx) {
   const { p, f } = st;
@@ -110,6 +152,7 @@ async function fillOne(S, page, snap, st, ctx) {
     await S.step('check', { check: r.choice, confirm: true }, snap, page);
     return { ok: true, id: r.choice, note: r.confidence < 0.97 ? `"${p.key}" → ${r.choice} "${r.data.name}" ${pct(r.confidence)}` : '' };
   }
+  if (f.kind === 'dateparts') return fillDateParts(S, page, snap, st);
   const it = item(f.id) || f.item;
   if (!it) return { error: `${f.id} non piu' presente` };
   if (it.s === 'x') return { error: `!x ${it.id} "${it.name}": campo riservato, lo inserisce l'utente nella finestra` };
@@ -261,7 +304,7 @@ export async function runTask(S, a) {
     if (ans && !isRef(ans)) p.pick = String(ans);
     const ref = isRef(p.key) ? p.key : ans && isRef(ans) ? ans : null;
     if (ref) {
-      const f = fields.find((x) => x.id === ref || (x.items && x.items.some((i) => i.id === ref)));
+      const f = (parseDateTime(p.value) && fields.find((x) => x.kind === 'dateparts' && x.parts.some((q) => q.it.id === ref))) || fields.find((x) => x.id === ref || (x.items && x.items.some((i) => i.id === ref)));
       if (!f) {
         asks.push(`? "${p.key}": ${ref} non trovato nella pagina`);
         continue;
@@ -275,7 +318,8 @@ export async function runTask(S, a) {
   const { acts, asks: unsure, taken } = assign(toGround, fields, { memory, preset, fixed });
   for (const [p, r, extra] of unsure) asks.push(question(p, r, extra, taken));
   const order = new Map(snap.items.map((it, i) => [it.id, i]));
-  const todo = [...acts].sort((x, y) => (order.get(x.f.id) ?? 0) - (order.get(y.f.id) ?? 0));
+  const firstId = (f) => (f.kind === 'dateparts' ? f.parts[0].it.id : f.id);
+  const todo = [...acts].sort((x, y) => (order.get(firstId(x.f)) ?? 0) - (order.get(firstId(y.f)) ?? 0));
 
   // ---- agisci + verifica ----
   const touched = new Map();
@@ -284,7 +328,7 @@ export async function runTask(S, a) {
     snap = await S.freshSnap(snap, page);
     // dopo la scelta di un suggerimento molti siti ricostruiscono la pagina: i riferimenti dei campi successivi non
     // esistono piu'. Il campo si ritrova per nome nella pagina nuova invece di fallire.
-    const here = (f) => (f.kind === 'radio' ? f.items.some((x) => snap.items.some((i) => i.id === x.id)) : snap.items.some((i) => i.id === f.id));
+    const here = (f) => (f.kind === 'radio' ? f.items.some((x) => snap.items.some((i) => i.id === x.id)) : f.kind === 'dateparts' ? f.parts.every((x) => snap.items.some((i) => i.id === x.it.id)) : snap.items.some((i) => i.id === f.id));
     if (!here(st.f)) {
       const r2 = groundParam(st.p, fieldsFrom(snap.items, snap.regions), memory);
       if (decide(r2, preset) === 'act') st.f = r2.data.f;
@@ -300,6 +344,7 @@ export async function runTask(S, a) {
       else {
         ok++;
         if (r.fill || /^(chk|sw|rad)$/.test(st.f.role) || st.f.kind === 'radio') touched.set(r.id, 'fill');
+        for (const id of r.ids || []) touched.set(id, 'fill');
         // nota solo per gli abbinamenti non ovvi: etichetta diversa dalla chiave o confidenza non alta
         const obvious = st.conf >= 0.9 && st.r && st.r.data && st.r.data.name >= 0.95;
         const conf = st.conf < 0.97 && !obvious && !r.note ? `"${st.p.key}" → ${st.f.id} "${st.f.name}" ${pct(st.conf)}` : '';

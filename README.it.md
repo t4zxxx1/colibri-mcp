@@ -133,7 +133,7 @@ Scegli **uno** di questi modi:
    }
    ```
 
-Poi apri **Copilot Chat**, passa alla modalità **Agent**, clicca l'icona 🔧 **strumenti** e controlla che **colibri** (7 strumenti) sia spuntato. La prima volta VS Code ti chiede se ti fidi del server: rispondi di sì.
+Poi apri **Copilot Chat**, passa alla modalità **Agent**, clicca l'icona 🔧 **strumenti** e controlla che **colibri** (8 strumenti) sia spuntato. La prima volta VS Code ti chiede se ti fidi del server: rispondi di sì.
 
 #### Cline
 
@@ -151,7 +151,7 @@ Poi apri **Copilot Chat**, passa alla modalità **Agent**, clicca l'icona 🔧 *
    }
    ```
 
-3. Colibri compare nell'elenco con il pallino verde e i suoi 7 strumenti. Chiedi a Cline: *"Con Colibri apri example.com"*.
+3. Colibri compare nell'elenco con il pallino verde e i suoi 8 strumenti. Chiedi a Cline: *"Con Colibri apri example.com"*.
 
 > **Su Windows:** se VS Code o Cline non trovano `npx`, usa `"command": "cmd"` e `"args": ["/c", "npx", "-y", "github:t4zxxx1/colibri-mcp"]`.
 
@@ -299,10 +299,11 @@ ok 22/22
 | Tool | Cosa fa |
 |---|---|
 | `browse_open` | Apre un URL (avvia Chrome da solo), rifiuta i cookie non essenziali, restituisce le righe |
+| `browse_search` | Ricerca web senza i CAPTCHA di Google: una riga per risultato `n. titolo \| url \| estratto`, link reali, niente annunci. Prima DuckDuckGo, Bing di riserva in automatico se compare una verifica |
 | `browse_view` | Righe della pagina corrente, con `filter`, `scope:"all"` e paginazione |
 | `browse_do` | Fino a 40 passi in ordine; restituisce solo le differenze |
 | `browse_read` | Legge senza agire: `text`, `table`, `find`, `describe`, `cards` (una riga per risultato: `10:05 \| 13:40 \| 3h35 \| 1 cambio \| 29,90 €`), `pdf` (testo di un PDF scaricato o aperto, a pagine) |
-| `browse_task` | Compito guidato in stile Jev: dati per etichetta, `answers`, `submit`, `expect`, `extract` tipizzato (testo, numero, importo, data, url, tabella) |
+| `browse_task` | Compito guidato in stile Jev: dati per etichetta, `answers`, `submit`, `expect`, `extract` tipizzato (testo, numero, importo, data, url, tabella). Le date divise in giorno / mese / anno (+ ore / minuti) si compilano da un solo valore: `"partenza": "12/06/2026 10:30"` |
 | `browse_screenshot` | JPEG ridotto (~900 token) della finestra, di un elemento o di una regione — solo quando il testo non basta |
 | `browse_stats` | Token usati nella sessione rispetto agli screenshot |
 
@@ -337,6 +338,7 @@ ok 22/22
 | `CB_MODE` / `CB_CDP_URL` | `launch` | `cdp` = **modalità Chrome reale**: si collega a un Chrome normale su `--remote-debugging-port=9222` (vedi FAQ) |
 | `CB_AUTO_CHROME` | `true` | in modalità `cdp`, avvia da solo il Chrome reale se sulla porta non risponde nessuno |
 | `CB_REAL_PROFILE_DIR` | `~/.colibri/real-chrome` | profilo del Chrome reale avviato da Colibri |
+| `CB_SEARCH_URL` | DuckDuckGo, poi Bing | pagina/e di ricerca per `browse_search`, `{q}` = testo cercato; più indirizzi separati da spazi vengono provati in ordine |
 
 <div align="right"><a href="#top">↑ torna su</a></div>
 
@@ -420,7 +422,8 @@ No. Le azioni con effetti (`!c`) richiedono il tuo ok esplicito, i dati segreti 
 
 ```bash
 npm ci            # dipendenze di sviluppo e di esecuzione
-npm test          # oltre 120 test end-to-end via protocollo MCP (serve Chrome o Edge)
+npm test          # oltre 180 test end-to-end via protocollo MCP (serve Chrome o Edge)
+npm run test:live # prove facoltative su siti reali: ricerca, PDF, modulo httpbin, Wikipedia (serve la rete)
 npm run bench     # confronto con screenshot, Playwright MCP, agent-browser, Fast Playwright MCP
 npm run calibrate # calibrazione del motore (VERIFY5=1 aggiunge il Test 5 indipendente)
 npm run build     # dist/colibri.mcpb

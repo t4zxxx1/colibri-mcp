@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.5.3
+
+**English**
+- **`browse_search`**: web search without Google's CAPTCHAs. Returns one row per result (`n. title | url | snippet`) with real links (DuckDuckGo and Bing redirects unwrapped), and no ads or duplicates. About 440 characters for 3 results. DuckDuckGo comes first; if it asks for a check (it often does with a headless Chrome), Colibri moves to Bing by itself instead of stopping. A check on the last engine pauses for the user as usual and is never bypassed. `CB_SEARCH_URL` sets custom engines, and `CB_ALLOWED_DOMAINS` is respected.
+- **Dates split across several fields** in `browse_task`. Day / month / year selects or inputs, with optional hour / minutes, are recognised as one date field from their name, `name`/`id`, placeholder, options, legend or group label. One value fills them all: `"departure": "12/06/2026 10:30"`. Months can be numbers or names (it/en/de/fr/es, abbreviations included). Minutes offered in steps snap to the nearest option and Colibri reports it. A missing year is a clear error, never a random choice. A nearby "Hours of training" field is not mistaken for the hour.
+- The DuckDuckGo "bots use DuckDuckGo too" check is now detected as a human check.
+- **Tests on real sites**: `npm run test:live` (opt-in, needs network) covers a real search, example.com, a public PDF, a real form submitted on httpbin, and Wikipedia without false blocks.
+- In `cdp` mode, Colibri checks the port again before starting its own Chrome, so a user Chrome that is still starting is not missed.
+
+**Italiano**
+- **`browse_search`**: ricerca web senza i CAPTCHA di Google. Restituisce una riga per risultato (`n. titolo | url | estratto`) con link reali (reindirizzamenti di DuckDuckGo e Bing sciolti), senza annunci né duplicati. Circa 440 caratteri per 3 risultati. Prima prova DuckDuckGo; se chiede una verifica (capita spesso con Chrome invisibile), Colibri passa a Bing da solo invece di fermarsi. Una verifica sull'ultimo motore mette in pausa per l'utente come sempre e non viene mai aggirata. `CB_SEARCH_URL` imposta motori personalizzati e `CB_ALLOWED_DOMAINS` viene rispettato.
+- **Date divise in più campi** in `browse_task`. Menu o campi giorno / mese / anno, con ore e minuti facoltativi, vengono riconosciuti come un'unica data da nome, `name`/`id`, placeholder, opzioni, legenda o etichetta del gruppo. Un solo valore li compila tutti: `"partenza": "12/06/2026 10:30"`. I mesi possono essere numeri o nomi (it/en/de/fr/es, anche abbreviati). I minuti a passi prendono l'opzione più vicina e Colibri lo segnala. Un anno assente dal menu dà un errore chiaro, mai una scelta a caso. Un campo vicino come "Ore di formazione" non viene scambiato per l'ora.
+- La verifica di DuckDuckGo ("bots use DuckDuckGo too") ora viene riconosciuta come verifica umana.
+- **Test su siti reali**: `npm run test:live` (facoltativo, serve la rete) prova una ricerca vera, example.com, un PDF pubblico, un modulo vero inviato su httpbin e Wikipedia senza falsi blocchi.
+- In modalità `cdp` Colibri ricontrolla la porta prima di avviare un Chrome suo, così un Chrome dell'utente ancora in avvio non viene ignorato.
+
 ## 0.5.2
 
 **English**

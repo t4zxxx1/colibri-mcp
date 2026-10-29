@@ -52,6 +52,9 @@ export function loadConfig(env = process.env) {
     // secondi di attesa quando compare un CAPTCHA o una verifica anti-bot (0 = non aspettare)
     humanWait: Math.max(0, parseInt(clean(env.CB_HUMAN_WAIT) || '50', 10) || 0),
     humanShow: yes(env.CB_HUMAN_SHOW, true),
+    // pagine di ricerca per browse_search ({q} = testo cercato), in ordine: se una chiede una verifica si passa alla successiva.
+    // DuckDuckGo HTML non chiede CAPTCHA come Google; Bing come riserva (DuckDuckGo blocca spesso Chrome senza finestra)
+    searchUrls: clean(env.CB_SEARCH_URL) ? clean(env.CB_SEARCH_URL).split(/\s+/) : ['https://html.duckduckgo.com/html/?q={q}', 'https://www.bing.com/search?q={q}'],
   };
 }
 
@@ -109,7 +112,13 @@ export class Session {
     if (c.mode === 'cdp') {
       const connect = () => chromium.connectOverCDP(c.cdpUrl, { timeout: 8000 });
       try {
-        if (c.autoChrome && !(await cdpAlive(c.cdpUrl))) {
+        // un Chrome appena avviato dall'utente puo' metterci un attimo ad aprire la porta: si ricontrolla prima di avviarne uno
+        let alive = await cdpAlive(c.cdpUrl);
+        for (let k = 0; !alive && k < 3; k++) {
+          await new Promise((r) => setTimeout(r, 500));
+          alive = await cdpAlive(c.cdpUrl);
+        }
+        if (c.autoChrome && !alive) {
           await launchRealChrome({ cdpUrl: c.cdpUrl, chromePath: c.chromePath, profileDir: c.realProfileDir });
           this.events.push(`avviato Chrome reale (porta di debug, profilo ${c.realProfileDir}): resta aperto anche quando Colibri si chiude`);
         }
@@ -437,6 +446,55 @@ export class Session {
     if (pdf) txt = 'documento PDF: testo con browse_read mode "pdf"\n' + txt;
     if (!this.allowedUrl(page.url())) txt = `ATTENZIONE: ${new URL(page.url()).hostname} e' fuori dai domini consentiti, le azioni sono bloccate\n` + txt;
     return txt;
+  }
+
+  // ---------- tool: search ----------
+  async search({ query, max = 8 }) {
+    const q = String(query || '').trim();
+    if (!q) throw new Error('serve "query"');
+    const urls = [];
+    let denied = null;
+    for (const s of this.cfg.searchUrls) {
+      try {
+        urls.push(this.checkUrl((s.includes('{q}') ? s : s + '{q}').replace('{q}', encodeURIComponent(q))));
+      } catch (e) {
+        denied = denied || e;
+      }
+    }
+    if (!urls.length) throw denied;
+    let page = await this.ensure();
+    const n = Math.min(Math.max(1, max), 20);
+    const notes = [];
+    let rows = [];
+    for (const [k, u] of urls.entries()) {
+      await page.goto(u, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await this.settle(page, 6000, 200, 200);
+      const host = new URL(u).hostname.replace(/^(www|html)\./, '');
+      const last = k === urls.length - 1;
+      const ch = await this.challenge(page);
+      if (ch && ch.block && !last) {
+        // un altro motore costa meno di una verifica da far risolvere all'utente
+        notes.push(`${host} chiede una verifica ${ch.kind}: uso il motore successivo`);
+        continue;
+      }
+      if (last) {
+        const g = await this.humanGate(page);
+        page = g.page;
+        if (g.note) notes.push(g.note);
+      }
+      rows = await page.evaluate(P.searchResultsInPage, { max: n }).catch(() => []);
+      if (rows.length || last) {
+        if (k) notes.push(`risultati da ${host}`);
+        break;
+      }
+      notes.push(`${host}: nessun risultato leggibile, uso il motore successivo`);
+    }
+    this.remember(await this.collect());
+    this.stats.observations++;
+    const short = (s) => s.replace(/^https:\/\//, '');
+    const head = (notes.length ? notes.join('; ') + '\n' : '') + `ricerca "${q}": ${rows.length} risultati`;
+    if (!rows.length) return head + ' (pagina aperta: browse_view per vederla)';
+    return head + '\n' + rows.map((r, i) => `${i + 1}. ${r.title} | ${short(r.url)}${r.snip ? ' | ' + r.snip : ''}`).join('\n');
   }
 
   checkUrl(url) {

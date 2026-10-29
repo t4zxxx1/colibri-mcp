@@ -133,7 +133,7 @@ Pick **one** of these:
    }
    ```
 
-Then open **Copilot Chat**, switch to **Agent** mode, click the 🔧 **tools** icon and make sure **colibri** (7 tools) is ticked. The first time, VS Code asks you to trust the server: say yes.
+Then open **Copilot Chat**, switch to **Agent** mode, click the 🔧 **tools** icon and make sure **colibri** (8 tools) is ticked. The first time, VS Code asks you to trust the server: say yes.
 
 #### Cline
 
@@ -151,7 +151,7 @@ Then open **Copilot Chat**, switch to **Agent** mode, click the 🔧 **tools** i
    }
    ```
 
-3. Colibri appears in the list with a green dot and its 7 tools. Ask Cline: *"Use Colibri to open example.com"*.
+3. Colibri appears in the list with a green dot and its 8 tools. Ask Cline: *"Use Colibri to open example.com"*.
 
 > **Windows:** if VS Code or Cline says `npx` is not found, use `"command": "cmd"` and `"args": ["/c", "npx", "-y", "github:t4zxxx1/colibri-mcp"]`.
 
@@ -299,10 +299,11 @@ ok 22/22
 | Tool | What it does |
 |---|---|
 | `browse_open` | Open a URL (auto-starts Chrome), reject non-essential cookies, return the rows |
+| `browse_search` | Web search without Google CAPTCHAs: one row per result `n. title \| url \| snippet`, real links, no ads. DuckDuckGo first, Bing as automatic fallback if a check appears |
 | `browse_view` | Rows of the current page, with `filter`, `scope:"all"` and paging |
 | `browse_do` | Up to 40 steps in order; returns only the diff |
 | `browse_read` | Read without acting: `text`, `table`, `find`, `describe`, `cards` (one row per result card: `10:05 \| 13:40 \| 3h35 \| 1 change \| €29.90`), `pdf` (text of a downloaded or open PDF, paged) |
-| `browse_task` | Jev-style guided task: params by human labels, `answers`, `submit`, `expect`, typed `extract` (text, number, money, date, url, table) |
+| `browse_task` | Jev-style guided task: params by human labels, `answers`, `submit`, `expect`, typed `extract` (text, number, money, date, url, table). Dates split into day / month / year (+ hour / minutes) fields are filled from one value: `"departure": "12/06/2026 10:30"` |
 | `browse_screenshot` | Small JPEG (~900 tokens) of the window, an element or a region — only when text is not enough |
 | `browse_stats` | Tokens used this session vs screenshots |
 
@@ -337,6 +338,7 @@ ok 22/22
 | `CB_MODE` / `CB_CDP_URL` | `launch` | `cdp` = **real Chrome mode**: attaches to a normal Chrome on `--remote-debugging-port=9222` (see FAQ) |
 | `CB_AUTO_CHROME` | `true` | in `cdp` mode, start the real Chrome by itself if nothing is listening on the port |
 | `CB_REAL_PROFILE_DIR` | `~/.colibri/real-chrome` | profile used by the real Chrome that Colibri starts |
+| `CB_SEARCH_URL` | DuckDuckGo, then Bing | search page(s) for `browse_search`, `{q}` = query; several separated by spaces are tried in order |
 
 <div align="right"><a href="#top">↑ back to top</a></div>
 
@@ -420,7 +422,8 @@ No. Side effects (`!c`) need your explicit OK, secrets (`!x`) can never be typed
 
 ```bash
 npm ci            # dev + runtime deps
-npm test          # 120+ end-to-end tests over the real MCP protocol (needs Chrome or Edge)
+npm test          # 180+ end-to-end tests over the real MCP protocol (needs Chrome or Edge)
+npm run test:live # optional checks on real sites: search, PDF, httpbin form, Wikipedia (network)
 npm run bench     # vs screenshots, Playwright MCP, agent-browser, Fast Playwright MCP
 npm run calibrate # engine calibration (VERIFY5=1 adds the independent Test 5)
 npm run build     # dist/colibri.mcpb

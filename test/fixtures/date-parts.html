@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><title>Prenotazione con date divise</title></head>
+<body>
+<h1>Prenotazione</h1>
+<form id="f" onsubmit="event.preventDefault()">
+  <label for="nome">Nome</label> <input id="nome" name="nome">
+
+  <fieldset>
+    <legend>Data di partenza</legend>
+    <select name="dep_day" aria-label="Giorno"><option value="">GG</option></select>
+    <select name="dep_month" aria-label="Mese"><option value="">Mese</option>
+      <option>gennaio</option><option>febbraio</option><option>marzo</option><option>aprile</option><option>maggio</option><option>giugno</option>
+      <option>luglio</option><option>agosto</option><option>settembre</option><option>ottobre</option><option>novembre</option><option>dicembre</option>
+    </select>
+    <select name="dep_year" aria-label="Anno"><option value="">Anno</option><option>2025</option><option>2026</option><option>2027</option></select>
+    <select name="dep_hour" aria-label="Ora"><option value="">--</option></select>
+    <select name="dep_min" aria-label="Minuti"><option value="">--</option><option>00</option><option>15</option><option>30</option><option>45</option></select>
+  </fieldset>
+
+  <div class="row">
+    <span class="lbl">Data di nascita</span>
+    <div class="parts">
+      <input name="dob_day" placeholder="GG" size="2">
+      <input name="dob_month" placeholder="MM" size="2">
+      <input name="dob_year" placeholder="AAAA" size="4">
+    </div>
+  </div>
+
+  <label for="ore">Ore di formazione</label> <input id="ore" name="ore">
+  <button type="submit">Cerca</button>
+</form>
+<p id="out">-</p>
+<script>
+  const day = document.querySelector('[name=dep_day]');
+  for (let d = 1; d <= 31; d++) day.add(new Option(String(d).padStart(2, '0')));
+  const hour = document.querySelector('[name=dep_hour]');
+  for (let h = 0; h <= 23; h++) hour.add(new Option(String(h).padStart(2, '0')));
+  const v = (n) => document.querySelector(`[name=${n}]`).value;
+  document.getElementById('f').addEventListener('change', () => {
+    document.getElementById('out').textContent =
+      `partenza=${v('dep_day')}/${v('dep_month')}/${v('dep_year')} ${v('dep_hour')}:${v('dep_min')}; nascita=${v('dob_day')}-${v('dob_month')}-${v('dob_year')}; nome=${v('nome')}; ore=${v('ore')}`;
+  });
+  document.getElementById('f').addEventListener('input', () => document.getElementById('f').dispatchEvent(new Event('change')));
+</script>
+</body></html>

@@ -277,6 +277,22 @@ export function collectInPage(opts) {
     }
     return fs ? cut(txt(fs.querySelector('legend')), 40) : '';
   }
+  // etichetta di un gruppo di campi (es. "Data di partenza" sopra i menu giorno / mese / anno)
+  function partGroupLabel(el) {
+    const g = el.closest && el.closest('[role=group]');
+    if (g && g.getAttribute('aria-label')) return cut(g.getAttribute('aria-label'), 40);
+    let n = el;
+    for (let lv = 0; n && lv < 3; lv++, n = n.parentElement) {
+      let s = n.previousElementSibling;
+      for (let k = 0; s && k < 5; k++, s = s.previousElementSibling) {
+        if (s.matches('input,select,textarea,button')) continue;
+        if (s.querySelector('input,select,textarea')) break;
+        const t = norm(s.textContent);
+        if (t) return cut(t.replace(/[\s*:]+$/, ''), 40);
+      }
+    }
+    return '';
+  }
   // elemento coperto da un overlay fisso (banner, barra, maschera): segnalato come "cop"
   const vw = innerWidth;
   const vh = innerHeight;
@@ -395,6 +411,7 @@ export function collectInPage(opts) {
         opts: tag === 'select' ? [...el.options].slice(0, 400).map((o) => cut(o.label || o.text, 60)) : undefined,
         grpName: role === 'rad' ? el.name || '' : undefined,
         glab: role === 'rad' ? radioGroupLabel(el) : undefined,
+        grp: role === 'sel' || role === 'text' || role === 'num' ? partGroupLabel(el) : undefined,
       };
     }
 
@@ -652,6 +669,46 @@ export function readCardsInPage(a) {
   return { total: rows.length, sel: how, rows: rows.slice(off, off + max) };
 }
 
+/** Risultati di una pagina di ricerca (DuckDuckGo HTML, Bing, generica): titolo, URL reale, estratto. Niente annunci. */
+export function searchResultsInPage(a) {
+  const norm = (s) => (s || '').replace(/\s+/g, ' ').trim();
+  const real = (href) => {
+    try {
+      const u = new URL(href, location.href);
+      const dd = u.searchParams.get('uddg');
+      if (dd) return dd;
+      // Bing: /ck/a?...&u=a1<base64url>
+      const bu = u.hostname.endsWith('bing.com') && u.searchParams.get('u');
+      if (bu && bu.startsWith('a1')) return atob(bu.slice(2).replace(/-/g, '+').replace(/_/g, '/'));
+      return u.href;
+    } catch {
+      return href;
+    }
+  };
+  const engines = [
+    { box: '.result:not(.result--ad), .web-result', link: 'a.result__a', snip: '.result__snippet' },
+    { box: 'li.b_algo', link: 'h2 a', snip: '.b_caption p, .b_lineclamp2, .b_lineclamp3' },
+    { box: '[data-testid=result], article', link: 'h2 a, h3 a, a[data-testid=result-title-a]', snip: '[data-result=snippet], p' },
+  ];
+  const seen = new Set();
+  const out = [];
+  for (const e of engines) {
+    for (const box of document.querySelectorAll(e.box)) {
+      if (box.closest('.result--ad, .b_ad, [data-testid=ad]')) continue;
+      const l = box.querySelector(e.link);
+      if (!l || !l.getAttribute('href')) continue;
+      const url = real(l.getAttribute('href'));
+      if (!/^https?:/i.test(url) || seen.has(url)) continue;
+      seen.add(url);
+      const s = box.querySelector(e.snip);
+      out.push({ title: norm(l.textContent).slice(0, 120), url, snip: s ? norm(s.textContent).slice(0, a.snip || 180) : '' });
+      if (out.length >= a.max) break;
+    }
+    if (out.length) break;
+  }
+  return out;
+}
+
 /** Elemento sotto un punto (coordinate CSS del viewport): ref noto, tag, testo e sensibilita'. */
 export function hitTestInPage(a) {
   const norm = (s) => (s || '').replace(/\s+/g, ' ').trim();
@@ -766,6 +823,8 @@ export function challengeInPage() {
   if (any('awswaf-captcha,#captcha-container[data-awswaf],#aws-waf-token') || window.AwsWafCaptcha) return { kind: 'AWS WAF', block: true };
   if (any('iframe[src*="arkoselabs"],iframe[src*="funcaptcha"],#FunCaptcha,#arkose,#arkoseFrame')) return { kind: 'Arkose', block: true };
   if (any('.geetest_panel_box,.geetest_box,.geetest_popup_wrap')) return { kind: 'GeeTest', block: true };
+  // DuckDuckGo: "bots use DuckDuckGo too", griglia di immagini da selezionare
+  if (/bots use duckduckgo too|confirm this search was made by a human/i.test(body)) return { kind: 'DuckDuckGo', block: true };
   // puzzle a immagini aperto (reCAPTCHA / hCaptcha)
   const puzzle = any('iframe[src*="recaptcha/api2/bframe"],iframe[src*="recaptcha/enterprise/bframe"],iframe[src*="hcaptcha"][src*="frame=challenge"]');
   if (puzzle && puzzle.getBoundingClientRect().height > 120) return { kind: kindOf(puzzle.src), block: true };

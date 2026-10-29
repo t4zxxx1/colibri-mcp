@@ -279,7 +279,113 @@ export function fieldsFrom(items, regions) {
     // un radio puo' essere indicato anche da solo (es. "Legale rappresentante": true)
     if (it.role === 'rad') out[out.length - 1].texts = [gx.full || it.name];
   }
+  return addDateGroups(items, regions, out);
+}
+
+// ---------------- date in piu' campi (giorno / mese / anno, ore / minuti) ----------------
+const PART_WORDS = {
+  d: 'giorno gg day dd tag tt jour jj dia',
+  mo: 'mese month mm monat mois mes',
+  y: 'anno aaaa yyyy yy aa year jahr annee ano jjjj',
+  h: 'ore ora hh hour hours stunde heure hora',
+  mi: 'minuti minuto min minute minutes minuten',
+};
+const PART_SETS = Object.fromEntries(Object.entries(PART_WORDS).map(([k, v]) => [k, new Set(v.split(' '))]));
+const AMBIG_PART = new Set(['ore', 'ora', 'hours', 'min', 'hora', 'heure', 'stunde']);
+const MONTHS = [
+  'gennaio january januar janvier enero', 'febbraio february februar fevrier febrero', 'marzo march marz mars', 'aprile april avril abril',
+  'maggio may mai mayo', 'giugno june juni juin junio', 'luglio july juli juillet julio', 'agosto august aout',
+  'settembre september septembre septiembre setiembre', 'ottobre october oktober octobre octubre', 'novembre november noviembre', 'dicembre december dezember decembre diciembre',
+].map((s) => s.split(' '));
+const partTokens = (s) => fold(String(s || '').replace(/([a-z])([A-Z])/g, '$1 $2')).split(' ').filter(Boolean);
+const intOf = (s) => (/^\s*\d{1,4}\s*$/.test(String(s)) ? parseInt(s, 10) : null);
+
+/** Numero del mese (1-12) da un'opzione: "06", "6", "giugno", "Jun", "juin"; null se non e' un mese o e' ambiguo. */
+export function monthOf(opt) {
+  const n = intOf(opt);
+  if (n !== null) return n >= 1 && n <= 12 ? n : null;
+  const o = fold(opt).replace(/\s.*$/, '');
+  if (o.length < 3) return null;
+  const hits = MONTHS.map((names, i) => (names.some((m) => m === o || m.startsWith(o) || o.startsWith(m)) ? i + 1 : 0)).filter(Boolean);
+  return hits.length === 1 ? hits[0] : null;
+}
+
+/** Parte di data di un campo dal nome, dall'attributo name/id, dal placeholder o dalle opzioni del menu. */
+function datePart(it) {
+  const gx = it.gx || {};
+  for (const src of [gx.nm, gx.ph, it.name]) {
+    const t = partTokens(src);
+    const ks = ['d', 'mo', 'y', 'h', 'mi'].filter((k) => t.some((w) => PART_SETS[k].has(w)));
+    // "gg/mm/aaaa" o "hh:mm" in un solo campo: e' una data o un orario intero, non una parte
+    if (ks.length > 1) return null;
+    // "Ore" / "ora" in un campo di testo e' spesso un numero di ore, non l'ora di una data: vale solo per i menu
+    if (ks.length === 1 && /^(h|mi)$/.test(ks[0]) && it.role !== 'sel' && t.filter((w) => PART_SETS[ks[0]].has(w)).every((w) => AMBIG_PART.has(w))) continue;
+    if (ks.length === 1) return ks[0];
+  }
+  const opts = (gx.opts || []).filter((o) => fold(o) && !/^(seleziona|scegli|select|choose|--|gg|mm|aaaa|yyyy)/.test(fold(o)));
+  if (opts.length >= 12) {
+    const nums = opts.map(intOf);
+    if (nums.every((n) => n !== null)) {
+      const max = Math.max(...nums);
+      if (nums.every((n) => n >= 1900 && n <= 2200)) return 'y';
+      if (opts.length >= 28 && opts.length <= 31 && max <= 31 && Math.min(...nums) >= 1) return 'd';
+      if (opts.length === 12 && max === 12) return 'mo';
+    } else if (opts.length === 12 && opts.every((o) => monthOf(o))) return 'mo';
+  }
+  return null;
+}
+
+/** Testo comune ai nomi delle parti senza le parole di data ("Partenza giorno" + "Partenza mese" -> "Partenza"). */
+function sharedLabel(names) {
+  const words = names.map((n) => partTokens(n).filter((w) => !Object.values(PART_SETS).some((s) => s.has(w))));
+  if (!words.length || !words[0].length) return '';
+  const common = words[0].filter((w) => words.every((ws) => ws.includes(w)));
+  return common.join(' ');
+}
+
+/** Gruppi di campi consecutivi giorno+mese+anno (ore e minuti facoltativi): diventano un solo campo "data". */
+function addDateGroups(items, regions, out) {
+  const runs = [];
+  let cur = null;
+  for (const it of items) {
+    const ok = /^(sel|text|num|combo)$/.test(it.role) && !it.flags.includes('off');
+    const part = ok ? datePart(it) : null;
+    if (!part || !cur || cur.reg !== it.reg || cur.parts.some((x) => x.part === part)) {
+      if (cur) runs.push(cur);
+      cur = part ? { reg: it.reg, parts: [] } : null;
+    }
+    if (cur && part) cur.parts.push({ part, it });
+  }
+  if (cur) runs.push(cur);
+  for (const run of runs) {
+    const has = (k) => run.parts.some((x) => x.part === k);
+    if (!(has('d') && has('mo') && has('y'))) continue;
+    const first = run.parts[0].it;
+    const gx = first.gx || {};
+    const any = (k) => run.parts.map((x) => x.it.gx && x.it.gx[k]).find(Boolean) || '';
+    const r = regions[first.reg];
+    const shared = sharedLabel(run.parts.map((x) => x.it.name));
+    const own = partTokens(first.name).some((w) => PART_SETS[run.parts[0].part].has(w)) ? '' : first.name;
+    const nmBase = sharedLabel(run.parts.map((x) => (x.it.gx && x.it.gx.nm) || ''));
+    const texts = [any('grp'), own, shared, any('leg'), gx.near, nmBase].filter(Boolean);
+    const name = texts[0] || 'data';
+    for (const x of run.parts) {
+      const f = out.find((o) => o.kind === 'field' && o.id === x.it.id);
+      if (f) f.part = x.part;
+    }
+    out.push({ kind: 'dateparts', id: first.id + '+', role: 'dateparts', name, parts: run.parts, reg: first.reg, low: !!(r && r.low), leg: gx.leg || '', texts: texts.length ? texts : ['data'] });
+  }
   return out;
+}
+
+/** Data (e ora facoltativa) da un valore: "12/06/2025", "2025-06-12 10:30", "2025-06-12T10:30". */
+export function parseDateTime(v) {
+  const s = String(v ?? '').trim();
+  const m = s.match(/^(\S+?)(?:[ T]+(\d{1,2})[:.](\d{2})(?::\d{2})?)?$/);
+  if (!m) return null;
+  const d = parseDate(m[1]);
+  if (!d) return null;
+  return m[2] ? { ...d, h: +m[2], mi: +m[3] } : d;
 }
 
 /** Quanto il valore e' compatibile con il campo (0..1, negativo se incompatibile). */
@@ -291,6 +397,9 @@ function valueFit(value, f) {
     const best = Math.max(0, ...f.items.map((r) => similarity(String(value), r.name)));
     return k === 'bool' ? -0.3 : best > 0.8 ? 1 : best > 0.5 ? 0.4 : -0.2;
   }
+  if (f.kind === 'dateparts') return parseDateTime(value) ? 1 : -0.8;
+  // una data intera non entra nel solo campo "giorno" o "mese" di una data divisa
+  if (f.part && (k === 'date' || parseDateTime(value))) return -0.6;
   switch (f.role) {
     case 'chk':
     case 'sw':
