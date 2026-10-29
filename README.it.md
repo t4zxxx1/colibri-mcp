@@ -16,7 +16,23 @@
 <a href="https://insiders.vscode.dev/redirect/mcp/install?name=colibri&config=%7B%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22github%3At4zxxx1%2Fcolibri-mcp%22%5D%7D"><img alt="Installa in VS Code" src="https://img.shields.io/badge/VS_Code-Installa-0098FF?style=flat-square&logo=visualstudiocode&logoColor=white"/></a>
 <a href="https://cursor.com/en/install-mcp?name=colibri&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsImdpdGh1Yjp0NHp4eHgxL2NvbGlicmktbWNwIl19"><img alt="Installa in Cursor" src="https://img.shields.io/badge/Cursor-Installa-000000?style=flat-square&logo=cursor&logoColor=white"/></a>
 <a href="https://github.com/t4zxxx1/colibri-mcp/releases/latest/download/colibri.mcpb"><img alt="Claude Desktop" src="https://img.shields.io/badge/Claude_Desktop-.mcpb-D97757?style=flat-square&logo=anthropic&logoColor=white"/></a>
+<a href="#installazione-in-una-riga"><img alt="Claude Code" src="https://img.shields.io/badge/Claude_Code-1_riga-D97757?style=flat-square&logo=anthropic&logoColor=white"/></a>
+<a href="#installazione-in-una-riga"><img alt="OpenAI Codex" src="https://img.shields.io/badge/Codex-1_riga-412991?style=flat-square"/></a>
+<a href="#installazione-in-una-riga"><img alt="Copilot CLI" src="https://img.shields.io/badge/Copilot_CLI-1_riga-24292f?style=flat-square&logo=githubcopilot&logoColor=white"/></a>
+<a href="#installazione-in-una-riga"><img alt="Gemini CLI" src="https://img.shields.io/badge/Gemini_CLI-1_riga-4285F4?style=flat-square&logo=googlegemini&logoColor=white"/></a>
 </p>
+
+<b>Una riga, qualsiasi agente</b> — niente account, niente chiave API, niente build:
+
+</div>
+
+```bash
+claude mcp add colibri -- npx -y github:t4zxxx1/colibri-mcp     # oppure: codex / copilot mcp add …
+```
+
+<div align="center">
+
+**[Perché](#perché-colibri)** · **[Installa](#installazione-in-una-riga)** · **[vs Jev](#meglio-di-jev--con-i-numeri-veri)** · **[Benchmark](#benchmark)** · **[Come funziona](#come-funziona)** · **[Tool](#tool)** · **[Sicurezza](#sicurezza)** · **[Impostazioni](#impostazioni)** · **[FAQ](#domande-frequenti)**
 
 [English](README.md) · **Italiano**
 
@@ -44,7 +60,7 @@ Gli agenti AI navigano nel modo più costoso possibile: **uno screenshot costa ~
   | Costo | 0,028 $ ogni 1.000 chiamate + chiave API | **0, nessuna chiave** |
 
   I due insiemi di dati sono diversi, quindi va letto come ordine di grandezza: Jev copre qualsiasi argomento, Colibri fa un solo lavoro (dato → campo del modulo). Metodo e avvertenze sono in [Meglio di Jev](#meglio-di-jev--con-i-numeri-veri).
-- 🔌 **Qualsiasi client MCP**: Claude Desktop e Code, GitHub Copilot (VS Code), Cursor, Windsurf, Codex, Gemini CLI…
+- 🔌 **Una riga in qualsiasi agente**: Claude Code, OpenAI Codex, GitHub Copilot (CLI e VS Code), Gemini CLI, Cursor, Claude Desktop, Windsurf… — [ecco come](#installazione-in-una-riga)
 - 🛡️ **Sicuro per default**: invio/pagamento/eliminazione chiedono il tuo ok (`!c`), password/carte/OTP non vengono mai scritti dall'AI (`!x`)
 - 🏠 **100% locale**: il tuo profilo Chrome, i tuoi accessi, nessun dato passa da server di terzi
 
@@ -52,51 +68,37 @@ Gli agenti AI navigano nel modo più costoso possibile: **uno screenshot costa ~
 <img src="docs/assets/terminal.svg" alt="Demo di browse_task: 21 etichette dell'utente abbinate a 21 campi senza leggere la pagina" width="100%"/>
 </div>
 
-## Installazione in 30 secondi
+<div align="right"><a href="#top">↑ torna su</a></div>
 
-Servono **Node.js ≥ 18** e **Google Chrome o Microsoft Edge**. Il server si avvia con:
+---
 
-```bash
-npx -y github:t4zxxx1/colibri-mcp
-```
+## Installazione in una riga
 
-<details open>
-<summary><b>Claude Desktop</b> — un clic</summary>
+<div align="center">
+<img src="docs/assets/agents.svg" alt="Una riga, qualsiasi agente: Claude Code, Codex, Copilot CLI, Gemini CLI, VS Code, Claude Desktop, Cursor, Windsurf" width="100%"/>
+</div>
 
-Scarica **[colibri.mcpb](https://github.com/t4zxxx1/colibri-mcp/releases/latest/download/colibri.mcpb)** e aprilo con doppio clic. Le impostazioni (domini consentiti, browser invisibile, cartella del profilo…) sono in *Impostazioni → Estensioni*.
+Servono solo **Node.js ≥ 18** e **Chrome o Edge**. Niente account, niente chiave API, niente compilazione: `npx` scarica Colibri da GitHub e lo avvia sul tuo computer.
 
-</details>
+| Il tuo agente | Installazione |
+|---|---|
+| **Claude Code** | `claude mcp add colibri -- npx -y github:t4zxxx1/colibri-mcp` |
+| **OpenAI Codex** (CLI + estensione IDE) | `codex mcp add colibri -- npx -y github:t4zxxx1/colibri-mcp` |
+| **GitHub Copilot CLI** | `copilot mcp add colibri -- npx -y github:t4zxxx1/colibri-mcp` |
+| **GitHub Copilot in VS Code** | [**un clic**](https://insiders.vscode.dev/redirect/mcp/install?name=colibri&config=%7B%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22github%3At4zxxx1%2Fcolibri-mcp%22%5D%7D) · oppure `code --add-mcp '{"name":"colibri","command":"npx","args":["-y","github:t4zxxx1/colibri-mcp"]}'` |
+| **Gemini CLI** | `gemini mcp add -s user colibri npx -y github:t4zxxx1/colibri-mcp` |
+| **Claude Desktop** | scarica [**colibri.mcpb**](https://github.com/t4zxxx1/colibri-mcp/releases/latest/download/colibri.mcpb) → doppio clic |
+| **Cursor** | [**un clic**](https://cursor.com/en/install-mcp?name=colibri&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsImdpdGh1Yjp0NHp4eHgxL2NvbGlicmktbWNwIl19) |
+| **Windsurf · Cline · Roo · qualsiasi altro client** | incolla il [JSON di 3 righe](#configurazione-manuale) |
 
-<details>
-<summary><b>Claude Code</b></summary>
+**Poi basta chiedere** — *"Apri il portale fornitori e compila la domanda con questi dati: …"* oppure *"Con Colibri leggimi le edizioni del progetto PF-2026-115"*. Chrome si apre alla prima chiamata; fai l'accesso una volta e se lo ricorda.
 
-```bash
-claude mcp add colibri -- npx -y github:t4zxxx1/colibri-mcp
-```
-</details>
-
-<details>
-<summary><b>GitHub Copilot in VS Code</b></summary>
-
-Clicca il badge **Installa in VS Code** qui sopra, oppure aggiungi a `.vscode/mcp.json`:
-
-```json
-{
-  "servers": {
-    "colibri": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "github:t4zxxx1/colibri-mcp"]
-    }
-  }
-}
-```
-</details>
+### Configurazione manuale
 
 <details>
-<summary><b>Cursor · Windsurf · Gemini CLI · Cline · qualsiasi client con <code>mcpServers</code></b></summary>
+<summary><b>JSON <code>mcpServers</code></b> — Cursor, Windsurf, Cline, Roo, Gemini CLI, Claude Desktop…</summary>
 
-`~/.cursor/mcp.json`, `~/.codeium/windsurf/mcp_config.json`, `~/.gemini/settings.json`, `claude_desktop_config.json` di Claude Desktop…
+`~/.cursor/mcp.json`, `~/.codeium/windsurf/mcp_config.json`, `~/.gemini/settings.json`, `claude_desktop_config.json`…
 
 ```json
 {
@@ -112,9 +114,23 @@ Clicca il badge **Installa in VS Code** qui sopra, oppure aggiungi a `.vscode/mc
 </details>
 
 <details>
-<summary><b>OpenAI Codex CLI</b></summary>
+<summary><b>VS Code</b> — <code>.vscode/mcp.json</code></summary>
 
-`~/.codex/config.toml`:
+```json
+{
+  "servers": {
+    "colibri": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "github:t4zxxx1/colibri-mcp"]
+    }
+  }
+}
+```
+</details>
+
+<details>
+<summary><b>OpenAI Codex</b> — <code>~/.codex/config.toml</code></summary>
 
 ```toml
 [mcp_servers.colibri]
@@ -124,7 +140,7 @@ args = ["-y", "github:t4zxxx1/colibri-mcp"]
 </details>
 
 <details>
-<summary><b>Dal sorgente</b> (senza npx, avvio più rapido)</summary>
+<summary><b>Dal sorgente</b> — senza npx, avvio più rapido</summary>
 
 ```bash
 git clone https://github.com/t4zxxx1/colibri-mcp
@@ -135,7 +151,9 @@ cd colibri-mcp && npm ci --omit=dev
 
 > **Su Windows:** se il client non trova `npx`, usa `"command": "cmd", "args": ["/c", "npx", "-y", "github:t4zxxx1/colibri-mcp"]`.
 
-Poi basta chiedere: *"Apri il portale fornitori e compila la domanda con questi dati: …"* — oppure *"Con Colibri leggimi le edizioni del progetto PF-2026-115"*.
+<div align="right"><a href="#top">↑ torna su</a></div>
+
+---
 
 ## Meglio di Jev — con i numeri veri
 
@@ -159,6 +177,10 @@ Colibri porta **la stessa idea come motore locale** dentro il server MCP, specia
 
 > **Nota onesta.** Gli insiemi di dati sono diversi: Jev 1.14 è misurato su 2.450 domande di scelta generiche, il motore locale su 419 casi di abbinamento campo-dato da pagine di prova scritte dall'autore (il Test 5 indipendente è stato scritto *dopo* le modifiche al motore e misurato una sola volta). Jev è generalista; questo motore fa un solo lavoro ed è ottimizzato per quello. È un ordine di grandezza, non una classifica. Metodo completo: [docs/calibrazione.md](docs/calibrazione.md).
 
+<div align="right"><a href="#top">↑ torna su</a></div>
+
+---
+
 ## Benchmark
 
 Stesse pagine, stessi compiti, otto metodi. Tutti hanno completato tutti i compiti. **"Contesto totale"** è la somma dei token che il modello rilegge in tutti i turni — ciò che determina davvero costo e lentezza.
@@ -176,6 +198,10 @@ Stesse pagine, stessi compiti, otto metodi. Tutti hanno completato tutti i compi
 | Definizioni dei tool, a ogni turno | — | 4.536 | — | — | **1.347** |
 
 Tabelle complete, ipotesi e limiti (le pagine di prova sono nate insieme a questo strumento, che quindi gioca in casa): [docs/benchmark.md](docs/benchmark.md).
+
+<div align="right"><a href="#top">↑ torna su</a></div>
+
+---
 
 ## Come funziona
 
@@ -218,6 +244,10 @@ ok 22/22
 
 > Le descrizioni dei tool sono in inglese telegrafico per il modello (circa il 37% di token in meno); l'output delle pagine resta nella loro lingua. Funziona su qualsiasi sito e lingua — invio, consensi, password, carte e banner dei cookie sono riconosciuti in italiano, inglese, francese, spagnolo, tedesco e portoghese.
 
+<div align="right"><a href="#top">↑ torna su</a></div>
+
+---
+
 ## Tool
 
 | Tool | Cosa fa |
@@ -230,12 +260,20 @@ ok 22/22
 | `browse_screenshot` | JPEG ridotto (~900 token) della finestra, di un elemento o di una regione — solo quando il testo non basta |
 | `browse_stats` | Token usati nella sessione rispetto agli screenshot |
 
+<div align="right"><a href="#top">↑ torna su</a></div>
+
+---
+
 ## Sicurezza
 
 - **`!c` azioni con effetti** — invio, conferma, salvataggio, eliminazione, pagamento, accettazione di termini, caricamento: bloccate finché l'utente non dà l'ok, poi ripetute con `"confirm": true`.
 - **`!x` dati riservati** — password, numeri di carta, CVV, OTP, IBAN: l'AI non può mai scriverli, nemmeno con conferma. Li inserisci tu nella finestra.
 - **Compiti guidati**: il motore agisce da solo solo sopra la soglia di confidenza; l'invio non parte con domande aperte, errori o campi obbligatori vuoti.
 - **Domini consentiti**, niente `file://` / `javascript:`, testo delle pagine trattato come dato non fidato (resistente alla prompt injection), riferimenti unici per sessione.
+
+<div align="right"><a href="#top">↑ torna su</a></div>
+
+---
 
 ## Impostazioni
 
@@ -250,6 +288,10 @@ ok 22/22
 | `CB_ALLOW_SCREENSHOT` | `true` | |
 | `CB_MODE` / `CB_CDP_URL` | `launch` | `cdp` si collega al **tuo Chrome già aperto** con `--remote-debugging-port=9222` |
 
+<div align="right"><a href="#top">↑ torna su</a></div>
+
+---
+
 ## Limiti
 
 - Grafici, canvas e mappe non hanno testo: l'agente usa lo screenshot ridotto (con i riferimenti disegnati sopra) e il clic a coordinate relative.
@@ -257,7 +299,50 @@ ok 22/22
 - CAPTCHA e accessi li fai tu, nella finestra.
 - Testato su pagine costruite sul modello dei portali della pubblica amministrazione: segnala nelle [Issues](https://github.com/t4zxxx1/colibri-mcp/issues) i siti che non funzionano.
 
+<div align="right"><a href="#top">↑ torna su</a></div>
+
+---
+
+## Domande frequenti
+
+<details>
+<summary><b>Serve un account Jev, una chiave API o un piano a pagamento?</b></summary>
+
+No. Il motore in stile Jev gira in locale dentro Colibri. Usi solo l'agente che hai già (Claude, Copilot, Codex, Gemini…).
+</details>
+
+<details>
+<summary><b>Quale browser usa? Vede i miei accessi?</b></summary>
+
+Chrome o Edge, con un profilo dedicato in `~/.colibri/profile`: fai l'accesso una volta e se lo ricorda. Per usare **il tuo** Chrome già aperto, avvialo con `--remote-debugging-port=9222` e imposta `CB_MODE=cdp`.
+</details>
+
+<details>
+<summary><b>Come aggiorno o blocco una versione?</b></summary>
+
+`github:t4zxxx1/colibri-mcp` segue l'ultimo `main`. Per fissare una release usa `github:t4zxxx1/colibri-mcp#v0.4.0`. Su Claude Desktop scarica il nuovo `.mcpb` dalle [Release](https://github.com/t4zxxx1/colibri-mcp/releases).
+</details>
+
+<details>
+<summary><b>Funziona invisibile, su un server o in CI?</b></summary>
+
+Sì: `CB_HEADLESS=true`. Accessi e CAPTCHA la prima volta richiedono comunque una finestra visibile.
+</details>
+
+<details>
+<summary><b>L'AI può pagare, inviare o scrivere la mia password per errore?</b></summary>
+
+No. Le azioni con effetti (`!c`) richiedono il tuo ok esplicito, i dati segreti (`!x`) non possono mai essere scritti dall'AI. Vedi [Sicurezza](#sicurezza).
+</details>
+
+<div align="right"><a href="#top">↑ torna su</a></div>
+
+---
+
 ## Per sviluppatori
+
+<details>
+<summary><b>Build, test, benchmark, release</b></summary>
 
 ```bash
 npm ci            # dipendenze di sviluppo e di esecuzione
@@ -269,6 +354,9 @@ npm run build     # dist/colibri.mcpb
 
 Documentazione: [come funziona](docs/come-funziona.md) · [benchmark](docs/benchmark.md) · [calibrazione e confronto con Jev](docs/calibrazione.md).
 Nuova versione: aggiorna `version` in `package.json`, `extension/manifest.json`, `extension/server/package.json`, poi `git tag vX.Y.Z && git push --tags` — la CI esegue i test, crea il `.mcpb` e lo pubblica.
+</details>
+
+---
 
 ## Sostieni il progetto
 
