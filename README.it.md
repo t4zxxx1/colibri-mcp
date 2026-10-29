@@ -34,7 +34,16 @@ Gli agenti AI navigano nel modo più costoso possibile: **uno screenshot costa ~
 **Colibri** trasforma ogni pagina in poche centinaia di token di righe di testo — campi, valori, stato, segnali di rischio — esegue **molti passi in una sola chiamata**, risponde **solo con ciò che è cambiato** e compila i moduli con un **motore locale in stile Jev** che non richiede chiavi API e costa **zero token**.
 
 - ⚡ **27.760 token** per una domanda di 22 campi su due pagine — contro 318.910 con Playwright MCP e 2,48 milioni con gli screenshot
-- 🧠 **Decisioni tipizzate in stile Jev, in locale**: accuratezza 98,6%, AUROC 0,95, **1,7 ms** per abbinamento, **0 €**
+- 🧠 **Decisioni tipizzate in stile Jev, in locale, e davanti a Jev 1.14 nella compilazione dei moduli**:
+
+  | | Jev 1.14 ([System One Bench](https://systemonebench.dev) pubblico, 2.450 domande di scelta) | Colibri v0.4 (419 casi di abbinamento campo-dato) |
+  |---|---|---|
+  | Accuratezza | 75,7% | **98,6%** · **87,9%** su un modulo mai visto |
+  | AUROC della confidenza | 0,81 | **0,95** |
+  | Latenza p50 | 136 ms | **1,7 ms** |
+  | Costo | 0,028 $ ogni 1.000 chiamate + chiave API | **0, nessuna chiave** |
+
+  I due insiemi di dati sono diversi, quindi va letto come ordine di grandezza: Jev copre qualsiasi argomento, Colibri fa un solo lavoro (dato → campo del modulo). Metodo e avvertenze sono in [Meglio di Jev](#meglio-di-jev--con-i-numeri-veri).
 - 🔌 **Qualsiasi client MCP**: Claude Desktop e Code, GitHub Copilot (VS Code), Cursor, Windsurf, Codex, Gemini CLI…
 - 🛡️ **Sicuro per default**: invio/pagamento/eliminazione chiedono il tuo ok (`!c`), password/carte/OTP non vengono mai scritti dall'AI (`!x`)
 - 🏠 **100% locale**: il tuo profilo Chrome, i tuoi accessi, nessun dato passa da server di terzi

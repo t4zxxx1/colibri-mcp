@@ -34,7 +34,16 @@ AI agents browse the web in the most expensive way possible: a **screenshot cost
 **Colibri** turns each page into a few hundred tokens of plain rows — fields, values, state, risk flags — runs **many steps in one call**, answers with **only what changed**, and fills forms with a **local Jev-style engine** that needs no API key and costs **zero tokens**.
 
 - ⚡ **27,760 tokens** for a 22-field, two-page application — vs 318,910 with Playwright MCP and 2.48 M with screenshots
-- 🧠 **Jev-style typed decisions, locally**: 98.6% accuracy, AUROC 0.95, **1.7 ms** per match, **$0**
+- 🧠 **Jev-style typed decisions, locally — and ahead of Jev 1.14 on form filling**:
+
+  | | Jev 1.14 (public [System One Bench](https://systemonebench.dev), 2,450 choice questions) | Colibri v0.4 (419 form-matching cases) |
+  |---|---|---|
+  | Accuracy | 75.7% | **98.6%** · **87.9%** on a form never seen before |
+  | Confidence AUROC | 0.81 | **0.95** |
+  | Latency p50 | 136 ms | **1.7 ms** |
+  | Cost | $0.028 / 1,000 calls + API key | **$0, no key** |
+
+  The two datasets are different, so take this as an order of magnitude: Jev handles any domain, Colibri does one job (data → form field). Method and caveats are in [Better than Jev](#better-than-jev--with-real-numbers).
 - 🔌 **Any MCP client**: Claude Desktop & Code, GitHub Copilot (VS Code), Cursor, Windsurf, Codex, Gemini CLI…
 - 🛡️ **Safe by default**: submit/pay/delete need your OK (`!c`), passwords/cards/OTP are never typed by the AI (`!x`)
 - 🏠 **100% local**: your Chrome profile, your logins, nothing goes through third-party servers
