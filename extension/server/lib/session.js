@@ -18,6 +18,11 @@ const yes = (v, def) => {
   if (!c) return def;
   return /^(1|true|yes|si|sì|on)$/i.test(c);
 };
+// evaluate con tempo massimo: alcuni iframe (es. about:blank con frammento, frame mai inizializzati) non rispondono mai
+const evalIn = (f, fn, arg, ms = 2500) => {
+  let t;
+  return Promise.race([f.evaluate(fn, arg), new Promise((_, rej) => (t = setTimeout(() => rej(new Error('frame non risponde')), ms)))]).finally(() => clearTimeout(t));
+};
 const firstLine = (e) => String((e && e.message) || e).split('\n')[0].replace(/^\w+Error: /, '').slice(0, 220);
 
 export function loadConfig(env = process.env) {
@@ -39,6 +44,9 @@ export function loadConfig(env = process.env) {
     rejectCookies: yes(env.CB_REJECT_COOKIES, true),
     maxItems: Math.max(20, parseInt(clean(env.CB_MAX_ITEMS) || '120', 10) || 120),
     extraArgs: clean(env.CB_EXTRA_ARGS) ? clean(env.CB_EXTRA_ARGS).split(/\s+/) : [],
+    // secondi di attesa quando compare un CAPTCHA o una verifica anti-bot (0 = non aspettare)
+    humanWait: Math.max(0, parseInt(clean(env.CB_HUMAN_WAIT) || '50', 10) || 0),
+    humanShow: yes(env.CB_HUMAN_SHOW, true),
   };
 }
 
@@ -231,15 +239,16 @@ export class Session {
           await fe.dispose();
         } catch {}
         if (!box || box.width < 20 || box.height < 20) continue;
-        if (/recaptcha|hcaptcha|turnstile|challenges\.cloudflare|arkoselabs|funcaptcha/i.test(f.url())) {
-          if (box.height >= 70 && !/\/anchor\?.*size=invisible/.test(f.url())) out.captcha = true;
+        if (/recaptcha|hcaptcha|turnstile|challenges\.cloudflare|arkoselabs|funcaptcha|captcha-delivery|geetest/i.test(f.url())) {
+          if (box.height >= 40 && !/\/anchor\?.*size=invisible/.test(f.url())) out.captcha = true;
           continue;
         }
       }
       let r;
       for (let attempt = 0; attempt < 2 && !r; attempt++) {
         try {
-          r = JSON.parse(await f.evaluate(P.collectInPage, { prefix: this.framePrefix(f), start: this.idN, json: true }));
+          const arg = { prefix: this.framePrefix(f), start: this.idN, json: true };
+          r = JSON.parse(isMain ? await f.evaluate(P.collectInPage, arg) : await evalIn(f, P.collectInPage, arg, 4000));
         } catch (e) {
           if (!isMain) break;
           if (attempt) throw e;
@@ -272,6 +281,11 @@ export class Session {
     }
     if (out.modal) out.items = out.items.filter((i) => i.frame === main);
     out.alerts = out.alerts.slice(0, 5);
+    const ch = await this.challenge(page);
+    if (ch && !ch.err) {
+      out.captcha = true;
+      out.challenge = ch;
+    }
     if (out.meta) {
       this.stats.vw = out.meta.vw || this.stats.vw;
       this.stats.vh = out.meta.vh || this.stats.vh;
@@ -331,7 +345,7 @@ export class Session {
     if (!this.cfg.rejectCookies) return '';
     for (const f of page.frames()) {
       try {
-        const r = await f.evaluate(P.dismissCookiesInPage);
+        const r = await evalIn(f, P.dismissCookiesInPage);
         if (r) {
           await this.settle(page, 1500, 150);
           return r;
@@ -343,16 +357,19 @@ export class Session {
 
   // ---------- tool: open ----------
   async open(url) {
-    const page = await this.ensure();
+    let page = await this.ensure();
     const u = this.checkUrl(url);
     await page.goto(u, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await this.settle(page, 8000, 250, 300);
+    const g = await this.humanGate(page);
+    page = g.page;
     const ck = await this.dismissCookies(page);
     const snap = await this.collect();
     this.remember(snap);
     this.stats.observations++;
     let txt = renderView(snap, { url: page.url(), tabs: this.tabs(), max: this.cfg.maxItems });
     if (ck) txt = `cookie: rifiutati i non necessari (${ck})\n` + txt;
+    if (g.note) txt = g.note + '\n' + txt;
     if (!this.allowedUrl(page.url())) txt = `ATTENZIONE: ${new URL(page.url()).hostname} e' fuori dai domini consentiti, le azioni sono bloccate\n` + txt;
     return txt;
   }
@@ -371,11 +388,86 @@ export class Session {
 
   // ---------- tool: view ----------
   async view(opts = {}) {
-    const page = await this.ensure();
+    let page = await this.ensure();
+    const g = await this.humanGate(page);
+    page = g.page;
     const snap = await this.collect();
     this.stats.observations++;
     if (!opts.filter && !opts.offset) this.remember(snap);
-    return renderView(snap, { url: page.url(), tabs: this.tabs(), max: this.cfg.maxItems, ...opts });
+    const txt = renderView(snap, { url: page.url(), tabs: this.tabs(), max: this.cfg.maxItems, ...opts });
+    return g.note ? g.note + '\n' + txt : txt;
+  }
+
+  // ---------- CAPTCHA e verifiche anti-bot ----------
+  /** Verifica in corso nella pagina: null se nessuna, { err } se la pagina non e' leggibile (es. in navigazione). */
+  async challenge(page) {
+    try {
+      return await page.mainFrame().evaluate(P.challengeInPage);
+    } catch {
+      return { err: true };
+    }
+  }
+
+  /**
+   * Se la pagina e' bloccata da una verifica (o, con el, se il modulo di el contiene un CAPTCHA non risolto)
+   * Colibri non la aggira: si mette in pausa, mostra una barra all'utente e riprende da solo quando la verifica
+   * e' superata. Senza finestra (headless) riapre Chrome visibile sulla stessa pagina.
+   * Ritorna { page, note, stuck }.
+   */
+  async humanGate(page, el = undefined) {
+    const inline = el !== undefined;
+    let ch = await this.challenge(page);
+    if (!ch || ch.err) return { page, note: '' };
+    if (inline) {
+      if (ch.block || ch.solved) return { page, note: '' };
+      const inForm = await (el ? el.evaluate(P.captchaFormInPage) : page.mainFrame().evaluate(P.captchaFormInPage, null)).catch(() => false);
+      if (!inForm) return { page, note: '' };
+    } else if (!ch.block) return { page, note: '' };
+    const sec = this.cfg.humanWait;
+    const ask = `chiedi all'utente di completarla nella finestra di Chrome, poi browse_view`;
+    if (!sec) return { page, stuck: true, note: `verifica ${ch.kind} in corso: ${ask}` };
+    const t0 = Date.now();
+    const pre = [];
+    const done = (c) => !c || (!c.err && (inline ? !c.block && c.solved : !c.block));
+    const poll = async (until, banner) => {
+      let c = ch;
+      if (banner) await page.bringToFront().catch(() => {});
+      while (!done(c) && Date.now() < until) {
+        if (page.isClosed()) {
+          if (!this.ctx) return { err: true, closed: true };
+          page = await this.ensure();
+        }
+        if (banner) await page.mainFrame().evaluate(P.humanBannerInPage, { show: true, kind: ch.kind }).catch(() => {});
+        await new Promise((r) => setTimeout(r, 700));
+        c = await this.challenge(page);
+        if (c && !c.err && c.kind) ch = c;
+      }
+      if (banner) await page.mainFrame().evaluate(P.humanBannerInPage, { show: false }).catch(() => {});
+      return c;
+    };
+    let c;
+    if (this.cfg.headless) {
+      // molte verifiche (Cloudflare "Just a moment", Turnstile gestito) si superano da sole in pochi secondi
+      c = await poll(t0 + Math.min(8, sec) * 1000, false);
+      if (!done(c)) {
+        if (inline || this.cfg.mode !== 'launch' || !this.cfg.humanShow)
+          return { page, stuck: true, note: `verifica ${ch.kind} in corso ma il browser e' senza finestra (CB_HEADLESS): ${inline ? 'serve una finestra visibile' : ask}` };
+        const url = page.url();
+        await this.close();
+        this.cfg.headless = false;
+        page = await this.ensure();
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
+        await this.settle(page, 8000, 250, 300);
+        pre.push('aperta una finestra visibile di Chrome per la verifica');
+        ch = (await this.challenge(page)) || ch;
+        c = await poll(t0 + sec * 1000, true);
+      }
+    } else c = await poll(t0 + sec * 1000, true);
+    const s = Math.round((Date.now() - t0) / 1000);
+    if (c && c.closed) return { page, stuck: true, note: 'finestra chiusa durante la verifica' };
+    if (!done(c)) return { page, stuck: true, note: [...pre, `verifica ${ch.kind} ancora da completare dopo ${s} s: ${ask} (riprende ad aspettare)`].join('; ') };
+    await this.settle(page, 8000, 250, 200);
+    return { page, note: [...pre, `verifica ${ch.kind} superata dopo ${s} s`].join('; ') };
   }
 
   // ---------- tool: do ----------
@@ -430,6 +522,10 @@ export class Session {
     const notes = [];
     let done = 0;
     let stop = '';
+    const g0 = await this.humanGate(page);
+    page = g0.page;
+    if (g0.note) notes.push(g0.note);
+    if (g0.stuck) return `ok 0/${steps.length} · fermo: ${g0.note}`;
     let snap = await this.collect();
     if (!this.last || this.last.page !== page) this.remember(snap);
     const touched = new Map();
@@ -476,12 +572,28 @@ export class Session {
         }
       }
       page = this.page;
-      if (i < steps.length - 1) snap = await this.freshSnap(snap, page);
+      if (i < steps.length - 1) {
+        if (/^(click|press|goto|back|tab|waitFor)$/.test(act)) {
+          const g = await this.humanGate(page);
+          page = g.page;
+          if (g.note) notes.push(`${tag}: ${g.note}`);
+          if (g.stuck) {
+            stop = `fermo dopo il passo ${i + 1}: verifica da completare`;
+            break;
+          }
+        }
+        snap = await this.freshSnap(snap, page);
+      }
     }
 
     if (this.pending.size) await Promise.race([Promise.all([...this.pending]), new Promise((r) => setTimeout(r, 15000))]);
 
     page = this.page;
+    if (!stop) {
+      const g = await this.humanGate(page);
+      page = g.page;
+      if (g.note) notes.push(g.note);
+    }
     const after = await this.collect();
     this.stats.observations++;
     const head = [`ok ${done}/${steps.length}` + (stop ? ' · ' + stop : '')];
@@ -560,6 +672,8 @@ export class Session {
         const why = this.needConfirm(it, 'click', st);
         if (why) return { block: why };
         if (it.flags.includes('off')) throw new Error(`${it.id} "${it.name}" e' disattivato`);
+        const g = await this.humanGate(page, el);
+        if (g.stuck) return { block: g.note };
         if (st.force) await el.evaluate((e) => e.click());
         else {
           try {
@@ -570,8 +684,8 @@ export class Session {
             throw e;
           }
         }
-        if (!(await after(10000, 300))) return { note: 'pagina ancora in caricamento dopo 10 s (usa waitFor o browse_view)' };
-        return;
+        if (!(await after(10000, 300))) return { note: [g.note, 'pagina ancora in caricamento dopo 10 s (usa waitFor o browse_view)'].filter(Boolean).join('; ') };
+        return g.note ? { note: g.note } : undefined;
       }
       case 'fill':
       case 'type': {
@@ -650,7 +764,9 @@ export class Session {
         const { it, el } = await target(st.select);
         if (it.s === 'x') return { block: `!x ${it.id} "${it.name}": campo riservato, lo compila l'utente` };
         if (it.role !== 'sel') throw new Error(`${it.id} non e' un <select>: per menu personalizzati usa "click" e poi "pick"`);
-        const want = (Array.isArray(st.option) ? st.option : [st.option]).map((x) => String(x ?? ''));
+        const opt = st.option ?? st.value ?? st.text;
+        if (opt === undefined || opt === '') throw new Error(`manca "option": es. {"select":"${it.name}","option":"testo dell'opzione"}`);
+        const want = (Array.isArray(opt) ? opt : [opt]).map((x) => String(x ?? ''));
         try {
           await el.selectOption(want, { timeout: 3000 });
         } catch {
@@ -666,6 +782,8 @@ export class Session {
           await el.selectOption(vals.map((value) => ({ value })), { timeout: 3000 });
         }
         await after(1500);
+        const now = await el.evaluate((s) => [...s.selectedOptions].map((o) => (o.label || o.text).trim())).catch(() => null);
+        if (now && !now.length) return { id: it.id, note: `${it.id} risulta senza selezione: il componente ha annullato la scelta` };
         return { id: it.id };
       }
       case 'check': {
@@ -707,10 +825,15 @@ export class Session {
               });
           if (submits) return { block: `!c Enter invia il modulo${it ? ' (' + it.id + ')' : ''}: chiedi conferma all'utente, poi ripeti con "confirm": true` };
         }
+        let g = { note: '' };
+        if (key === 'Enter') {
+          g = await this.humanGate(page, el);
+          if (g.stuck) return { block: g.note };
+        }
         if (el) await el.press(key, { timeout: 5000 });
         else await page.keyboard.press(key);
         await after(6000, 300);
-        return;
+        return g.note ? { note: g.note } : undefined;
       }
       case 'pick': {
         const text = String(st.pick);
@@ -849,7 +972,7 @@ export class Session {
       const hits = [];
       for (const f of page.frames()) {
         try {
-          const r = await f.evaluate(P.findTextInPage, { query, max: max || 20 });
+          const r = await evalIn(f, P.findTextInPage, { query, max: max || 20 }, 4000);
           hits.push(...r.hits);
         } catch {}
         if (hits.length >= (max || 20)) break;

@@ -1,0 +1,14 @@
+<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Chiedi supporto</title></head><body>
+<h1>Chiedi supporto</h1>
+<script>
+// come Salesforce Lightning Locker: metodi vietati sulle ShadowRoot
+ShadowRoot.prototype.getElementById = function () { throw new Error('Disallowed method "getElementById" on ShadowRoot'); };
+customElements.define('lwc-input', class extends HTMLElement { connectedCallback() {
+  const s = this.attachShadow({ mode: 'open' });
+  const l = this.getAttribute('label'), id = 'lb' + Math.random().toString(36).slice(2);
+  s.innerHTML = `<span id="${id}">${l}</span><input aria-labelledby="${id}">`;
+} });
+</script>
+<form onsubmit="event.preventDefault()"><lwc-input label="Nome"></lwc-input><lwc-input label="Cognome"></lwc-input>
+<label for="desc">Descrizione</label><textarea id="desc"></textarea><button type="button">Avanti</button></form>
+</body></html>

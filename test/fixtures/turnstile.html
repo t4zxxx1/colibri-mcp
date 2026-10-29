@@ -1,0 +1,10 @@
+<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Contatti</title></head><body>
+<h1>Contatti</h1>
+<form id="f" onsubmit="event.preventDefault(); const t=document.querySelector('[name=cf-turnstile-response]').value; document.getElementById('out').textContent = t ? 'Modulo inviato con token' : 'Modulo inviato SENZA token';">
+<label for="nome">Nome</label><input id="nome" name="nome">
+<div class="cf-turnstile" style="width:300px;height:65px;background:#eee">Turnstile<input type="hidden" name="cf-turnstile-response" value=""></div>
+<button type="submit">Invia messaggio</button></form>
+<p id="out"></p>
+<script>const ms = +(new URLSearchParams(location.search).get('ms') || 2000);
+if (ms > 0) setTimeout(() => { document.querySelector('[name=cf-turnstile-response]').value = 'tok_' + 'x'.repeat(40); }, ms);</script>
+</body></html>

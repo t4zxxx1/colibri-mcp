@@ -332,6 +332,8 @@ ok 22/22
 | `CB_DOWNLOADS_DIR` | `~/Downloads` | |
 | `CB_CHROME_PATH` | automatico | solo se Chrome/Edge non viene trovato |
 | `CB_ALLOW_SCREENSHOT` | `true` | |
+| `CB_HUMAN_WAIT` | `50` | secondi di attesa mentre risolvi un CAPTCHA / una verifica (`0` = non aspettare) |
+| `CB_HUMAN_SHOW` | `true` | se il browser è invisibile e la verifica non si supera da sola, riapre Chrome visibile sulla stessa pagina |
 | `CB_MODE` / `CB_CDP_URL` | `launch` | `cdp` si collega al **tuo Chrome già aperto** con `--remote-debugging-port=9222` |
 
 <div align="right"><a href="#top">↑ torna su</a></div>
@@ -342,7 +344,7 @@ ok 22/22
 
 - Grafici, canvas e mappe non hanno testo: l'agente usa lo screenshot ridotto (con i riferimenti disegnati sopra) e il clic a coordinate relative.
 - Il motore di `browse_task` è un vocabolario calibrato, non un modello addestrato: con termini di settore che non conosce chiede più spesso (senza mai agire in modo sbagliato). Le risposte vengono ricordate per sito.
-- CAPTCHA e accessi li fai tu, nella finestra.
+- CAPTCHA e accessi li fai tu, nella finestra: Colibri non li aggira mai, si mette in pausa e riprende da solo (vedi FAQ).
 - Testato su pagine costruite sul modello dei portali della pubblica amministrazione: segnala nelle [Issues](https://github.com/t4zxxx1/colibri-mcp/issues) i siti che non funzionano.
 
 <div align="right"><a href="#top">↑ torna su</a></div>
@@ -373,6 +375,19 @@ Chrome o Edge, con un profilo dedicato in `~/.colibri/profile`: fai l'accesso un
 <summary><b>Funziona invisibile, su un server o in CI?</b></summary>
 
 Sì: `CB_HEADLESS=true`. Accessi e CAPTCHA la prima volta richiedono comunque una finestra visibile.
+</details>
+
+<details>
+<summary><b>Cosa succede quando un sito chiede un CAPTCHA o "verifica di essere umano"?</b></summary>
+
+Colibri riconosce la verifica (Cloudflare "Just a moment" / Turnstile, reCAPTCHA, hCaptcha, DataDome, PerimeterX "tieni premuto", AWS WAF, Arkose, GeeTest, Friendly Captcha, captcha a immagine) e **non prova ad aggirarla**. Invece:
+
+1. aspetta qualche secondo: molte verifiche (es. Cloudflare) si superano da sole;
+2. altrimenti mostra una barra in cima alla pagina, *"🐦 Colibri è in pausa: completa la verifica qui sotto"*, e porta la finestra in primo piano (se era invisibile riapre Chrome visibile sulla stessa pagina);
+3. riprende **da solo** appena l'hai risolta e prosegue con i passi rimanenti;
+4. con un CAPTCHA dentro un modulo compila tutto il resto e aspetta te prima di premere *Invia*.
+
+Se non la risolvi entro `CB_HUMAN_WAIT` secondi (default 50) l'agente viene avvisato di chiedertelo, e `browse_view` riprende ad aspettare. Per i siti con protezioni anti-bot molto severe conviene `CB_MODE=cdp` con il tuo Chrome di tutti i giorni.
 </details>
 
 <details>

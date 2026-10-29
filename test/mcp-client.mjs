@@ -18,6 +18,8 @@ export const TEST_ENV = {
   CB_CHROME_PATH: process.env.TEST_CHROME || '',
   CB_HEADLESS: process.env.TEST_HEADLESS ?? 'true',
   CB_EXTRA_ARGS: process.env.TEST_CHROME_ARGS ?? '--no-sandbox --disable-dev-shm-usage',
+  // nei test una verifica non apre mai una finestra visibile
+  CB_HUMAN_SHOW: 'false',
 };
 
 export const SERVER_ENTRY = process.env.TEST_SERVER || path.join(here, '../extension/server/index.js');

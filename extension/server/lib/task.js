@@ -212,6 +212,10 @@ export async function runTask(S, a) {
     const u = S.checkUrl(a.url);
     await page.goto(u, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await S.settle(page, 8000, 250, 300);
+    const g = await S.humanGate(page);
+    page = g.page;
+    if (g.note) notes.push(g.note);
+    if (g.stuck) return 'compito fermo: ' + g.note;
     const ck = await S.dismissCookies(page);
     if (ck) notes.push(`cookie rifiutati (${ck})`);
   }
@@ -228,7 +232,8 @@ export async function runTask(S, a) {
   const startUrl = page.url();
   const startModal = S.last.modal;
   await page.mainFrame().evaluate(() => { window.__cbAdded = []; }).catch(() => {});
-  if (snap.captcha) head.push("CAPTCHA: lo risolve l'utente nella finestra del browser");
+  if (snap.challenge && snap.challenge.block) head.push(`verifica ${snap.challenge.kind} in corso: chiedi all'utente di completarla nella finestra, poi browse_view`);
+  else if (snap.captcha) head.push(`CAPTCHA${snap.challenge ? ' ' + snap.challenge.kind : ''} nel modulo: all'invio Colibri aspetta che l'utente lo risolva`);
   if (snap.login) head.push("campo password: l'accesso lo fa l'utente nella finestra del browser");
 
   // ---- decidi: abbinamento parametri -> campi (domande "choice" con confidenza) ----
@@ -346,6 +351,10 @@ export async function runTask(S, a) {
       }
       try {
         const r = await S.step('click', { click: it.id, confirm: true }, snap, page);
+        if (r && r.block) {
+          blocked = `invio non eseguito: ${r.block}`;
+          break;
+        }
         if (r && r.note) notes.push(r.note);
         if (S.newPages.length) {
           const np = S.newPages.filter((x) => !x.isClosed()).pop();

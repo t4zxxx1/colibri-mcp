@@ -151,7 +151,7 @@ Dopo una domanda sugli autocompletamenti il popup viene chiuso, così gli altri 
 - **Domini consentiti**: elenco facoltativo; fuori da esso non si apre né si agisce. Bloccati `file://`, `javascript:` e tutto ciò che non è http o https.
 - **Finestre di conferma del sito** (`confirm()`): annullate per default; accettarle richiede conferma.
 - **Il testo delle pagine è contenuto non fidato**: non viene eseguito come istruzione.
-- **CAPTCHA e accessi** (SPID, CIE, password): li fa l'utente nella finestra, una volta; restano nel profilo dedicato, separato da quello personale.
+- **CAPTCHA e accessi** (SPID, CIE, password): li fa l'utente nella finestra, una volta; restano nel profilo dedicato, separato da quello personale. Quando compare una verifica anti-bot Colibri non la aggira: aspetta qualche secondo (molte si superano da sole), poi mostra una barra "Colibri è in pausa" e riprende da solo appena l'utente l'ha completata (`CB_HUMAN_WAIT`, default 50 s; senza finestra riapre Chrome visibile). Con un CAPTCHA dentro un modulo aspetta prima di premere invio.
 
 ## 8. Impostazioni
 

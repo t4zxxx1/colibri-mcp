@@ -68,16 +68,37 @@ export function collectInPage(opts) {
     return 'clk';
   }
 
+  // id cercato nella stessa radice (shadow DOM) e poi nel documento: alcuni framework (Salesforce Lightning/LWC,
+  // Locker) vietano getElementById o querySelector sulle ShadowRoot e lanciano un'eccezione
+  function byIdNear(el, id) {
+    let root = null;
+    try {
+      root = el.getRootNode();
+    } catch {}
+    if (root && root !== document) {
+      try {
+        if (root.getElementById) return root.getElementById(id);
+      } catch {}
+      try {
+        return root.querySelector('#' + CSS.escape(id));
+      } catch {}
+    }
+    try {
+      return document.getElementById(id);
+    } catch {
+      return null;
+    }
+  }
+
   function nameOf(el) {
     const tag = el.tagName.toLowerCase();
     let n = el.getAttribute('aria-label');
     if (!norm(n)) {
       const lb = el.getAttribute('aria-labelledby');
       if (lb) {
-        const root = el.getRootNode();
         n = lb
           .split(/\s+/)
-          .map((i) => txt(root.getElementById ? root.getElementById(i) : document.getElementById(i)))
+          .map((i) => txt(byIdNear(el, i)))
           .join(' ');
       }
     }
@@ -152,10 +173,28 @@ export function collectInPage(opts) {
   }
 
   const all = [];
+  const seen = new Set();
   (function gather(root) {
-    root.querySelectorAll(SEL).forEach((e) => all.push(e));
-    root.querySelectorAll('*').forEach((e) => {
-      if (e.shadowRoot) gather(e.shadowRoot);
+    let found, kids;
+    try {
+      found = root.querySelectorAll(SEL);
+      kids = root.querySelectorAll('*');
+    } catch {
+      return; // ShadowRoot con metodi vietati (Locker/LWC): si salta solo quel ramo
+    }
+    // con lo shadow DOM "sintetico" (LWC) lo stesso nodo puo' comparire sia nel documento sia nella ShadowRoot
+    found.forEach((e) => {
+      if (!seen.has(e)) {
+        seen.add(e);
+        all.push(e);
+      }
+    });
+    kids.forEach((e) => {
+      let sr = null;
+      try {
+        sr = e.shadowRoot;
+      } catch {}
+      if (sr) gather(sr);
     });
   })(document);
   const inc = new Set(all);
@@ -613,4 +652,92 @@ export function pairsInPage(a) {
     return { head, rows };
   });
   return JSON.stringify({ pairs: pairs.slice(0, 300), lines, tables });
+}
+
+/**
+ * Verifiche anti-bot (CAPTCHA, pagine "Just a moment", bot manager).
+ * block: la pagina e' bloccata finche' non si supera la verifica (muro a pagina intera o puzzle aperto).
+ * Altrimenti e' un riquadro dentro un modulo: solved dice se e' gia' stato risolto.
+ */
+export function challengeInPage() {
+  const onScreen = (e) => {
+    if (!e || !e.getBoundingClientRect) return false;
+    const r = e.getBoundingClientRect();
+    if (r.width < 8 || r.height < 8 || r.bottom < 0 || r.right < 0 || r.top > innerHeight + 2000) return false;
+    const s = getComputedStyle(e);
+    return s.visibility !== 'hidden' && s.display !== 'none' && +s.opacity > 0.05;
+  };
+  const any = (sel) => [...document.querySelectorAll(sel)].find((e) => onScreen(e) && !(e.closest && e.closest('.grecaptcha-badge')));
+  const filled = (sel) => [...document.querySelectorAll(sel)].some((e) => (e.value || '').length > 8);
+  const title = document.title || '';
+  const body = ((document.body && document.body.innerText) || '').replace(/\s+/g, ' ').slice(0, 4000);
+  const WALL =
+    /(just a moment|un momento\b|one more step|attention required|verify(ing)? (that )?you are (a )?human|verify(ing)? you'?re (a )?human|checking (your browser|if the site connection is secure)|verifica(re)? (di essere|che sei|che tu sia) (un )?(essere )?uman|controllo del browser|i'?m not a robot|non sono un robot|are you a (robot|human)|press (and|&) hold|tieni premuto|unusual traffic|traffico insolito|prove you'?re (not a robot|human)|access to this page has been denied|vérification de sécurité|êtes-vous un robot|verifique que (é|es) humano|sind sie ein mensch|bestätigen sie, dass sie ein mensch sind)/i;
+  const kindOf = (src) =>
+    /challenges\.cloudflare|turnstile/i.test(src) ? 'Turnstile' : /hcaptcha/i.test(src) ? 'hCaptcha' : /recaptcha/i.test(src) ? 'reCAPTCHA' : 'CAPTCHA';
+
+  // 1) muri a pagina intera
+  if (window._cf_chl_opt || any('#challenge-form,#challenge-running,#challenge-stage,#cf-challenge-running,.cf-browser-verification,#cf-please-wait,#cf-wrapper #challenge-body-text'))
+    return { kind: 'Cloudflare', block: true };
+  if (any('iframe[src*="captcha-delivery.com"],iframe[src*="geo.captcha-delivery"]')) return { kind: 'DataDome', block: true };
+  if (any('#px-captcha,#px-captcha-wrapper,iframe[src*="px-cloud.net"],iframe[src*="perimeterx"]')) return { kind: 'PerimeterX', block: true };
+  if (any('awswaf-captcha,#captcha-container[data-awswaf],#aws-waf-token') || window.AwsWafCaptcha) return { kind: 'AWS WAF', block: true };
+  if (any('iframe[src*="arkoselabs"],iframe[src*="funcaptcha"],#FunCaptcha,#arkose,#arkoseFrame')) return { kind: 'Arkose', block: true };
+  if (any('.geetest_panel_box,.geetest_box,.geetest_popup_wrap')) return { kind: 'GeeTest', block: true };
+  // puzzle a immagini aperto (reCAPTCHA / hCaptcha)
+  const puzzle = any('iframe[src*="recaptcha/api2/bframe"],iframe[src*="recaptcha/enterprise/bframe"],iframe[src*="hcaptcha"][src*="frame=challenge"]');
+  if (puzzle && puzzle.getBoundingClientRect().height > 120) return { kind: kindOf(puzzle.src), block: true };
+  const shortPage = body.length < 900 && document.querySelectorAll('input:not([type=hidden]),select,textarea').length < 3 && document.links.length < 8;
+  if (WALL.test(title) || (shortPage && WALL.test(body))) return { kind: 'anti-bot', block: true };
+
+  // 2) riquadri dentro un modulo
+  const RESP = '[name="g-recaptcha-response"],[name="h-captcha-response"],[name="cf-turnstile-response"],[name="frc-captcha-solution"],[name="mtcaptcha-verifiedtoken"]';
+  const widget = any(
+    '.g-recaptcha:not([data-size=invisible]),.h-captcha:not([data-size=invisible]),.cf-turnstile,.frc-captcha,.mtcaptcha,' +
+      'iframe[src*="recaptcha"][src*="anchor"]:not([src*="size=invisible"]),iframe[src*="hcaptcha"][src*="frame=checkbox"],iframe[src*="challenges.cloudflare.com"]'
+  );
+  if (widget) {
+    const cls = widget.className && typeof widget.className === 'string' ? widget.className : '';
+    const kind = /frc-/.test(cls) ? 'Friendly Captcha' : /mtcaptcha/.test(cls) ? 'MTCaptcha' : kindOf((widget.src || '') + ' ' + cls.replace('g-recaptcha', 'recaptcha').replace('h-captcha', 'hcaptcha').replace('cf-turnstile', 'turnstile'));
+    return { kind, block: false, solved: filled(RESP) };
+  }
+  // CAPTCHA a immagine classico: immagine + campo dove scrivere il codice
+  const img = any('img[src*="captcha" i],img[id*="captcha" i],img[alt*="captcha" i],img[class*="captcha" i],canvas[id*="captcha" i]');
+  if (img) {
+    const inp = [...document.querySelectorAll('input[name*="captcha" i],input[id*="captcha" i],input[placeholder*="captcha" i],input[aria-label*="captcha" i]')].find(onScreen);
+    return { kind: 'CAPTCHA a immagine', block: false, solved: !!(inp && inp.value.trim().length >= 3) };
+  }
+  return null;
+}
+
+/** Barra in cima alla pagina che avvisa l'utente: Colibri e' in pausa finche' non completa la verifica. */
+export function humanBannerInPage(a) {
+  const old = document.getElementById('__colibri_human');
+  if (!a || !a.show) {
+    if (old) old.remove();
+    return;
+  }
+  if (old) return;
+  const it = /^it/i.test(navigator.language || '');
+  const d = document.createElement('div');
+  d.id = '__colibri_human';
+  d.setAttribute('aria-hidden', 'true');
+  d.style.cssText =
+    'position:fixed;top:0;left:0;right:0;z-index:2147483647;pointer-events:none;padding:10px 16px;font:600 15px/1.35 system-ui,sans-serif;' +
+    'color:#04121a;background:linear-gradient(90deg,#67e8f9,#a78bfa);box-shadow:0 2px 12px rgba(0,0,0,.35);text-align:center';
+  d.textContent = it
+    ? `🐦 Colibri è in pausa: completa la verifica (${a.kind}) qui sotto, poi riprendo da solo.`
+    : `🐦 Colibri is paused: complete the check (${a.kind}) below, then I'll continue on my own.`;
+  (document.body || document.documentElement).appendChild(d);
+}
+
+/** Il modulo dell'elemento (o di quello attivo) contiene un CAPTCHA? */
+export function captchaFormInPage(el) {
+  const a = el || document.activeElement;
+  const f = a && (a.form || (a.closest && a.closest('form')));
+  if (!f) return false;
+  return !!f.querySelector(
+    '.g-recaptcha,.h-captcha,.cf-turnstile,.frc-captcha,.mtcaptcha,iframe[src*="recaptcha"],iframe[src*="hcaptcha"],iframe[src*="challenges.cloudflare.com"],' +
+      '[name="g-recaptcha-response"],[name="h-captcha-response"],[name="cf-turnstile-response"],input[name*="captcha" i],img[src*="captcha" i]'
+  );
 }

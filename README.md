@@ -332,6 +332,8 @@ ok 22/22
 | `CB_DOWNLOADS_DIR` | `~/Downloads` | |
 | `CB_CHROME_PATH` | auto | only if Chrome/Edge is not found |
 | `CB_ALLOW_SCREENSHOT` | `true` | |
+| `CB_HUMAN_WAIT` | `50` | seconds Colibri waits for you to solve a CAPTCHA / human check (`0` = don't wait) |
+| `CB_HUMAN_SHOW` | `true` | when headless and a check doesn't clear on its own, reopen Chrome visibly on the same page |
 | `CB_MODE` / `CB_CDP_URL` | `launch` | `cdp` attaches to **your own running Chrome** started with `--remote-debugging-port=9222` |
 
 <div align="right"><a href="#top">↑ back to top</a></div>
@@ -342,7 +344,7 @@ ok 22/22
 
 - Charts, canvas and maps have no text: the agent falls back to the small screenshot (with refs drawn on it) and relative-coordinate clicks.
 - The `browse_task` engine is a calibrated vocabulary, not a trained model: with unknown jargon it asks more often (never acts wrongly). Answers are remembered per site.
-- CAPTCHAs and logins are done by you, in the window.
+- CAPTCHAs and logins are done by you, in the window: Colibri never bypasses them, it pauses and resumes on its own (see FAQ).
 - Tested on pages modelled on public-administration portals: please report sites that don't work in [Issues](https://github.com/t4zxxx1/colibri-mcp/issues).
 
 <div align="right"><a href="#top">↑ back to top</a></div>
@@ -373,6 +375,19 @@ Chrome or Edge, with a dedicated profile in `~/.colibri/profile`: log in once an
 <summary><b>Can it run invisibly, on a server or in CI?</b></summary>
 
 Yes: `CB_HEADLESS=true`. Logins and CAPTCHAs still need a visible window the first time.
+</details>
+
+<details>
+<summary><b>What happens when a site asks for a CAPTCHA or "verify you are human"?</b></summary>
+
+Colibri recognises the check (Cloudflare "Just a moment" / Turnstile, reCAPTCHA, hCaptcha, DataDome, PerimeterX "press & hold", AWS WAF, Arkose, GeeTest, Friendly Captcha, image captchas) and **does not try to cheat it**. Instead it:
+
+1. waits a few seconds: many checks (e.g. Cloudflare) clear by themselves;
+2. otherwise shows a bar on top of the page — *"🐦 Colibri is paused: complete the check below"* — and brings the window to the front (if it was running headless it reopens Chrome visibly on the same page);
+3. resumes **automatically** as soon as you solve it, and continues the remaining steps;
+4. for a CAPTCHA inside a form it fills everything else, then waits for you before pressing *Submit*.
+
+If you don't solve it within `CB_HUMAN_WAIT` seconds (default 50) the agent is told to ask you, and `browse_view` resumes waiting. Sites with very strict bot protection work best with `CB_MODE=cdp` on your own everyday Chrome.
 </details>
 
 <details>

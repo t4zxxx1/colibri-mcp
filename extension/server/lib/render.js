@@ -44,11 +44,18 @@ function headerLines(snap, url, tabs) {
   if (m.h > m.vh) info.push(`scroll ${m.y}/${m.h - m.vh}`);
   if (tabs > 1) info.push(`schede ${tabs}`);
   if (info.length) out.push(info.join(' · '));
-  if (snap.captcha) out.push("CAPTCHA: lo risolve l'utente nella finestra del browser");
+  if (snap.captcha) out.push(captchaLine(snap));
   if (snap.login) out.push("campo password: l'accesso lo fa l'utente nella finestra del browser");
   if (snap.modal) out.push(`[MODALE ${q(snap.modal)}] solo i suoi elementi`);
   for (const a of snap.alerts) out.push('! ' + a);
   return out;
+}
+
+function captchaLine(snap) {
+  const c = snap.challenge;
+  if (!c) return "CAPTCHA: lo risolve l'utente nella finestra del browser";
+  if (c.block) return `VERIFICA ${c.kind}: pagina bloccata, chiedi all'utente di completarla nella finestra, poi browse_view`;
+  return c.solved ? `CAPTCHA ${c.kind}: risolto` : `CAPTCHA ${c.kind}: all'invio Colibri aspetta che l'utente lo risolva`;
 }
 
 /** Vista completa (o filtrata/paginata) della pagina. */
@@ -189,7 +196,7 @@ export function renderDiff(prev, snap, { url, tabs = 1, touched = new Map(), fre
   parts.push(n ? `${n} altre variazioni` : 'nessun altro effetto visibile');
   if (tabs > 1) parts.push('schede ' + tabs);
   out.push(parts.join(' · '));
-  if (snap.captcha) out.push("CAPTCHA: lo risolve l'utente nella finestra del browser");
+  if (snap.captcha) out.push(captchaLine(snap));
   if (snap.modal) out.push(`[MODALE ${q(snap.modal)}]`);
   for (const a of snap.alerts) out.push('! ' + a);
   for (const t of fresh) out.push('» ' + t);
