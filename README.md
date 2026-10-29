@@ -32,7 +32,7 @@ claude mcp add colibri -- npx -y github:t4zxxx1/colibri-mcp     # or: codex / co
 
 <div align="center">
 
-**[Why](#why-colibri)** · **[Install](#install-in-one-line)** · **[vs Jev](#better-than-jev--with-real-numbers)** · **[Benchmarks](#benchmarks)** · **[How it works](#how-it-works)** · **[Tools](#tools)** · **[Safety](#safety)** · **[Config](#configuration)** · **[FAQ](#faq)**
+**[Why](#why-colibri)** · **[Install](#install-in-one-line)** · **[VS Code](#vs-code--step-by-step)** · **[vs Jev](#better-than-jev--with-real-numbers)** · **[Benchmarks](#benchmarks)** · **[How it works](#how-it-works)** · **[Tools](#tools)** · **[Safety](#safety)** · **[Config](#configuration)** · **[FAQ](#faq)**
 
 **English** · [Italiano](README.it.md)
 
@@ -85,13 +85,75 @@ You only need **Node.js ≥ 18** and **Chrome or Edge**. No account, no API key,
 | **Claude Code** | `claude mcp add colibri -- npx -y github:t4zxxx1/colibri-mcp` |
 | **OpenAI Codex** (CLI + IDE extension) | `codex mcp add colibri -- npx -y github:t4zxxx1/colibri-mcp` |
 | **GitHub Copilot CLI** | `copilot mcp add colibri -- npx -y github:t4zxxx1/colibri-mcp` |
-| **GitHub Copilot in VS Code** | [**one click**](https://insiders.vscode.dev/redirect/mcp/install?name=colibri&config=%7B%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22github%3At4zxxx1%2Fcolibri-mcp%22%5D%7D) · or `code --add-mcp '{"name":"colibri","command":"npx","args":["-y","github:t4zxxx1/colibri-mcp"]}'` |
+| **GitHub Copilot in VS Code** | [**one click**](https://insiders.vscode.dev/redirect/mcp/install?name=colibri&config=%7B%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22github%3At4zxxx1%2Fcolibri-mcp%22%5D%7D) · or `code --add-mcp …` — [all the ways](#vs-code--step-by-step) |
 | **Gemini CLI** | `gemini mcp add -s user colibri npx -y github:t4zxxx1/colibri-mcp` |
 | **Claude Desktop** | download [**colibri.mcpb**](https://github.com/t4zxxx1/colibri-mcp/releases/latest/download/colibri.mcpb) → double-click |
 | **Cursor** | [**one click**](https://cursor.com/en/install-mcp?name=colibri&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsImdpdGh1Yjp0NHp4eHgxL2NvbGlicmktbWNwIl19) |
-| **Windsurf · Cline · Roo · any other client** | paste the [3-line JSON](#manual-configuration) |
+| **Cline** (VS Code) | paste the JSON in *MCP Servers → Configure* — [step by step](#vs-code--step-by-step) |
+| **Windsurf · Roo · any other client** | paste the [3-line JSON](#manual-configuration) |
 
 **Then just ask** — *"Open the supplier portal and fill in the application with these details: …"* or *"Use Colibri to read the editions of project PF-2026-115"*. Chrome opens on the first call; you log in once, it remembers.
+
+### VS Code — step by step
+
+Colibri works in VS Code with **GitHub Copilot** (Agent mode) and with **Cline**. They keep separate MCP lists, so set it up for the one you use.
+
+#### GitHub Copilot
+
+Pick **one** of these:
+
+1. **One click** — [**Install in VS Code**](https://insiders.vscode.dev/redirect/mcp/install?name=colibri&config=%7B%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22github%3At4zxxx1%2Fcolibri-mcp%22%5D%7D) → VS Code opens → **Install**.
+2. **Terminal** — adds Colibri to your user profile, for every project:
+
+   ```bash
+   # macOS / Linux
+   code --add-mcp '{"name":"colibri","command":"npx","args":["-y","github:t4zxxx1/colibri-mcp"]}'
+   ```
+   ```powershell
+   # Windows PowerShell
+   code --add-mcp '{\"name\":\"colibri\",\"command\":\"npx\",\"args\":[\"-y\",\"github:t4zxxx1/colibri-mcp\"]}'
+   ```
+   ```bat
+   :: Windows cmd
+   code --add-mcp "{\"name\":\"colibri\",\"command\":\"npx\",\"args\":[\"-y\",\"github:t4zxxx1/colibri-mcp\"]}"
+   ```
+   Using VS Code Insiders? Replace `code` with `code-insiders`.
+3. **Command Palette** — `Ctrl+Shift+P` (`⌘⇧P` on Mac) → **MCP: Add Server** → **Command (stdio)** → paste `npx -y github:t4zxxx1/colibri-mcp` → name it `colibri` → **Global**.
+4. **Only for one project** — create `.vscode/mcp.json` in the project folder:
+
+   ```json
+   {
+     "servers": {
+       "colibri": {
+         "type": "stdio",
+         "command": "npx",
+         "args": ["-y", "github:t4zxxx1/colibri-mcp"]
+       }
+     }
+   }
+   ```
+
+Then open **Copilot Chat**, switch to **Agent** mode, click the 🔧 **tools** icon and make sure **colibri** (7 tools) is ticked. The first time, VS Code asks you to trust the server: say yes.
+
+#### Cline
+
+1. Open the **Cline** panel → click the **MCP Servers** icon → **Installed** tab → **Configure MCP Servers**.
+2. `cline_mcp_settings.json` opens: paste this (or add just the `"colibri"` block next to your other servers) and save:
+
+   ```json
+   {
+     "mcpServers": {
+       "colibri": {
+         "command": "npx",
+         "args": ["-y", "github:t4zxxx1/colibri-mcp"]
+       }
+     }
+   }
+   ```
+
+3. Colibri appears in the list with a green dot and its 7 tools. Ask Cline: *"Use Colibri to open example.com"*.
+
+> **Windows:** if VS Code or Cline says `npx` is not found, use `"command": "cmd"` and `"args": ["/c", "npx", "-y", "github:t4zxxx1/colibri-mcp"]`.
 
 ### Manual configuration
 
@@ -107,22 +169,6 @@ You only need **Node.js ≥ 18** and **Chrome or Edge**. No account, no API key,
       "command": "npx",
       "args": ["-y", "github:t4zxxx1/colibri-mcp"],
       "env": { "CB_ALLOWED_DOMAINS": "" }
-    }
-  }
-}
-```
-</details>
-
-<details>
-<summary><b>VS Code</b> — <code>.vscode/mcp.json</code></summary>
-
-```json
-{
-  "servers": {
-    "colibri": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "github:t4zxxx1/colibri-mcp"]
     }
   }
 }
