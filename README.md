@@ -64,7 +64,7 @@ e54 chk "Dichiaro di aver letto l'informativa privacy e accetto il t…" [ ] req
 [form "domanda"]
 e56 btn "Salva bozza" !c
 e57 btn "Avanti"
-[hdr,search,nav,ftr nascosti: 73 elementi; scope:"all" o filter per vederli]
+[nascosti 73 in hdr,search,nav,ftr: scope:"all" o filter]
 ```
 
 Dopo 22 passi in una sola chiamata (campi, menu dipendenti, autocompletamento del comune), la risposta completa è:
@@ -72,7 +72,7 @@ Dopo 22 passi in una sola chiamata (campi, menu dipendenti, autocompletamento de
 ```
 ok 22/22
 ---
-http://127.0.0.1:8811/domanda1.html · 16 campi impostati come richiesto · 5 altre variazioni
+16 campi impostati come richiesto · 5 altre variazioni
 ~ e31 "Codice ATECO" ="62 - Industrie alimentari (62)" req
 ~ e32 "Regione" ="Campania" req
 ~ e33 "Provincia" ="Napoli" req
@@ -104,6 +104,13 @@ inviato: "Invia domanda" → "Conferma invio"
 atteso "Protocollo": si
 protocollo = "2026/004512" (78%, da testo)
 ```
+
+## Novità della versione 0.3
+
+- **Definizioni sempre nel contesto -54%** (2914 → 1347 token, istruzioni comprese): schemi JSON scritti a mano e descrizioni in inglese telegrafico per il modello; la validazione completa resta lato server.
+- **Righe ripetute compatte**: in tabelle ed elenchi, una riga con gli stessi elementi della precedente riporta solo i ref (`@"PF-2026-102": e40 e41 e42`).
+- **Diff più corti**: l'intestazione non ripete l'URL (la pagina non è cambiata); suggerimenti per nascosti e righe omesse abbreviati.
+- **Compiti più veloci** (`browse_task` T1: ~2,5 s → ~2,1 s): menu dipendenti e autocompletamenti attesi con polling fitto e quiete del DOM invece di pause fisse, lettura dei suggerimenti in un solo giro, digitazione a 12 ms per carattere.
 
 ## Novità della versione 0.2
 

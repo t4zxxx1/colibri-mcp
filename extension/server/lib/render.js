@@ -80,10 +80,13 @@ export function renderView(snap, { url, tabs = 1, scope = 'main', filter = '', o
   let skipped = 0;
   let shown = 0;
   let budget = maxChars;
+  // ultima riga di gruppo emessa (righe senza id): le righe successive con gli stessi elementi mostrano solo i ref
+  let prevRow = null;
   const flush = () => {
-    if (skipped) out.push(`… altre ${skipped} righe con gli stessi elementi (filter:"testo della riga" o browse_read table)`);
+    if (skipped) out.push(`… altre ${skipped} righe uguali (filter:"testo della riga" o browse_read table)`);
     skipped = 0;
   };
+  const noId = (x) => lineOf(x, false).slice(x.id.length);
   let k = offset;
   while (k < items.length) {
     const i = items[k];
@@ -106,7 +109,10 @@ export function renderView(snap, { url, tabs = 1, scope = 'main', filter = '', o
     const dup = g.some((x) => cnt.get(x.role + x.name) > 1);
     const lab = i.ctx || '';
     const show = dup && lab && !g.some((x) => x.name && lab.toLowerCase().startsWith(x.name.toLowerCase()));
-    const line = (show ? `@${q(lab)}: ` : '') + g.map((x) => lineOf(x, false)).join(' · ');
+    const rowSig = g.map(noId);
+    const compact = show && g.length > 1 && prevRow && prevRow.reg === i.reg && prevRow.sig.length === rowSig.length && rowSig.every((s, n) => s === prevRow.sig[n]);
+    const line = (show ? `@${q(lab)}: ` : '') + (compact ? g.map((x) => x.id).join(' ') : g.map((x) => lineOf(x, false)).join(' · '));
+    prevRow = show && g.length > 1 ? { reg: i.reg, sig: rowSig } : null;
     if (shown >= max || budget - line.length < 0) {
       out.push(`… altri ${items.length - k} elementi (offset:${k} o filter)`);
       return finish(out, hidden);
@@ -130,7 +136,7 @@ export function renderView(snap, { url, tabs = 1, scope = 'main', filter = '', o
 function finish(out, hidden) {
   if (hidden.size) {
     const n = [...hidden.values()].reduce((a, b) => a + b, 0);
-    out.push(`[${[...hidden.keys()].join(',')} nascosti: ${n} elementi; scope:"all" o filter per vederli]`);
+    out.push(`[nascosti ${n} in ${[...hidden.keys()].join(',')}: scope:"all" o filter]`);
   }
   return out.join('\n');
 }
@@ -177,7 +183,8 @@ export function renderDiff(prev, snap, { url, tabs = 1, touched = new Map(), fre
 
   const out = [];
   const n = added.length + changed.length + removed.length;
-  const parts = [shortUrl(url)];
+  // il diff si produce solo se la pagina non e' cambiata: l'URL e' gia' noto a chi legge e non si ripete
+  const parts = [];
   if (expected) parts.push(`${expected} campi impostati come richiesto`);
   parts.push(n ? `${n} altre variazioni` : 'nessun altro effetto visibile');
   if (tabs > 1) parts.push('schede ' + tabs);

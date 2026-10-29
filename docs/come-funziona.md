@@ -65,7 +65,7 @@ e56 btn "Salva bozza" !c
 - **Valore e stato**: `=valore`, `[x]`/`[ ]`, e i flag `req` obbligatorio, `inv` non valido, `off` disattivo, `ro` sola lettura, `exp`/`col` espanso/chiuso, `on` selezionato, `cop` coperto da un overlay.
 - **Sensibilità**: `!c` azione con effetti, `!x` campo riservato, `!p` dato personale.
 
-Per tenere la tabella piccola: menu e piè di pagina compressi (nascosti salvo `scope: "all"`), opzioni dei menu lunghi riassunte (97 codici ATECO diventano `opz:97`), nessun nodo strutturale, righe ripetute di tabella riassunte. Una lettura di un modulo di 22 campi costa circa 634 token.
+Per tenere la tabella piccola: menu e piè di pagina compressi (nascosti salvo `scope: "all"`), opzioni dei menu lunghi riassunte (97 codici ATECO diventano `opz:97`), nessun nodo strutturale, righe ripetute di tabella riassunte (quelle con gli stessi elementi della precedente ridotte ai soli ref: `@"riga": e40 e41 e42`). Una lettura di un modulo di 22 campi costa circa 628 token.
 
 Se c'è una finestra modale aperta, la tabella mostra **solo gli elementi della finestra**: è ciò con cui l'utente può interagire.
 

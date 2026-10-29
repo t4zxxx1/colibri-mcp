@@ -39,8 +39,8 @@ Colonne: chiamate al tool; token restituiti dai tool; risposta singola più gran
 | agent-browser CLI | 6 | 18.972 | 9.614 | 27.458 | 149.403 | 1.341 | 9,8 s | 42,6 s |
 | agent-browser CLI senza guida | 5 | 9.358 | 4.576 | 17.794 | 84.124 | 1.291 | 9,1 s | 39,6 s |
 | Fast Playwright MCP | 7 | 11.151 | 5.283 | 20.160 | 115.624 | 1.748 | 16,0 s | 57,1 s |
-| **Browser compatto** | 4 | 1.191 | 634 | 9.053 | 41.690 | 734 | 4,6 s | 24,3 s |
-| **Browser compatto, `browse_task`** | 3 | 702 | 348 | 8.381 | 31.611 | 551 | 4,7 s | 19,9 s |
+| **Browser compatto** | 4 | 1.141 | 628 | 8.072 | 36.923 | 734 | 4,0 s | 23,7 s |
+| **Browser compatto, `browse_task`** | 3 | 677 | 342 | 7.425 | 27.856 | 551 | 4,0 s | 19,2 s |
 
 ### T2 — Elenco → dettaglio
 
@@ -52,8 +52,8 @@ Colonne: chiamate al tool; token restituiti dai tool; risposta singola più gran
 | agent-browser CLI | 3 | 17.146 | 9.614 | 24.673 | 73.274 | 382 | 2,4 s | 14,8 s |
 | agent-browser CLI senza guida | 2 | 7.532 | 7.295 | 15.009 | 36.987 | 332 | 2,4 s | 12,4 s |
 | Fast Playwright MCP | 2 | 8.069 | 6.942 | 15.647 | 37.480 | 317 | 2,2 s | 12,0 s |
-| **Browser compatto** | 2 | 1.101 | 821 | 8.505 | 23.943 | 276 | 1,6 s | 10,7 s |
-| **Browser compatto, `browse_task`** | 2 | 1.025 | 824 | 8.432 | 23.873 | 279 | 1,5 s | 10,6 s |
+| **Browser compatto** | 2 | 905 | 631 | 7.378 | 20.764 | 276 | 1,1 s | 10,2 s |
+| **Browser compatto, `browse_task`** | 2 | 835 | 634 | 7.311 | 20.700 | 279 | 1,1 s | 10,3 s |
 
 ### T3 — Navigazione
 
@@ -65,27 +65,27 @@ Colonne: chiamate al tool; token restituiti dai tool; risposta singola più gran
 | agent-browser CLI | 3 | 11.821 | 9.614 | 19.354 | 62.842 | 388 | 1,5 s | 14,0 s |
 | agent-browser CLI senza guida | 2 | 2.207 | 2.186 | 9.690 | 26.555 | 338 | 1,5 s | 11,6 s |
 | Fast Playwright MCP | 2 | 9.677 | 5.341 | 17.254 | 36.480 | 316 | 2,1 s | 11,8 s |
-| **Browser compatto** | 2 | 487 | 459 | 7.892 | 22.967 | 277 | 1,8 s | 10,9 s |
-| **Browser compatto, `browse_task`** | 1 | 73 | 73 | 7.433 | 14.711 | 232 | 1,7 s | 8,6 s |
+| **Browser compatto** | 2 | 481 | 453 | 6.955 | 20.162 | 277 | 1,3 s | 10,4 s |
+| **Browser compatto, `browse_task`** | 1 | 73 | 73 | 6.502 | 12.849 | 232 | 1,3 s | 8,2 s |
 
 ### Peso di una lettura del modulo (pagina 1 di T1)
 
 | Metodo | Token |
 |---|---|
-| Browser compatto | 634 |
+| Browser compatto | 628 |
 | Screenshot | 1.366 per schermata (il modulo intero ne richiede 3) |
 | agent-browser MCP, `snapshot` interattivo | 4.396 |
 | agent-browser CLI, `snapshot -i` | 4.430 |
 | Fast Playwright MCP, snapshot alla navigazione | 5.283 |
 | Playwright MCP, `browser_snapshot` | 5.285 |
 
-La differenza viene da: menu, intestazione e piè di pagina compressi; opzioni dei menu lunghi riassunte (97 codici ATECO diventano `opz:97`); nessun nodo strutturale; righe di tabella ripetute riassunte.
+La differenza viene da: menu, intestazione e piè di pagina compressi; opzioni dei menu lunghi riassunte (97 codici ATECO diventano `opz:97`); nessun nodo strutturale; righe di tabella ripetute riassunte e, se hanno gli stessi elementi della precedente, ridotte ai soli ref.
 
 ### Definizioni sempre presenti nel contesto
 
 | Metodo | Token |
 |---|---|
-| Browser compatto (7 tool, `browse_task` compreso) | 2.278 |
+| Browser compatto (7 tool, `browse_task` e istruzioni del server compresi) | 1.347 (0.2: 2.914) |
 | agent-browser CLI | ~2.295 (skill installata 795 + tool Bash, ipotesi 1.500) |
 | Fast Playwright MCP | 2.411 |
 | Playwright MCP | 4.536 |
@@ -93,10 +93,10 @@ La differenza viene da: menu, intestazione e piè di pagina compressi; opzioni d
 
 ## In sintesi
 
-- **Compito lungo (T1).** Con `browse_task` bastano 3 chiamate: 702 token di risposte, 31.611 di contesto riletto, circa 20 secondi. Rispetto al concorrente migliore (agent-browser CLI senza guida) sono il 92% di token in meno nelle risposte, il 62% in meno di contesto riletto e circa 20 secondi in meno. Rispetto al browser compatto a passi espliciti: una chiamata e il 24% di contesto in meno, perché Claude non deve leggere il modulo per poi riscriverne le etichette.
-- **Elenco → dettaglio (T2).** `browse_task` non aiuta: Claude deve comunque vedere l'elenco per sapere quale collegamento aprire. Due chiamate, come i metodi a blocchi migliori; il browser compatto resta il più leggero in token (23.943 di contesto riletto contro 36.987).
-- **Navigazione (T3).** Una sola chiamata (apertura, clic e numero estratto) e 73 token di risposta: 14.711 di contesto riletto contro 26.555 del concorrente migliore, e su questo compito supera anche lo screenshot, che prima era il più veloce (8,6 s contro 10,0 s).
-- **Il prezzo di `browse_task`**: la sua definizione aggiunge 639 token al contesto di ogni turno (da 1.639 a 2.278). È già compreso in tutti i numeri del browser compatto qui sopra.
+- **Compito lungo (T1).** Con `browse_task` bastano 3 chiamate: 677 token di risposte, 27.856 di contesto riletto, circa 19 secondi. Rispetto al concorrente migliore (agent-browser CLI senza guida) sono il 93% di token in meno nelle risposte, il 67% in meno di contesto riletto e circa 20 secondi in meno. Rispetto al browser compatto a passi espliciti: una chiamata e il 25% di contesto in meno, perché Claude non deve leggere il modulo per poi riscriverne le etichette.
+- **Elenco → dettaglio (T2).** `browse_task` non aiuta: Claude deve comunque vedere l'elenco per sapere quale collegamento aprire. Due chiamate, come i metodi a blocchi migliori; il browser compatto resta il più leggero in token (20.764 di contesto riletto contro 36.987).
+- **Navigazione (T3).** Una sola chiamata (apertura, clic e numero estratto) e 73 token di risposta: 12.849 di contesto riletto contro 26.555 del concorrente migliore, e su questo compito supera anche lo screenshot, che prima era il più veloce (8,2 s contro 10,0 s).
+- **Definizioni (0.3)**: i 7 tool e le istruzioni del server pesano 1.347 token a ogni turno (erano 2.914 nella 0.2): schemi JSON minimi e descrizioni in inglese per il modello, validazione completa sul server. Dalla 0.3 il benchmark conta anche le istruzioni del server; sono già comprese in tutti i numeri del browser compatto qui sopra.
 - In Claude Desktop, gli unici concorrenti utilizzabili senza terminale sono quelli MCP: lì agent-browser paga 17.877 token di definizioni a ogni turno e un'azione per chiamata; Fast Playwright MCP è il più vicino, ma con snapshot 8-10 volte più grandi.
 
 ## Problemi incontrati dai concorrenti (riproducibili)

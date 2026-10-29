@@ -84,7 +84,7 @@ async function m3(task) {
     okTask = /25 progetti trovati/.test(t);
   }
   await c.close();
-  return { calls: out, tools, ok: okTask };
+  return { calls: out, tools, instr: (c.client || c).getInstructions?.(), ok: okTask };
 }
 
 // ---------------- M3t: browser compatto con browse_task ----------------
@@ -125,7 +125,7 @@ async function m3t(task) {
     okTask = /= 25 \(/.test(t);
   }
   await c.close();
-  return { calls: out, tools, ok: okTask };
+  return { calls: out, tools, instr: (c.client || c).getInstructions?.(), ok: okTask };
 }
 
 // ---------------- M2: Playwright MCP ----------------
@@ -222,7 +222,7 @@ async function m2(task) {
     okTask = /25 progetti trovati/.test(s);
   }
   await c.close();
-  return { calls: out, tools, ok: okTask };
+  return { calls: out, tools, instr: (c.client || c).getInstructions?.(), ok: okTask };
 }
 
 // ---------------- M1: screenshot dopo ogni azione ----------------
@@ -373,7 +373,7 @@ const defs = {
   M1: 1500, // ipotesi: definizione del tool computer/screenshot
   M4: 1500 + tok(agentBrowserSkillStub()), // ipotesi per il tool Bash + skill di agent-browser sempre presente
 };
-const raw = (r) => r.calls.map((c) => ({ n: c.name, t: c.img ? c.img : tok(c.text), ms: Math.round(c.ms) }));
+const raw = (r) => r.calls.map((c) => ({ n: c.name, t: c.img ? c.img : tok(c.text), ms: Math.round(c.ms), ...(process.env.BENCH_DUMP ? { x: c.text } : {}) }));
 for (const task of ['T1', 'T2', 'T3']) {
   results[task] = {};
   const runs = {
@@ -387,7 +387,7 @@ for (const task of ['T1', 'T2', 'T3']) {
   };
   for (const m of ONLY) {
     const r = await runs[m]();
-    if (r.tools) defs[m] = tok(JSON.stringify(r.tools));
+    if (r.tools) defs[m] = tok(JSON.stringify(r.tools)) + (r.instr ? tok(r.instr) : 0);
     results[task][m] = { ...metrics(r, defs[m]), raw: raw(r) };
     // variante: agente che conosce gia' i comandi e non carica la guida "core" (9.600 token circa)
     if (m === 'M4') {

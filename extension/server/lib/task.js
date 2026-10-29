@@ -57,11 +57,11 @@ const SECRET_KEY = /\b(password|passwd|pwd|passphrase|pin|otp|cvv|cvc|iban|numer
 
 /** Attende che un menu dipendente si riempia (opzioni compatibili col valore), massimo ~3 s. */
 async function waitOptions(S, page, id, value) {
-  for (let k = 0; k < 12; k++) {
+  for (let k = 0; k < 40; k++) {
     const snap = await S.collect();
     const it = snap.items.find((i) => i.id === id);
     if (it && !it.flags.includes('off') && it.gx && it.gx.opts && Math.max(0, ...it.gx.opts.map((o) => optionScore(value, o))) >= 0.6) return { snap, it };
-    await page.waitForTimeout(250);
+    await page.waitForTimeout(75);
   }
   const snap = await S.collect();
   return { snap, it: snap.items.find((i) => i.id === id) };
@@ -72,20 +72,28 @@ async function waitOptions(S, page, id, value) {
 async function suggestions(S, page) {
   const read = async () => {
     const loc = page.locator(S.PICK_SEL).filter({ visible: true });
-    const n = Math.min(await loc.count(), 30);
-    const texts = [];
-    for (let i = 0; i < n; i++) texts.push((await loc.nth(i).innerText().catch(() => '')).replace(/\s+/g, ' ').trim());
+    // un solo giro verso il browser invece di count() + innerText() per ogni suggerimento
+    const all = await loc.allInnerTexts().catch(() => []);
+    const texts = all.slice(0, 30).map((t) => t.replace(/\s+/g, ' ').trim());
     return { loc, texts };
   };
-  for (let k = 0; k < 20; k++) {
+  // appena compaiono, si attende che il DOM resti fermo ~100 ms (lista completa) invece di una pausa fissa
+  const quiet = async () => {
+    for (let k = 0; k < 8; k++) {
+      const age = await page.mainFrame().evaluate(() => (window.__cbMut ? performance.now() - window.__cbMut : 1e9)).catch(() => 1e9);
+      if (age >= 100) return;
+      await page.waitForTimeout(Math.max(20, Math.min(60, 100 - age)));
+    }
+  };
+  for (let k = 0; k < 60; k++) {
     let cur = await read();
     if (cur.texts.length) {
-      await page.waitForTimeout(150);
+      await quiet();
       const again = await read();
       if (again.texts.length >= cur.texts.length) cur = again;
       return cur;
     }
-    await page.waitForTimeout(200);
+    await page.waitForTimeout(65);
   }
   return { loc: null, texts: [] };
 }

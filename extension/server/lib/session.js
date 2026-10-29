@@ -629,7 +629,7 @@ export class Session {
               if (a && typeof a.select === 'function') a.select();
             })
             .catch(() => {});
-          await page.keyboard.type(text, { delay: 25 });
+          await page.keyboard.type(text, { delay: 12 });
           // verifica: se il focus si e' spostato durante la digitazione manca qualche carattere; si riscrive tutto in un colpo
           const got = await frame.evaluate(() => (document.activeElement && 'value' in document.activeElement ? document.activeElement.value : null)).catch(() => null);
           if (got !== null && got !== text) {
@@ -715,15 +715,9 @@ export class Session {
         await loc.first().waitFor({ state: 'visible', timeout: 4000 }).catch(() => {
           throw new Error(`nessun suggerimento visibile con "${text}": prima "type" nel campo, poi "pick"`);
         });
-        const n = Math.min(await loc.count(), 30);
-        let idx = 0;
         const norm = (s) => s.replace(/\s+/g, ' ').trim().toLowerCase();
-        for (let k = 0; k < n; k++) {
-          if (norm(await loc.nth(k).innerText()) === norm(text)) {
-            idx = k;
-            break;
-          }
-        }
+        const texts = (await loc.allInnerTexts().catch(() => [])).slice(0, 30);
+        const idx = Math.max(0, texts.findIndex((t) => norm(t) === norm(text)));
         await loc.nth(idx).click({ timeout: 4000 });
         await after(2500, 150);
         return;
