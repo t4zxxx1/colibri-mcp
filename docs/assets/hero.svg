@@ -1,0 +1,154 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="480" viewBox="0 0 1280 480" role="img" aria-label="compact-browser-mcp: your AI drives Chrome reading pages as compact text. 89 times fewer tokens than screenshots.">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1020"/>
+      <stop offset="0.55" stop-color="#0f172a"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+    <linearGradient id="title" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#67e8f9"/>
+      <stop offset="0.5" stop-color="#a78bfa"/>
+      <stop offset="1" stop-color="#34d399"/>
+    </linearGradient>
+    <linearGradient id="bad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#f97316"/>
+      <stop offset="1" stop-color="#ef4444"/>
+    </linearGradient>
+    <linearGradient id="good" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#34d399"/>
+    </linearGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#1f2a44" stroke-width="1"/>
+    </pattern>
+    <filter id="blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="60"/></filter>
+    <filter id="glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="5"/></filter>
+    <clipPath id="frame"><rect width="1280" height="480" rx="22"/></clipPath>
+  </defs>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .mono { font-family: ui-monospace, SFMono-Regular, "Cascadia Code", Consolas, Menlo, monospace; }
+    .orb1 { animation: drift1 14s ease-in-out infinite; }
+    .orb2 { animation: drift2 18s ease-in-out infinite; }
+    @keyframes drift1 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(120px,40px); } }
+    @keyframes drift2 { 0%,100% { transform: translate(0,0); } 50% { transform: translate(-140px,-30px); } }
+    .cover { transform-box: fill-box; transform-origin: right center; }
+    .c1 { animation: c1 10s linear infinite; } .c2 { animation: c2 10s linear infinite; }
+    .c3 { animation: c3 10s linear infinite; } .c4 { animation: c4 10s linear infinite; }
+    @keyframes c1 { 0%,4% { transform: scaleX(1); } 13%,94% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+    @keyframes c2 { 0%,14% { transform: scaleX(1); } 23%,94% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+    @keyframes c3 { 0%,24% { transform: scaleX(1); } 33%,94% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+    @keyframes c4 { 0%,34% { transform: scaleX(1); } 43%,94% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+    .k1 { animation: k1 10s linear infinite; } .k2 { animation: k2 10s linear infinite; }
+    .k3 { animation: k3 10s linear infinite; } .k4 { animation: k4 10s linear infinite; }
+    @keyframes k1 { 0%,13% { opacity: 0; } 15%,94% { opacity: 1; } 100% { opacity: 0; } }
+    @keyframes k2 { 0%,23% { opacity: 0; } 25%,94% { opacity: 1; } 100% { opacity: 0; } }
+    @keyframes k3 { 0%,33% { opacity: 0; } 35%,94% { opacity: 1; } 100% { opacity: 0; } }
+    @keyframes k4 { 0%,43% { opacity: 0; } 45%,94% { opacity: 1; } 100% { opacity: 0; } }
+    .ask { animation: ask 10s ease-in-out infinite; }
+    @keyframes ask { 0%,48% { opacity: 0; } 52%,92% { opacity: 1; } 100% { opacity: 0; } }
+    .pulse { animation: pulse 1.6s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { opacity: .35; } 50% { opacity: 1; } }
+    .grow { transform-box: fill-box; transform-origin: left center; animation: grow 10s cubic-bezier(.2,.8,.2,1) infinite; }
+    @keyframes grow { 0% { transform: scaleX(0); } 30%,94% { transform: scaleX(1); } 100% { transform: scaleX(0); } }
+    .fadein { animation: fadein 10s ease infinite; }
+    @keyframes fadein { 0%,26% { opacity: 0; } 32%,94% { opacity: 1; } 100% { opacity: 0; } }
+    .cursor { animation: blink 1s steps(1) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+  </style>
+
+  <g clip-path="url(#frame)">
+    <rect width="1280" height="480" fill="url(#bg)"/>
+    <rect width="1280" height="480" fill="url(#grid)" opacity=".55"/>
+    <circle class="orb1" cx="260" cy="120" r="170" fill="#7c3aed" opacity=".35" filter="url(#blur)"/>
+    <circle class="orb2" cx="1040" cy="380" r="190" fill="#0891b2" opacity=".35" filter="url(#blur)"/>
+
+    <g transform="translate(64,0)">
+      <rect x="0" y="54" width="262" height="30" rx="15" fill="#1e293b" stroke="#334155"/>
+      <circle class="pulse" cx="18" cy="69" r="5" fill="#34d399"/>
+      <text x="32" y="74" font-size="14" fill="#cbd5e1">MCP server · works with any agent</text>
+
+      <text x="0" y="140" font-size="54" font-weight="800" fill="url(#title)" letter-spacing="-1.5">compact-browser-mcp</text>
+      <text x="0" y="184" font-size="23" fill="#e2e8f0">Your AI drives Chrome by <tspan fill="#67e8f9" font-weight="700">reading text</tspan>, not screenshots.</text>
+      <text x="0" y="214" font-size="17" fill="#94a3b8">Claude · Copilot · Cursor · Codex · Windsurf — plus a local Jev-style form engine.</text>
+
+      <text x="0" y="268" font-size="13" fill="#94a3b8" letter-spacing="1.5">TOTAL CONTEXT TOKENS · 22-FIELD FORM ON 2 PAGES</text>
+      <text x="0" y="298" font-size="15" fill="#e2e8f0">Screenshots</text>
+      <rect x="150" y="285" width="420" height="18" rx="9" fill="#1e293b"/>
+      <rect class="grow" x="150" y="285" width="420" height="18" rx="9" fill="url(#bad)"/>
+      <text class="fadein mono" x="570" y="322" font-size="13" fill="#fca5a5" text-anchor="end">2,480,688</text>
+
+      <text x="0" y="350" font-size="15" fill="#e2e8f0">Playwright MCP</text>
+      <rect x="150" y="337" width="420" height="18" rx="9" fill="#1e293b"/>
+      <rect class="grow" x="150" y="337" width="54" height="18" rx="9" fill="#f59e0b"/>
+      <text class="fadein mono" x="214" y="351" font-size="13" fill="#fcd34d">318,910</text>
+
+      <text x="0" y="402" font-size="15" font-weight="700" fill="#ffffff">compact-browser</text>
+      <rect x="150" y="389" width="420" height="18" rx="9" fill="#1e293b"/>
+      <rect class="pulse" x="150" y="389" width="6" height="18" rx="3" fill="#34d399" filter="url(#glow)"/>
+      <rect class="grow" x="150" y="389" width="6" height="18" rx="3" fill="url(#good)"/>
+      <text class="fadein mono" x="168" y="403" font-size="13" fill="#6ee7b7" font-weight="700">27,760 · 89× less</text>
+
+      <g class="fadein">
+        <rect x="0" y="426" width="168" height="30" rx="8" fill="#052e2b" stroke="#115e59"/>
+        <text x="84" y="446" font-size="14" fill="#5eead4" text-anchor="middle" font-weight="600">0 Jev tokens · $0</text>
+        <rect x="180" y="426" width="168" height="30" rx="8" fill="#1e1b4b" stroke="#4338ca"/>
+        <text x="264" y="446" font-size="14" fill="#c4b5fd" text-anchor="middle" font-weight="600">1.7 ms per match</text>
+        <rect x="360" y="426" width="210" height="30" rx="8" fill="#3b0764" stroke="#7e22ce"/>
+        <text x="465" y="446" font-size="14" fill="#f0abfc" text-anchor="middle" font-weight="600">0 wrong autonomous fills</text>
+      </g>
+    </g>
+
+    <g transform="translate(700,56)">
+      <rect x="0" y="0" width="520" height="368" rx="16" fill="#0d1117" stroke="#30363d" stroke-width="1.5"/>
+      <rect x="0" y="0" width="520" height="40" rx="16" fill="#161b22"/>
+      <rect x="0" y="24" width="520" height="16" fill="#161b22"/>
+      <circle cx="22" cy="20" r="6" fill="#ff5f57"/><circle cx="42" cy="20" r="6" fill="#febc2e"/><circle cx="62" cy="20" r="6" fill="#28c840"/>
+      <rect x="86" y="9" width="410" height="22" rx="11" fill="#0d1117" stroke="#30363d"/>
+      <text class="mono" x="100" y="25" font-size="12" fill="#8b949e">https://portal.example.gov/application</text>
+
+      <text x="28" y="76" font-size="17" font-weight="700" fill="#e6edf3">Grant application · step 1 of 2</text>
+
+      <g font-size="12" fill="#8b949e">
+        <text x="28" y="104">Company name *</text>
+        <text x="28" y="160">VAT number *</text>
+        <text x="28" y="216">Start date *</text>
+        <text x="28" y="272">Province *</text>
+      </g>
+      <g>
+        <rect x="28" y="111" width="330" height="30" rx="7" fill="#161b22" stroke="#30363d"/>
+        <rect x="28" y="167" width="330" height="30" rx="7" fill="#161b22" stroke="#30363d"/>
+        <rect x="28" y="223" width="330" height="30" rx="7" fill="#161b22" stroke="#30363d"/>
+        <rect x="28" y="279" width="330" height="30" rx="7" fill="#161b22" stroke="#30363d"/>
+        <path d="M336 290l6 6 6-6" fill="none" stroke="#8b949e" stroke-width="2"/>
+      </g>
+      <g class="mono" font-size="14" fill="#e6edf3">
+        <text x="40" y="131">Roca Software srl</text>
+        <text x="40" y="187">01234567890</text>
+        <text x="40" y="243">2026-11-03</text>
+        <text x="40" y="299">Napoli</text>
+      </g>
+      <rect class="cover c1" x="38" y="114" width="300" height="24" fill="#161b22"/>
+      <rect class="cover c2" x="38" y="170" width="300" height="24" fill="#161b22"/>
+      <rect class="cover c3" x="38" y="226" width="300" height="24" fill="#161b22"/>
+      <rect class="cover c4" x="38" y="282" width="290" height="24" fill="#161b22"/>
+
+      <g font-size="13" font-weight="700">
+        <g class="k1"><circle cx="384" cy="126" r="11" fill="#065f46"/><path d="M378 126l4 4 8-8" fill="none" stroke="#34d399" stroke-width="2.5"/><text x="402" y="131" fill="#6ee7b7">99%</text></g>
+        <g class="k2"><circle cx="384" cy="182" r="11" fill="#065f46"/><path d="M378 182l4 4 8-8" fill="none" stroke="#34d399" stroke-width="2.5"/><text x="402" y="187" fill="#6ee7b7">97%</text></g>
+        <g class="k3"><circle cx="384" cy="238" r="11" fill="#065f46"/><path d="M378 238l4 4 8-8" fill="none" stroke="#34d399" stroke-width="2.5"/><text x="402" y="243" fill="#6ee7b7">date adapted</text></g>
+        <g class="k4"><circle cx="384" cy="294" r="11" fill="#065f46"/><path d="M378 294l4 4 8-8" fill="none" stroke="#34d399" stroke-width="2.5"/><text x="402" y="299" fill="#6ee7b7">93%</text></g>
+      </g>
+
+      <rect x="28" y="324" width="110" height="30" rx="8" fill="#238636"/>
+      <text x="83" y="344" font-size="14" font-weight="700" fill="#fff" text-anchor="middle">Submit</text>
+      <g class="ask">
+        <rect x="150" y="324" width="342" height="30" rx="8" fill="#3b2a05" stroke="#d29922"/>
+        <text x="164" y="344" font-size="13" fill="#f2cc60">!c  side effect — the agent asks you first</text>
+      </g>
+    </g>
+
+    <text class="mono" x="700" y="452" font-size="13" fill="#64748b">browse_task({ params: { "P.IVA": …, "data inizio": … } })  → 3 calls<tspan class="cursor" fill="#67e8f9"> ▍</tspan></text>
+  </g>
+  <rect x=".75" y=".75" width="1278.5" height="478.5" rx="21.5" fill="none" stroke="#334155" stroke-width="1.5"/>
+</svg>

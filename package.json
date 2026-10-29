@@ -2,25 +2,57 @@
   "name": "compact-browser-mcp",
   "version": "0.4.0",
   "private": true,
-  "description": "Estensione per Claude Desktop: Claude naviga e compila siti in Chrome leggendo le pagine come testo compatto invece che con screenshot.",
+  "description": "MCP server that lets Claude, Copilot, Cursor and any AI agent drive Chrome by reading pages as compact text instead of screenshots, with a local Jev-style form engine (browse_task).",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "browser",
+    "chrome",
+    "playwright",
+    "claude",
+    "copilot",
+    "cursor",
+    "ai-agent",
+    "token-efficient",
+    "jev"
+  ],
+  "homepage": "https://github.com/t4zxxx1/compact-browser-mcp#readme",
+  "bugs": "https://github.com/t4zxxx1/compact-browser-mcp/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/t4zxxx1/compact-browser-mcp.git"
+  },
   "license": "MIT",
   "type": "module",
+  "bin": {
+    "compact-browser-mcp": "extension/server/index.js"
+  },
+  "files": [
+    "extension/server/index.js",
+    "extension/server/lib/",
+    "extension/server/package.json",
+    "README.md",
+    "README.it.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "postinstall": "npm ci --prefix extension/server --omit=dev --no-audit --no-fund",
     "test": "node test/functional.mjs && node test/resilience.mjs && node test/v2.mjs && node test/realsite.mjs",
     "calibrate": "node test/calibrate.mjs",
     "bench": "node test/bench.mjs",
     "profile": "node test/profile.mjs",
     "build": "node scripts/build.mjs"
   },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "playwright-core": "^1.64.1",
+    "zod": "^3.25.76"
+  },
   "devDependencies": {
     "@anthropic-ai/mcpb": "2.1.2",
     "@anthropic-ai/tokenizer": "0.0.4",
-    "@modelcontextprotocol/sdk": "^1.32.2",
     "@playwright/mcp": "0.0.83",
     "@tontoko/fast-playwright-mcp": "^0.2.0",
-    "agent-browser": "^0.41.0",
-    "playwright-core": "^1.64.1"
+    "agent-browser": "^0.41.0"
   },
   "engines": {
     "node": ">=18"

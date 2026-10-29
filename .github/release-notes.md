@@ -1,9 +1,15 @@
-## Installazione
+## Install / Installazione
 
-1. Scarica **compact-browser.mcpb** qui sotto, nella sezione *Assets*.
-2. Aprilo con doppio clic: Claude Desktop chiede conferma e installa l'estensione.
-3. Serve Google Chrome o Microsoft Edge installato.
+**Claude Desktop** — download **compact-browser.mcpb** below (*Assets*) and double-click it. · Scarica **compact-browser.mcpb** qui sotto (*Assets*) e aprilo con doppio clic.
 
-Al primo utilizzo si apre una finestra di Chrome con un profilo dedicato: gli accessi ai siti si fanno lì, a mano, una volta sola.
+**Any MCP client / Qualsiasi client MCP** (Claude Code, GitHub Copilot in VS Code, Cursor, Windsurf, Codex, Gemini CLI…):
 
-Guida completa, sicurezza e confronto con gli altri metodi: vedi il README del repository.
+```bash
+npx -y github:t4zxxx1/compact-browser-mcp
+```
+
+Requires Node.js ≥ 18 and Chrome or Edge. · Servono Node.js ≥ 18 e Chrome o Edge.
+
+On first use a Chrome window opens with a dedicated profile: log into your sites there, once. · Al primo utilizzo si apre Chrome con un profilo dedicato: gli accessi ai siti si fanno lì, una volta sola.
+
+Full guide, benchmarks and the comparison with Jev: see the [README](https://github.com/t4zxxx1/compact-browser-mcp#readme) · [README in italiano](https://github.com/t4zxxx1/compact-browser-mcp/blob/main/README.it.md).

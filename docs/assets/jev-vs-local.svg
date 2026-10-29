@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="618" viewBox="0 0 1000 618" role="img" aria-label="Jev 1.14 versus the local engine: choice accuracy 75.7% vs 98.6%, ECE 8.4% vs 5.9%, AUROC 0.81 vs 0.95, latency 136 ms vs 1.7 ms, cost 0.028 dollars vs 0 per thousand decisions.">
+  <defs>
+    <linearGradient id="jev" x1="0" x2="1"><stop offset="0" stop-color="#6d28d9"/><stop offset="1" stop-color="#a78bfa"/></linearGradient>
+    <linearGradient id="loc" x1="0" x2="1"><stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#34d399"/></linearGradient>
+  </defs>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .mono { font-family: ui-monospace, SFMono-Regular, "Cascadia Code", Consolas, Menlo, monospace; }
+    .bar { transform-box: fill-box; transform-origin: left center; animation: grow 9s cubic-bezier(.2,.8,.2,1) infinite; }
+    @keyframes grow { 0% { transform: scaleX(0); } 20%,93% { transform: scaleX(1); } 100% { transform: scaleX(0); } }
+    .win { animation: win 9s ease infinite; }
+    @keyframes win { 0%,24% { opacity: 0; } 32%,93% { opacity: 1; } 100% { opacity: 0; } }
+  </style>
+  <rect width="1000" height="618" rx="18" fill="#0d1117"/>
+  <rect x=".75" y=".75" width="998.5" height="616.5" rx="17.5" fill="none" stroke="#30363d" stroke-width="1.5"/>
+  <text x="40" y="48" font-size="21" font-weight="800" fill="#f0f6fc">Jev 1.14 vs the built-in local engine</text>
+  <text x="40" y="74" font-size="13.5" fill="#8b949e">Same idea — typed questions, a "none" option, calibrated confidence, act above a threshold — but running inside the MCP server.</text>
+  <rect x="330" y="92" width="12" height="12" rx="3" fill="#a78bfa"/><text x="348" y="103" font-size="13" fill="#c4b5fd">Jev 1.14 (cloud API, System One Bench)</text>
+  <rect x="600" y="92" width="12" height="12" rx="3" fill="#34d399"/><text x="618" y="103" font-size="13" fill="#6ee7b7">local engine v0.4</text>
+  
+  <g>
+    <text x="40" y="136" font-size="16" font-weight="700" fill="#e6edf3">Choice accuracy</text>
+    <text x="40" y="156" font-size="12.5" fill="#8b949e">higher is better</text>
+    <rect x="330" y="122" width="470" height="14" rx="7" fill="#1e293b"/>
+    <rect class="bar" style="animation-delay:0.00s" x="330" y="122" width="355.8" height="14" rx="7.0" fill="url(#jev)"/>
+    <text class="mono" x="812" y="134" font-size="13" fill="#c4b5fd">75.7%</text>
+    <rect x="330" y="144" width="470" height="14" rx="7" fill="#1e293b"/>
+    <rect class="bar" style="animation-delay:0.30s" x="330" y="144" width="463.4" height="14" rx="7.0" fill="url(#loc)"/>
+    <text class="mono" x="812" y="156" font-size="13" font-weight="700" fill="#6ee7b7">98.6%</text>
+    <g class="win" style="animation-delay:0.00s"><rect x="878" y="124" width="92" height="30" rx="15" fill="#052e2b" stroke="#10b981"/><text x="924" y="144" text-anchor="middle" font-size="13" font-weight="800" fill="#6ee7b7">+22.9 pts</text></g>
+  </g>
+  <g>
+    <text x="40" y="210" font-size="16" font-weight="700" fill="#e6edf3">Calibration error (ECE)</text>
+    <text x="40" y="230" font-size="12.5" fill="#8b949e">lower is better</text>
+    <rect x="330" y="196" width="470" height="14" rx="7" fill="#1e293b"/>
+    <rect class="bar" style="animation-delay:0.15s" x="330" y="196" width="394.8" height="14" rx="7.0" fill="url(#jev)"/>
+    <text class="mono" x="812" y="208" font-size="13" fill="#c4b5fd">8.4%</text>
+    <rect x="330" y="218" width="470" height="14" rx="7" fill="#1e293b"/>
+    <rect class="bar" style="animation-delay:0.45s" x="330" y="218" width="277.3" height="14" rx="7.0" fill="url(#loc)"/>
+    <text class="mono" x="812" y="230" font-size="13" font-weight="700" fill="#6ee7b7">5.9%</text>
+    <g class="win" style="animation-delay:0.15s"><rect x="878" y="198" width="92" height="30" rx="15" fill="#052e2b" stroke="#10b981"/><text x="924" y="218" text-anchor="middle" font-size="13" font-weight="800" fill="#6ee7b7">−30%</text></g>
+  </g>
+  <g>
+    <text x="40" y="284" font-size="16" font-weight="700" fill="#e6edf3">Confidence AUROC</text>
+    <text x="40" y="304" font-size="12.5" fill="#8b949e">higher is better</text>
+    <rect x="330" y="270" width="470" height="14" rx="7" fill="#1e293b"/>
+    <rect class="bar" style="animation-delay:0.30s" x="330" y="270" width="380.7" height="14" rx="7.0" fill="url(#jev)"/>
+    <text class="mono" x="812" y="282" font-size="13" fill="#c4b5fd">0.81</text>
+    <rect x="330" y="292" width="470" height="14" rx="7" fill="#1e293b"/>
+    <rect class="bar" style="animation-delay:0.60s" x="330" y="292" width="446.5" height="14" rx="7.0" fill="url(#loc)"/>
+    <text class="mono" x="812" y="304" font-size="13" font-weight="700" fill="#6ee7b7">0.95</text>
+    <g class="win" style="animation-delay:0.30s"><rect x="878" y="272" width="92" height="30" rx="15" fill="#052e2b" stroke="#10b981"/><text x="924" y="292" text-anchor="middle" font-size="13" font-weight="800" fill="#6ee7b7">+0.14</text></g>
+  </g>
+  <g>
+    <text x="40" y="358" font-size="16" font-weight="700" fill="#e6edf3">Latency p50</text>
+    <text x="40" y="378" font-size="12.5" fill="#8b949e">lower is better</text>
+    <rect x="330" y="344" width="470" height="14" rx="7" fill="#1e293b"/>
+    <rect class="bar" style="animation-delay:0.45s" x="330" y="344" width="470.0" height="14" rx="7.0" fill="url(#jev)"/>
+    <text class="mono" x="812" y="356" font-size="13" fill="#c4b5fd">136 ms</text>
+    <rect x="330" y="366" width="470" height="14" rx="7" fill="#1e293b"/>
+    <rect class="bar" style="animation-delay:0.75s" x="330" y="366" width="5.9" height="14" rx="2.9" fill="url(#loc)"/>
+    <text class="mono" x="812" y="378" font-size="13" font-weight="700" fill="#6ee7b7">1.7 ms</text>
+    <g class="win" style="animation-delay:0.45s"><rect x="878" y="346" width="92" height="30" rx="15" fill="#052e2b" stroke="#10b981"/><text x="924" y="366" text-anchor="middle" font-size="13" font-weight="800" fill="#6ee7b7">80× faster</text></g>
+  </g>
+  <g>
+    <text x="40" y="432" font-size="16" font-weight="700" fill="#e6edf3">Cost per 1,000 decisions</text>
+    <text x="40" y="452" font-size="12.5" fill="#8b949e">lower is better</text>
+    <rect x="330" y="418" width="470" height="14" rx="7" fill="#1e293b"/>
+    <rect class="bar" style="animation-delay:0.60s" x="330" y="418" width="470.0" height="14" rx="7.0" fill="url(#jev)"/>
+    <text class="mono" x="812" y="430" font-size="13" fill="#c4b5fd">$0.028</text>
+    <rect x="330" y="440" width="470" height="14" rx="7" fill="#1e293b"/>
+    <rect class="bar" style="animation-delay:0.90s" x="330" y="440" width="3.0" height="14" rx="1.5" fill="url(#loc)"/>
+    <text class="mono" x="812" y="452" font-size="13" font-weight="700" fill="#6ee7b7">$0</text>
+    <g class="win" style="animation-delay:0.60s"><rect x="878" y="420" width="92" height="30" rx="15" fill="#052e2b" stroke="#10b981"/><text x="924" y="440" text-anchor="middle" font-size="13" font-weight="800" fill="#6ee7b7">free</text></g>
+  </g>
+  <line x1="40" x2="960" y1="490" y2="490" stroke="#30363d"/>
+  <text x="40" y="518" font-size="14" fill="#e6edf3"><tspan font-weight="700" fill="#6ee7b7">No API key · no network · no Jev tokens.</tspan>  Your existing Claude / Copilot subscription is all you need.</text>
+  <text x="40" y="546" font-size="12.5" fill="#8b949e">Honest note: different datasets. Jev 1.14 = 2,450 general choice questions (System One Bench, 2026-10-15). Local engine = 419 web-form</text>
+  <text x="40" y="564" font-size="12.5" fill="#8b949e">field-matching cases; on the independent Test 5, written after the engine changes: 87.9% accuracy, 4.6% ECE, 0 wrong autonomous fills.</text>
+  <text x="40" y="582" font-size="12.5" fill="#8b949e">Jev is a general model; this engine does one job — matching your data to form fields — and is tuned for it. Read it as an order of magnitude.</text>
+</svg>

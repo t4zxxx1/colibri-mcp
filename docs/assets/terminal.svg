@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="476" viewBox="0 0 1000 476" role="img" aria-label="Terminal demo: the agent calls browse_task with 21 user labels; the local engine fills 21 of 21 fields and asks only for the declarations; after the user confirms, it submits and reads the protocol number.">
+  <style>
+    text { font-family: ui-monospace, SFMono-Regular, "Cascadia Code", Consolas, Menlo, monospace; font-size: 14px; white-space: pre; }
+    .ui { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .cover { transform-box: fill-box; transform-origin: right center; }
+    .l0 { animation: l0 24.0s linear infinite; }
+    @keyframes l0 { 0%,2.08% { transform: scaleX(1); } 9.58%,96% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+    .l1 { animation: l1 24.0s linear infinite; }
+    @keyframes l1 { 0%,10.42% { transform: scaleX(1); } 19.79%,96% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+    .l2 { animation: l2 24.0s linear infinite; }
+    @keyframes l2 { 0%,20.83% { transform: scaleX(1); } 30.21%,96% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+    .l4 { animation: l4 24.0s linear infinite; }
+    @keyframes l4 { 0%,32.29% { transform: scaleX(1); } 35.10%,96% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+    .l5 { animation: l5 24.0s linear infinite; }
+    @keyframes l5 { 0%,35.42% { transform: scaleX(1); } 38.23%,96% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+    .l6 { animation: l6 24.0s linear infinite; }
+    @keyframes l6 { 0%,38.54% { transform: scaleX(1); } 41.35%,96% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+    .l7 { animation: l7 24.0s linear infinite; }
+    @keyframes l7 { 0%,41.67% { transform: scaleX(1); } 44.48%,96% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+    .l8 { animation: l8 24.0s linear infinite; }
+    @keyframes l8 { 0%,44.79% { transform: scaleX(1); } 47.60%,96% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+    .l9 { animation: l9 24.0s linear infinite; }
+    @keyframes l9 { 0%,47.92% { transform: scaleX(1); } 50.73%,96% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+    .l10 { animation: l10 24.0s linear infinite; }
+    @keyframes l10 { 0%,51.04% { transform: scaleX(1); } 53.85%,96% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+    .l11 { animation: l11 24.0s linear infinite; }
+    @keyframes l11 { 0%,54.17% { transform: scaleX(1); } 56.98%,96% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+    .l12 { animation: l12 24.0s linear infinite; }
+    @keyframes l12 { 0%,57.29% { transform: scaleX(1); } 62.92%,96% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+    .l14 { animation: l14 24.0s linear infinite; }
+    @keyframes l14 { 0%,67.71% { transform: scaleX(1); } 76.15%,96% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+    .l15 { animation: l15 24.0s linear infinite; }
+    @keyframes l15 { 0%,77.08% { transform: scaleX(1); } 79.90%,96% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+    .l16 { animation: l16 24.0s linear infinite; }
+    @keyframes l16 { 0%,80.21% { transform: scaleX(1); } 83.02%,96% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+    
+  </style>
+  <rect width="1000" height="476" rx="14" fill="#0d1117"/>
+  <rect x=".75" y=".75" width="998.5" height="474.5" rx="13.5" fill="none" stroke="#30363d" stroke-width="1.5"/>
+  <path d="M0 14a14 14 0 0 1 14-14h972a14 14 0 0 1 14 14v26H0z" fill="#161b22"/>
+  <circle cx="22" cy="20" r="6" fill="#ff5f57"/><circle cx="42" cy="20" r="6" fill="#febc2e"/><circle cx="62" cy="20" r="6" fill="#28c840"/>
+  <text class="ui" x="500" y="25" text-anchor="middle" font-size="13" fill="#8b949e">compact-browser-mcp — real output (abridged), task T1</text>
+  <text x="28" y="82"><tspan fill="#34d399">$ </tspan><tspan fill="#67e8f9">browse_task</tspan></text>
+  <rect class="cover l0" x="26" y="66" width="116" height="22" fill="#0d1117"/>
+  <text x="28" y="104"><tspan fill="#e6edf3">  params: { "P.IVA": "01234567890", "ateco": "62", "comune": "Ischia",</tspan></text>
+  <rect class="cover l1" x="26" y="88" width="596" height="22" fill="#0d1117"/>
+  <text x="28" y="126"><tspan fill="#e6edf3">            "data inizio": "03/11/2026", …21 user labels }   # page never read</tspan></text>
+  <rect class="cover l2" x="26" y="110" width="664" height="22" fill="#0d1117"/>
+  <text x="28" y="170"><tspan fill="#6ee7b7">parametri: 21/21 impostati</tspan></text>
+  <rect class="cover l4" x="26" y="154" width="225" height="22" fill="#0d1117"/>
+  <text x="28" y="192"><tspan fill="#f2cc60">obbligatori ancora vuoti: e54 "Dichiaro di aver letto l'informativa…" !c, e55 … !c</tspan></text>
+  <rect class="cover l5" x="26" y="176" width="697" height="22" fill="#0d1117"/>
+  <text x="28" y="214"><tspan fill="#94a3b8">cookie rifiutati (Rifiuta)</tspan></text>
+  <rect class="cover l6" x="26" y="198" width="225" height="22" fill="#0d1117"/>
+  <text x="28" y="236"><tspan fill="#e6edf3">"P.IVA" → e29 "Partita IVA" 97%</tspan></text>
+  <rect class="cover l7" x="26" y="220" width="267" height="22" fill="#0d1117"/>
+  <text x="28" y="258"><tspan fill="#e6edf3">"ateco" → e31 "Codice ATECO" ="62 - Industrie alimentari (62)"</tspan></text>
+  <rect class="cover l8" x="26" y="242" width="529" height="22" fill="#0d1117"/>
+  <text x="28" y="280"><tspan fill="#e6edf3">"provincia" → e33 "Provincia" 93%</tspan></text>
+  <rect class="cover l9" x="26" y="264" width="284" height="22" fill="#0d1117"/>
+  <text x="28" y="302"><tspan fill="#e6edf3">"data inizio" → e49 "Data inizio" (data adattata: 2026-11-03)</tspan></text>
+  <rect class="cover l10" x="26" y="286" width="520" height="22" fill="#0d1117"/>
+  <text x="28" y="324"><tspan fill="#94a3b8">pulsanti: e56 "Salva bozza" !c · e57 "Avanti"</tspan></text>
+  <rect class="cover l11" x="26" y="308" width="385" height="22" fill="#0d1117"/>
+  <text x="28" y="346"><tspan fill="#8b949e"># other 17 fields matched at ≥97% · 0 Jev tokens · 0 API keys</tspan></text>
+  <rect class="cover l12" x="26" y="330" width="672" height="22" fill="#0d1117"/>
+  <text x="28" y="390"><tspan fill="#34d399">$ </tspan><tspan fill="#67e8f9">user: "ok, invia"  →  browse_task { submit: true, confirm: true }</tspan></text>
+  <rect class="cover l14" x="26" y="374" width="571" height="22" fill="#0d1117"/>
+  <text x="28" y="412"><tspan fill="#6ee7b7">inviato: "Invia domanda" → "Conferma invio"</tspan></text>
+  <rect class="cover l15" x="26" y="396" width="368" height="22" fill="#0d1117"/>
+  <text x="28" y="434"><tspan fill="#6ee7b7">protocollo = "2026/004512" (78%, da testo)</tspan></text>
+  <rect class="cover l16" x="26" y="418" width="360" height="22" fill="#0d1117"/>
+  
+</svg>

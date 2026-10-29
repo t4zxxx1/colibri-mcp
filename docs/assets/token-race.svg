@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="486" viewBox="0 0 1000 486" role="img" aria-label="Total context tokens for a 22-field form on 2 pages: screenshots 2,480,688; Playwright MCP 318,910; compact-browser browse_task 27,760.">
+  <defs>
+    <linearGradient id="bad" x1="0" x2="1"><stop offset="0" stop-color="#f97316"/><stop offset="1" stop-color="#ef4444"/></linearGradient>
+    <linearGradient id="good" x1="0" x2="1"><stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#34d399"/></linearGradient>
+  </defs>
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .mono { font-family: ui-monospace, SFMono-Regular, "Cascadia Code", Consolas, Menlo, monospace; }
+    .bar { transform-box: fill-box; transform-origin: left center; animation: grow 9s cubic-bezier(.2,.8,.2,1) infinite; }
+    @keyframes grow { 0% { transform: scaleX(0); } 22%,93% { transform: scaleX(1); } 100% { transform: scaleX(0); } }
+    .val { animation: val 9s ease infinite; }
+    @keyframes val { 0%,18% { opacity: 0; } 26%,93% { opacity: 1; } 100% { opacity: 0; } }
+    .badge { animation: badge 9s ease infinite; }
+    @keyframes badge { 0%,30% { opacity: 0; transform: translateY(6px); } 38%,93% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; } }
+  </style>
+  <rect width="1000" height="486" rx="18" fill="#0d1117"/>
+  <rect x=".75" y=".75" width="998.5" height="484.5" rx="17.5" fill="none" stroke="#30363d" stroke-width="1.5"/>
+  <text x="32" y="46" font-size="21" font-weight="800" fill="#f0f6fc">Total context tokens to finish the same task</text>
+  <text x="32" y="72" font-size="13.5" fill="#8b949e">Task T1: grant application, 22 fields on 2 pages, dependent menus, autocomplete, confirmation, read the protocol number. Linear scale.</text>
+  <text x="902" y="98" text-anchor="middle" font-size="12" fill="#8b949e" letter-spacing="1">CALLS</text>
+  <text x="962" y="98" text-anchor="end" font-size="12" fill="#8b949e" letter-spacing="1">TIME</text>
+  
+  <g>
+    
+    <text x="286" y="121" text-anchor="end" font-size="15" fill="#cbd5e1">Screenshots (computer use)</text>
+    <rect x="300" y="108" width="520" height="18" rx="9" fill="#1e293b"/>
+    <rect class="bar" style="animation-delay:0.00s" x="300" y="108" width="520" height="18" rx="9" fill="url(#bad)"/>
+    <text class="val mono" style="animation-delay:0.00s" x="808" y="122" font-size="13" fill="#ffffff" font-weight="700" text-anchor="end">2,480,688</text>
+    <text x="902" y="122" text-anchor="middle" font-size="14" fill="#94a3b8" class="mono">54</text>
+    <text x="962" y="122" text-anchor="end" font-size="14" fill="#94a3b8" class="mono">154 s</text>
+  </g>
+  <g>
+    
+    <text x="286" y="165" text-anchor="end" font-size="15" fill="#cbd5e1">agent-browser MCP</text>
+    <rect x="300" y="152" width="520" height="18" rx="9" fill="#1e293b"/>
+    <rect class="bar" style="animation-delay:0.12s" x="300" y="152" width="288" height="18" rx="9" fill="#475569"/>
+    <text class="val mono" style="animation-delay:0.12s" x="598" y="166" font-size="13" fill="#94a3b8">1,373,730</text>
+    <text x="902" y="166" text-anchor="middle" font-size="14" fill="#94a3b8" class="mono">40</text>
+    <text x="962" y="166" text-anchor="end" font-size="14" fill="#94a3b8" class="mono">108 s</text>
+  </g>
+  <g>
+    
+    <text x="286" y="209" text-anchor="end" font-size="15" fill="#cbd5e1">Playwright MCP (Microsoft)</text>
+    <rect x="300" y="196" width="520" height="18" rx="9" fill="#1e293b"/>
+    <rect class="bar" style="animation-delay:0.24s" x="300" y="196" width="66.8" height="18" rx="9" fill="#475569"/>
+    <text class="val mono" style="animation-delay:0.24s" x="376.8" y="210" font-size="13" fill="#94a3b8">318,910</text>
+    <text x="902" y="210" text-anchor="middle" font-size="14" fill="#94a3b8" class="mono">14</text>
+    <text x="962" y="210" text-anchor="end" font-size="14" fill="#94a3b8" class="mono">52 s</text>
+  </g>
+  <g>
+    
+    <text x="286" y="253" text-anchor="end" font-size="15" fill="#cbd5e1">agent-browser CLI</text>
+    <rect x="300" y="240" width="520" height="18" rx="9" fill="#1e293b"/>
+    <rect class="bar" style="animation-delay:0.36s" x="300" y="240" width="31.3" height="18" rx="9" fill="#475569"/>
+    <text class="val mono" style="animation-delay:0.36s" x="341.3" y="254" font-size="13" fill="#94a3b8">149,403</text>
+    <text x="902" y="254" text-anchor="middle" font-size="14" fill="#94a3b8" class="mono">6</text>
+    <text x="962" y="254" text-anchor="end" font-size="14" fill="#94a3b8" class="mono">43 s</text>
+  </g>
+  <g>
+    
+    <text x="286" y="297" text-anchor="end" font-size="15" fill="#cbd5e1">Fast Playwright MCP</text>
+    <rect x="300" y="284" width="520" height="18" rx="9" fill="#1e293b"/>
+    <rect class="bar" style="animation-delay:0.48s" x="300" y="284" width="24.2" height="18" rx="9" fill="#475569"/>
+    <text class="val mono" style="animation-delay:0.48s" x="334.2" y="298" font-size="13" fill="#94a3b8">115,624</text>
+    <text x="902" y="298" text-anchor="middle" font-size="14" fill="#94a3b8" class="mono">7</text>
+    <text x="962" y="298" text-anchor="end" font-size="14" fill="#94a3b8" class="mono">57 s</text>
+  </g>
+  <g>
+    
+    <text x="286" y="341" text-anchor="end" font-size="15" fill="#cbd5e1">agent-browser CLI, no guide</text>
+    <rect x="300" y="328" width="520" height="18" rx="9" fill="#1e293b"/>
+    <rect class="bar" style="animation-delay:0.60s" x="300" y="328" width="17.6" height="18" rx="8.8" fill="#475569"/>
+    <text class="val mono" style="animation-delay:0.60s" x="327.6" y="342" font-size="13" fill="#94a3b8">84,124</text>
+    <text x="902" y="342" text-anchor="middle" font-size="14" fill="#94a3b8" class="mono">5</text>
+    <text x="962" y="342" text-anchor="end" font-size="14" fill="#94a3b8" class="mono">40 s</text>
+  </g>
+  <g>
+    
+    <text x="286" y="385" text-anchor="end" font-size="15" fill="#ecfeff" font-weight="700">compact-browser · explicit steps</text>
+    <rect x="300" y="372" width="520" height="18" rx="9" fill="#1e293b"/>
+    <rect class="bar" style="animation-delay:0.72s" x="300" y="372" width="7.7" height="18" rx="3.85" fill="url(#good)"/>
+    <text class="val mono" style="animation-delay:0.72s" x="317.7" y="386" font-size="13" fill="#6ee7b7" font-weight="700">36,923</text>
+    <text x="902" y="386" text-anchor="middle" font-size="14" fill="#6ee7b7" class="mono">4</text>
+    <text x="962" y="386" text-anchor="end" font-size="14" fill="#6ee7b7" class="mono">24 s</text>
+  </g>
+  <g>
+    <rect x="24" y="404" width="952" height="38" rx="10" fill="#052e2b" opacity=".55" stroke="#115e59"/>
+    <text x="286" y="429" text-anchor="end" font-size="15" fill="#ecfeff" font-weight="700">compact-browser · browse_task</text>
+    <rect x="300" y="416" width="520" height="18" rx="9" fill="#1e293b"/>
+    <rect class="bar" style="animation-delay:0.84s" x="300" y="416" width="5.8" height="18" rx="2.9" fill="url(#good)"/>
+    <text class="val mono" style="animation-delay:0.84s" x="315.8" y="430" font-size="13" fill="#6ee7b7" font-weight="700">27,760</text>
+    <text x="902" y="430" text-anchor="middle" font-size="14" fill="#6ee7b7" class="mono">3</text>
+    <text x="962" y="430" text-anchor="end" font-size="14" fill="#6ee7b7" class="mono">19 s</text>
+  </g>
+  <g class="badge">
+    <rect x="520" y="232" width="300" height="56" rx="10" fill="#0f172a" stroke="#34d399"/>
+    <text x="540" y="254" font-size="15" font-weight="800" fill="#6ee7b7">89× fewer than screenshots</text>
+    <text x="540" y="276" font-size="15" font-weight="800" fill="#67e8f9">11.5× fewer than Playwright MCP</text>
+  </g>
+</svg>
