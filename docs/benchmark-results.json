@@ -1,8 +1,21 @@
 {
+ "names": {
+  "M1": "Screenshot",
+  "M2": "Playwright MCP",
+  "M3": "Browser compatto",
+  "M4": "agent-browser CLI",
+  "M5": "agent-browser MCP",
+  "M6": "Fast Playwright MCP",
+  "M4b": "agent-browser CLI senza guida"
+ },
  "defs": {
+  "M1": 1500,
+  "M4": 2295,
   "M2": 4536,
   "M3": 1639,
-  "M1": 1500
+  "M4b": 2295,
+  "M5": 17877,
+  "M6": 2411
  },
  "results": {
   "T1": {
@@ -13,499 +26,282 @@
     "ctxEnd": 83725,
     "inputTot": 2480688,
     "outTot": 3071,
-    "toolS": 19.934059696999995,
+    "toolS": 20.348132049,
     "modelS": 133.68333333333342,
-    "totS": 153.6173930303334,
+    "totS": 154.0314653823334,
     "costNoCache": 4.992086,
     "cacheCost": 0.47971879999999933,
     "ok": true,
     "raw": [
      {
-      "a": {
-       "action": "navigate",
-       "url": "http://127.0.0.1:43763/domanda1.html"
-      },
-      "ms": 498
+      "n": "computer",
+      "t": 1366,
+      "ms": 585
      },
      {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        777,
-        770
-       ]
-      },
-      "ms": 335
+      "n": "computer",
+      "t": 1366,
+      "ms": 347
      },
      {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        190,
-        409
-       ]
-      },
-      "ms": 355
-     },
-     {
-      "a": {
-       "action": "type",
-       "text": "Alfa Meccanica S.r.l."
-      },
-      "ms": 399
-     },
-     {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        190,
-        468
-       ]
-      },
-      "ms": 341
-     },
-     {
-      "a": {
-       "action": "type",
-       "text": "01234567890"
-      },
-      "ms": 376
-     },
-     {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        190,
-        527
-       ]
-      },
-      "ms": 343
-     },
-     {
-      "a": {
-       "action": "type",
-       "text": "01234567890"
-      },
-      "ms": 369
-     },
-     {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        182,
-        586
-       ]
-      },
-      "ms": 365
-     },
-     {
-      "a": {
-       "action": "type",
-       "text": "62\n"
-      },
-      "ms": 355
-     },
-     {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        182,
-        645
-       ]
-      },
-      "ms": 355
-     },
-     {
-      "a": {
-       "action": "type",
-       "text": "Campania\n"
-      },
-      "ms": 356
-     },
-     {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        182,
-        704
-       ]
-      },
-      "ms": 358
-     },
-     {
-      "a": {
-       "action": "type",
-       "text": "Napoli\n"
-      },
-      "ms": 352
-     },
-     {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        190,
-        763
-       ]
-      },
-      "ms": 351
-     },
-     {
-      "a": {
-       "action": "type",
-       "text": "Isch"
-      },
-      "ms": 650
-     },
-     {
-      "a": {
-       "action": "scroll",
-       "coordinate": [
-        640,
-        400
-       ],
-       "scroll_direction": "down",
-       "scroll_amount": 5
-      },
-      "ms": 339
-     },
-     {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        594,
-        305
-       ]
-      },
-      "ms": 340
-     },
-     {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        190,
-        322
-       ]
-      },
+      "n": "computer",
+      "t": 1366,
       "ms": 345
      },
      {
-      "a": {
-       "action": "type",
-       "text": "Via Roma 1"
-      },
+      "n": "computer",
+      "t": 1366,
       "ms": 401
      },
      {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        190,
-        381
-       ]
-      },
-      "ms": 334
+      "n": "computer",
+      "t": 1366,
+      "ms": 352
      },
      {
-      "a": {
-       "action": "type",
-       "text": "80077"
-      },
-      "ms": 357
-     },
-     {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        190,
-        440
-       ]
-      },
-      "ms": 347
-     },
-     {
-      "a": {
-       "action": "type",
-       "text": "alfa@pec.it"
-      },
-      "ms": 368
-     },
-     {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        190,
-        626
-       ]
-      },
-      "ms": 342
-     },
-     {
-      "a": {
-       "action": "type",
-       "text": "Mario"
-      },
-      "ms": 350
-     },
-     {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        190,
-        685
-       ]
-      },
-      "ms": 339
-     },
-     {
-      "a": {
-       "action": "type",
-       "text": "Rossi"
-      },
-      "ms": 351
-     },
-     {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        190,
-        744
-       ]
-      },
-      "ms": 353
-     },
-     {
-      "a": {
-       "action": "type",
-       "text": "mario@alfa.it"
-      },
-      "ms": 381
-     },
-     {
-      "a": {
-       "action": "scroll",
-       "coordinate": [
-        640,
-        400
-       ],
-       "scroll_direction": "down",
-       "scroll_amount": 5
-      },
-      "ms": 341
-     },
-     {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        187,
-        319
-       ]
-      },
-      "ms": 345
-     },
-     {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        190,
-        501
-       ]
-      },
-      "ms": 334
-     },
-     {
-      "a": {
-       "action": "type",
-       "text": "Competenze digitali 2026"
-      },
+      "n": "computer",
+      "t": 1366,
       "ms": 387
      },
      {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        182,
-        560
-       ]
-      },
-      "ms": 343
+      "n": "computer",
+      "t": 1366,
+      "ms": 364
      },
      {
-      "a": {
-       "action": "type",
-       "text": "Fondo Nuove Competenze\n"
-      },
-      "ms": 390
+      "n": "computer",
+      "t": 1366,
+      "ms": 374
      },
      {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        190,
-        619
-       ]
-      },
-      "ms": 332
+      "n": "computer",
+      "t": 1366,
+      "ms": 394
      },
      {
-      "a": {
-       "action": "type",
-       "text": "12"
-      },
+      "n": "computer",
+      "t": 1366,
+      "ms": 357
+     },
+     {
+      "n": "computer",
+      "t": 1366,
+      "ms": 362
+     },
+     {
+      "n": "computer",
+      "t": 1366,
+      "ms": 377
+     },
+     {
+      "n": "computer",
+      "t": 1366,
+      "ms": 366
+     },
+     {
+      "n": "computer",
+      "t": 1366,
+      "ms": 358
+     },
+     {
+      "n": "computer",
+      "t": 1366,
+      "ms": 366
+     },
+     {
+      "n": "computer",
+      "t": 1366,
+      "ms": 660
+     },
+     {
+      "n": "computer",
+      "t": 1366,
+      "ms": 351
+     },
+     {
+      "n": "computer",
+      "t": 1366,
+      "ms": 348
+     },
+     {
+      "n": "computer",
+      "t": 1366,
+      "ms": 353
+     },
+     {
+      "n": "computer",
+      "t": 1366,
+      "ms": 370
+     },
+     {
+      "n": "computer",
+      "t": 1366,
+      "ms": 352
+     },
+     {
+      "n": "computer",
+      "t": 1366,
+      "ms": 367
+     },
+     {
+      "n": "computer",
+      "t": 1366,
+      "ms": 344
+     },
+     {
+      "n": "computer",
+      "t": 1366,
+      "ms": 361
+     },
+     {
+      "n": "computer",
+      "t": 1366,
+      "ms": 360
+     },
+     {
+      "n": "computer",
+      "t": 1366,
+      "ms": 354
+     },
+     {
+      "n": "computer",
+      "t": 1366,
       "ms": 347
      },
      {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        190,
-        678
-       ]
-      },
+      "n": "computer",
+      "t": 1366,
+      "ms": 351
+     },
+     {
+      "n": "computer",
+      "t": 1366,
+      "ms": 346
+     },
+     {
+      "n": "computer",
+      "t": 1366,
+      "ms": 396
+     },
+     {
+      "n": "computer",
+      "t": 1366,
       "ms": 340
      },
      {
-      "a": {
-       "action": "type",
-       "text": "40"
-      },
-      "ms": 344
+      "n": "computer",
+      "t": 1366,
+      "ms": 341
      },
      {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        190,
-        739
-       ]
-      },
+      "n": "computer",
+      "t": 1366,
+      "ms": 345
+     },
+     {
+      "n": "computer",
+      "t": 1366,
+      "ms": 419
+     },
+     {
+      "n": "computer",
+      "t": 1366,
+      "ms": 352
+     },
+     {
+      "n": "computer",
+      "t": 1366,
+      "ms": 370
+     },
+     {
+      "n": "computer",
+      "t": 1366,
+      "ms": 338
+     },
+     {
+      "n": "computer",
+      "t": 1366,
+      "ms": 346
+     },
+     {
+      "n": "computer",
+      "t": 1366,
       "ms": 349
      },
      {
-      "a": {
-       "action": "type",
-       "text": "11032026"
-      },
-      "ms": 350
+      "n": "computer",
+      "t": 1366,
+      "ms": 345
      },
      {
-      "a": {
-       "action": "scroll",
-       "coordinate": [
-        640,
-        400
-       ],
-       "scroll_direction": "down",
-       "scroll_amount": 5
-      },
-      "ms": 341
-     },
-     {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        190,
-        299
-       ]
-      },
+      "n": "computer",
+      "t": 1366,
       "ms": 342
      },
      {
-      "a": {
-       "action": "type",
-       "text": "15/12/2026"
-      },
-      "ms": 369
+      "n": "computer",
+      "t": 1366,
+      "ms": 357
      },
      {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        189,
-        446
-       ]
-      },
+      "n": "computer",
+      "t": 1366,
+      "ms": 347
+     },
+     {
+      "n": "computer",
+      "t": 1366,
       "ms": 341
      },
      {
-      "a": {
-       "action": "type",
-       "text": "Sviluppare competenze digitali di base per 12 dipendenti."
-      },
-      "ms": 451
+      "n": "computer",
+      "t": 1366,
+      "ms": 368
      },
      {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        574,
-        642
-       ]
-      },
-      "ms": 337
+      "n": "computer",
+      "t": 1366,
+      "ms": 340
      },
      {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        574,
-        670
-       ]
-      },
+      "n": "computer",
+      "t": 1366,
+      "ms": 484
+     },
+     {
+      "n": "computer",
+      "t": 1366,
+      "ms": 336
+     },
+     {
+      "n": "computer",
+      "t": 1366,
       "ms": 344
      },
      {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        143,
-        724
-       ]
-      },
-      "ms": 742
+      "n": "computer",
+      "t": 1366,
+      "ms": 761
      },
      {
-      "a": {
-       "action": "scroll",
-       "coordinate": [
-        640,
-        400
-       ],
-       "scroll_direction": "down",
-       "scroll_amount": 5
-      },
-      "ms": 341
-     },
-     {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        229,
-        569
-       ]
-      },
-      "ms": 332
-     },
-     {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        498,
-        451
-       ]
-      },
+      "n": "computer",
+      "t": 1366,
       "ms": 344
      },
      {
-      "a": {
-       "action": "scroll",
-       "coordinate": [
-        640,
-        400
-       ],
-       "scroll_direction": "up",
-       "scroll_amount": 5
-      },
-      "ms": 339
+      "n": "computer",
+      "t": 1366,
+      "ms": 344
+     },
+     {
+      "n": "computer",
+      "t": 1366,
+      "ms": 356
+     },
+     {
+      "n": "computer",
+      "t": 1366,
+      "ms": 344
      }
     ]
    },
@@ -516,9 +312,9 @@
     "ctxEnd": 34198,
     "inputTot": 318910,
     "outTot": 1391,
-    "toolS": 5.4095465170000026,
+    "toolS": 5.85405317499999,
     "modelS": 45.68333333333334,
-    "totS": 51.09287985033334,
+    "totS": 51.53738650833333,
     "costNoCache": 0.6517299999999999,
     "cacheCost": 0.1278762,
     "ok": true,
@@ -526,72 +322,72 @@
      {
       "n": "browser_navigate",
       "t": 159,
-      "ms": 704
+      "ms": 748
      },
      {
       "n": "browser_snapshot",
       "t": 5285,
-      "ms": 39
+      "ms": 73
      },
      {
       "n": "browser_click",
       "t": 117,
-      "ms": 618
+      "ms": 653
      },
      {
       "n": "browser_fill_form",
       "t": 590,
-      "ms": 1191
+      "ms": 1316
      },
      {
       "n": "browser_type",
       "t": 122,
-      "ms": 576
+      "ms": 609
      },
      {
       "n": "browser_snapshot",
       "t": 5354,
-      "ms": 49
+      "ms": 31
      },
      {
       "n": "browser_click",
       "t": 120,
-      "ms": 569
+      "ms": 579
      },
      {
       "n": "browser_fill_form",
       "t": 65,
-      "ms": 90
+      "ms": 98
      },
      {
       "n": "browser_click",
       "t": 107,
-      "ms": 361
+      "ms": 420
      },
      {
       "n": "browser_snapshot",
       "t": 3706,
-      "ms": 37
+      "ms": 43
      },
      {
       "n": "browser_click",
       "t": 109,
-      "ms": 583
+      "ms": 610
      },
      {
       "n": "browser_snapshot",
       "t": 3803,
-      "ms": 22
+      "ms": 64
      },
      {
       "n": "browser_click",
       "t": 110,
-      "ms": 549
+      "ms": 579
      },
      {
       "n": "browser_snapshot",
       "t": 3774,
-      "ms": 20
+      "ms": 29
      }
     ]
    },
@@ -602,9 +398,9 @@
     "ctxEnd": 8414,
     "inputTot": 38495,
     "outTot": 734,
-    "toolS": 4.445509801999997,
+    "toolS": 4.806987085999986,
     "modelS": 19.733333333333334,
-    "totS": 24.17884313533333,
+    "totS": 24.54032041933332,
     "costNoCache": 0.08433,
     "cacheCost": 0.0313831,
     "ok": true,
@@ -612,22 +408,376 @@
      {
       "n": "browse_open",
       "t": 634,
-      "ms": 1021
+      "ms": 1258
      },
      {
       "n": "browse_do",
       "t": 135,
-      "ms": 1962
+      "ms": 2095
      },
      {
       "n": "browse_do",
       "t": 339,
-      "ms": 642
+      "ms": 638
      },
      {
       "n": "browse_do",
       "t": 83,
-      "ms": 820
+      "ms": 817
+     }
+    ]
+   },
+   "M4": {
+    "calls": 6,
+    "obs": 18972,
+    "maxObs": 9614,
+    "ctxEnd": 27458,
+    "inputTot": 149403,
+    "outTot": 1341,
+    "toolS": 4.043413766000005,
+    "modelS": 32.849999999999994,
+    "totS": 36.893413766,
+    "costNoCache": 0.31221599999999994,
+    "cacheCost": 0.0942495,
+    "ok": true,
+    "raw": [
+     {
+      "n": "bash",
+      "t": 9614,
+      "ms": 80
+     },
+     {
+      "n": "bash",
+      "t": 4430,
+      "ms": 1348
+     },
+     {
+      "n": "bash",
+      "t": 54,
+      "ms": 350
+     },
+     {
+      "n": "bash",
+      "t": 4576,
+      "ms": 1653
+     },
+     {
+      "n": "bash",
+      "t": 260,
+      "ms": 424
+     },
+     {
+      "n": "bash",
+      "t": 38,
+      "ms": 189
+     }
+    ]
+   },
+   "M4b": {
+    "calls": 5,
+    "obs": 9358,
+    "maxObs": 4576,
+    "ctxEnd": 17794,
+    "inputTot": 84124,
+    "outTot": 1291,
+    "toolS": 3.963869731000006,
+    "modelS": 30.516666666666662,
+    "totS": 34.48053639766667,
+    "costNoCache": 0.18115799999999999,
+    "cacheCost": 0.064028,
+    "ok": true,
+    "raw": [
+     {
+      "n": "bash",
+      "t": 4430,
+      "ms": 1348
+     },
+     {
+      "n": "bash",
+      "t": 54,
+      "ms": 350
+     },
+     {
+      "n": "bash",
+      "t": 4576,
+      "ms": 1653
+     },
+     {
+      "n": "bash",
+      "t": 260,
+      "ms": 424
+     },
+     {
+      "n": "bash",
+      "t": 38,
+      "ms": 189
+     }
+    ]
+   },
+   "M5": {
+    "calls": 40,
+    "obs": 16971,
+    "maxObs": 4464,
+    "ctxEnd": 41917,
+    "inputTot": 1374342,
+    "outTot": 2219,
+    "toolS": 9.89123529099999,
+    "modelS": 98.48333333333332,
+    "totS": 108.3745686243333,
+    "costNoCache": 2.770874,
+    "cacheCost": 0.2602250000000002,
+    "ok": true,
+    "raw": [
+     {
+      "n": "open",
+      "t": 10,
+      "ms": 1100
+     },
+     {
+      "n": "snapshot",
+      "t": 4396,
+      "ms": 173
+     },
+     {
+      "n": "click",
+      "t": 127,
+      "ms": 48
+     },
+     {
+      "n": "fill",
+      "t": 127,
+      "ms": 27
+     },
+     {
+      "n": "fill",
+      "t": 127,
+      "ms": 38
+     },
+     {
+      "n": "fill",
+      "t": 127,
+      "ms": 33
+     },
+     {
+      "n": "select",
+      "t": 130,
+      "ms": 30
+     },
+     {
+      "n": "select",
+      "t": 131,
+      "ms": 34
+     },
+     {
+      "n": "select",
+      "t": 21,
+      "ms": 76
+     },
+     {
+      "n": "wait_ms",
+      "t": 133,
+      "ms": 1049
+     },
+     {
+      "n": "select",
+      "t": 132,
+      "ms": 26
+     },
+     {
+      "n": "type",
+      "t": 127,
+      "ms": 25
+     },
+     {
+      "n": "wait_for_text",
+      "t": 3,
+      "ms": 327
+     },
+     {
+      "n": "snapshot",
+      "t": 4464,
+      "ms": 92
+     },
+     {
+      "n": "click",
+      "t": 127,
+      "ms": 268
+     },
+     {
+      "n": "fill",
+      "t": 127,
+      "ms": 25
+     },
+     {
+      "n": "fill",
+      "t": 127,
+      "ms": 26
+     },
+     {
+      "n": "fill",
+      "t": 127,
+      "ms": 26
+     },
+     {
+      "n": "fill",
+      "t": 127,
+      "ms": 27
+     },
+     {
+      "n": "fill",
+      "t": 127,
+      "ms": 26
+     },
+     {
+      "n": "fill",
+      "t": 127,
+      "ms": 26
+     },
+     {
+      "n": "fill",
+      "t": 127,
+      "ms": 26
+     },
+     {
+      "n": "fill",
+      "t": 127,
+      "ms": 33
+     },
+     {
+      "n": "fill",
+      "t": 127,
+      "ms": 45
+     },
+     {
+      "n": "fill",
+      "t": 127,
+      "ms": 51
+     },
+     {
+      "n": "fill",
+      "t": 127,
+      "ms": 25
+     },
+     {
+      "n": "eval",
+      "t": 1,
+      "ms": 25
+     },
+     {
+      "n": "check",
+      "t": 127,
+      "ms": 671
+     },
+     {
+      "n": "select",
+      "t": 137,
+      "ms": 26
+     },
+     {
+      "n": "check",
+      "t": 127,
+      "ms": 976
+     },
+     {
+      "n": "check",
+      "t": 127,
+      "ms": 1033
+     },
+     {
+      "n": "click",
+      "t": 127,
+      "ms": 1013
+     },
+     {
+      "n": "wait_for_text",
+      "t": 4,
+      "ms": 250
+     },
+     {
+      "n": "get_text",
+      "t": 224,
+      "ms": 47
+     },
+     {
+      "n": "snapshot",
+      "t": 1979,
+      "ms": 48
+     },
+     {
+      "n": "click",
+      "t": 127,
+      "ms": 1043
+     },
+     {
+      "n": "snapshot",
+      "t": 2028,
+      "ms": 46
+     },
+     {
+      "n": "click",
+      "t": 127,
+      "ms": 978
+     },
+     {
+      "n": "wait_for_text",
+      "t": 2,
+      "ms": 27
+     },
+     {
+      "n": "get_text",
+      "t": 255,
+      "ms": 26
+     }
+    ]
+   },
+   "M6": {
+    "calls": 7,
+    "obs": 11154,
+    "maxObs": 5283,
+    "ctxEnd": 20163,
+    "inputTot": 115637,
+    "outTot": 1748,
+    "toolS": 15.896369276000012,
+    "modelS": 41.13333333333333,
+    "totS": 57.02970260933334,
+    "costNoCache": 0.24875399999999998,
+    "cacheCost": 0.07743489999999999,
+    "ok": true,
+    "raw": [
+     {
+      "n": "browser_tools",
+      "t": 1085,
+      "ms": 12
+     },
+     {
+      "n": "browser_navigate",
+      "t": 5283,
+      "ms": 781
+     },
+     {
+      "n": "browser_batch_execute",
+      "t": 468,
+      "ms": 4425
+     },
+     {
+      "n": "browser_batch_execute",
+      "t": 701,
+      "ms": 8019
+     },
+     {
+      "n": "browser_batch_execute",
+      "t": 173,
+      "ms": 1387
+     },
+     {
+      "n": "browser_snapshot",
+      "t": 1257,
+      "ms": 111
+     },
+     {
+      "n": "browser_batch_execute",
+      "t": 2187,
+      "ms": 1161
      }
     ]
    }
@@ -640,41 +790,27 @@
     "ctxEnd": 10809,
     "inputTot": 34630,
     "outTot": 331,
-    "toolS": 1.3373103990000017,
+    "toolS": 1.4355973090000043,
     "modelS": 11.516666666666666,
-    "totS": 12.853977065666667,
+    "totS": 12.95226397566667,
     "costNoCache": 0.07257,
     "cacheCost": 0.0327146,
     "ok": true,
     "raw": [
      {
-      "a": {
-       "action": "navigate",
-       "url": "http://127.0.0.1:43763/elenco.html"
-      },
-      "ms": 439
+      "n": "computer",
+      "t": 1366,
+      "ms": 538
      },
      {
-      "a": {
-       "action": "scroll",
-       "coordinate": [
-        640,
-        400
-       ],
-       "scroll_direction": "down",
-       "scroll_amount": 5
-      },
+      "n": "computer",
+      "t": 1366,
       "ms": 347
      },
      {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        901,
-        538
-       ]
-      },
-      "ms": 552
+      "n": "computer",
+      "t": 1366,
+      "ms": 550
      }
     ]
    },
@@ -685,9 +821,9 @@
     "ctxEnd": 20434,
     "inputTot": 73371,
     "outTot": 350,
-    "toolS": 1.5604118900000103,
+    "toolS": 1.8890431930000195,
     "modelS": 13.333333333333334,
-    "totS": 14.893745223333344,
+    "totS": 15.222376526333353,
     "costNoCache": 0.150242,
     "cacheCost": 0.05987870000000001,
     "ok": true,
@@ -695,17 +831,17 @@
      {
       "n": "browser_navigate",
       "t": 153,
-      "ms": 739
+      "ms": 980
      },
      {
       "n": "browser_snapshot",
       "t": 6944,
-      "ms": 72
+      "ms": 83
      },
      {
       "n": "browser_click",
       "t": 124,
-      "ms": 720
+      "ms": 797
      },
      {
       "n": "browser_snapshot",
@@ -721,9 +857,9 @@
     "ctxEnd": 7866,
     "inputTot": 22026,
     "outTot": 276,
-    "toolS": 1.4012062649999935,
+    "toolS": 1.593618185000014,
     "modelS": 9.1,
-    "totS": 10.501206264999993,
+    "totS": 10.693618185000014,
     "costNoCache": 0.046812,
     "cacheCost": 0.023841000000000005,
     "ok": true,
@@ -731,12 +867,136 @@
      {
       "n": "browse_open",
       "t": 821,
-      "ms": 839
+      "ms": 1055
      },
      {
       "n": "browse_do",
       "t": 280,
-      "ms": 562
+      "ms": 539
+     }
+    ]
+   },
+   "M4": {
+    "calls": 3,
+    "obs": 17146,
+    "maxObs": 9614,
+    "ctxEnd": 24673,
+    "inputTot": 73274,
+    "outTot": 382,
+    "toolS": 2.716457502999983,
+    "modelS": 12.366666666666667,
+    "totS": 15.08312416966665,
+    "costNoCache": 0.15036799999999997,
+    "cacheCost": 0.0703626,
+    "ok": true,
+    "raw": [
+     {
+      "n": "bash",
+      "t": 9614,
+      "ms": 65
+     },
+     {
+      "n": "bash",
+      "t": 7295,
+      "ms": 1240
+     },
+     {
+      "n": "bash",
+      "t": 237,
+      "ms": 1411
+     }
+    ]
+   },
+   "M4b": {
+    "calls": 2,
+    "obs": 7532,
+    "maxObs": 7295,
+    "ctxEnd": 15009,
+    "inputTot": 36987,
+    "outTot": 332,
+    "toolS": 2.651061339999986,
+    "modelS": 10.033333333333333,
+    "totS": 12.684394673333319,
+    "costNoCache": 0.077294,
+    "cacheCost": 0.043040300000000004,
+    "ok": true,
+    "raw": [
+     {
+      "n": "bash",
+      "t": 7295,
+      "ms": 1240
+     },
+     {
+      "n": "bash",
+      "t": 237,
+      "ms": 1411
+     }
+    ]
+   },
+   "M5": {
+    "calls": 5,
+    "obs": 7628,
+    "maxObs": 7266,
+    "ctxEnd": 30755,
+    "inputTot": 167754,
+    "outTot": 400,
+    "toolS": 2.667148166999992,
+    "modelS": 15.666666666666666,
+    "totS": 18.333814833666658,
+    "costNoCache": 0.339508,
+    "cacheCost": 0.09458740000000002,
+    "ok": true,
+    "raw": [
+     {
+      "n": "open",
+      "t": 6,
+      "ms": 1176
+     },
+     {
+      "n": "snapshot",
+      "t": 7266,
+      "ms": 260
+     },
+     {
+      "n": "click",
+      "t": 127,
+      "ms": 1046
+     },
+     {
+      "n": "wait_for_text",
+      "t": 3,
+      "ms": 157
+     },
+     {
+      "n": "get_text",
+      "t": 226,
+      "ms": 28
+     }
+    ]
+   },
+   "M6": {
+    "calls": 2,
+    "obs": 8069,
+    "maxObs": 6942,
+    "ctxEnd": 15647,
+    "inputTot": 37480,
+    "outTot": 317,
+    "toolS": 2.049786647000001,
+    "modelS": 9.783333333333333,
+    "totS": 11.833119980333334,
+    "costNoCache": 0.07813,
+    "cacheCost": 0.04447080000000001,
+    "ok": true,
+    "raw": [
+     {
+      "n": "browser_navigate",
+      "t": 6942,
+      "ms": 801
+     },
+     {
+      "n": "browser_batch_execute",
+      "t": 1127,
+      "ms": 1249
      }
     ]
    }
@@ -749,29 +1009,22 @@
     "ctxEnd": 9369,
     "inputTot": 23809,
     "outTot": 267,
-    "toolS": 1.053642841000008,
+    "toolS": 1.0413717879999895,
     "modelS": 8.95,
-    "totS": 10.003642841000007,
+    "totS": 9.991371787999988,
     "costNoCache": 0.050288,
     "cacheCost": 0.027536500000000002,
     "ok": true,
     "raw": [
      {
-      "a": {
-       "action": "navigate",
-       "url": "http://127.0.0.1:43763/index.html"
-      },
-      "ms": 498
+      "n": "computer",
+      "t": 1366,
+      "ms": 483
      },
      {
-      "a": {
-       "action": "left_click",
-       "coordinate": [
-        296,
-        340
-       ]
-      },
-      "ms": 556
+      "n": "computer",
+      "t": 1366,
+      "ms": 559
      }
     ]
    },
@@ -782,9 +1035,9 @@
     "ctxEnd": 22034,
     "inputTot": 69739,
     "outTot": 347,
-    "toolS": 1.4390649239999984,
+    "toolS": 1.7682996570000105,
     "modelS": 13.283333333333333,
-    "totS": 14.722398257333332,
+    "totS": 15.051632990333344,
     "costNoCache": 0.142948,
     "cacheCost": 0.0633255,
     "ok": true,
@@ -792,22 +1045,22 @@
      {
       "n": "browser_navigate",
       "t": 154,
-      "ms": 611
+      "ms": 820
      },
      {
       "n": "browser_snapshot",
       "t": 4338,
-      "ms": 47
+      "ms": 74
      },
      {
       "n": "browser_click",
       "t": 106,
-      "ms": 740
+      "ms": 821
      },
      {
       "n": "browser_snapshot",
       "t": 7703,
-      "ms": 41
+      "ms": 54
      }
     ]
    },
@@ -818,9 +1071,9 @@
     "ctxEnd": 7253,
     "inputTot": 21050,
     "outTot": 277,
-    "toolS": 1.5406844889999993,
+    "toolS": 1.7221081149999955,
     "modelS": 9.116666666666667,
-    "totS": 10.657351155666667,
+    "totS": 10.838774781666663,
     "costNoCache": 0.04487,
     "cacheCost": 0.022282200000000002,
     "ok": true,
@@ -828,12 +1081,136 @@
      {
       "n": "browse_open",
       "t": 459,
-      "ms": 1065
+      "ms": 1192
      },
      {
       "n": "browse_do",
       "t": 28,
-      "ms": 475
+      "ms": 530
+     }
+    ]
+   },
+   "M4": {
+    "calls": 3,
+    "obs": 11821,
+    "maxObs": 9614,
+    "ctxEnd": 19354,
+    "inputTot": 62842,
+    "outTot": 388,
+    "toolS": 1.414742160000009,
+    "modelS": 12.466666666666667,
+    "totS": 13.881408826666675,
+    "costNoCache": 0.12956399999999998,
+    "cacheCost": 0.0566138,
+    "ok": true,
+    "raw": [
+     {
+      "n": "bash",
+      "t": 9614,
+      "ms": 80
+     },
+     {
+      "n": "bash",
+      "t": 2186,
+      "ms": 1030
+     },
+     {
+      "n": "bash",
+      "t": 21,
+      "ms": 304
+     }
+    ]
+   },
+   "M4b": {
+    "calls": 2,
+    "obs": 2207,
+    "maxObs": 2186,
+    "ctxEnd": 9690,
+    "inputTot": 26555,
+    "outTot": 338,
+    "toolS": 1.3348320600000005,
+    "modelS": 10.133333333333333,
+    "totS": 11.468165393333333,
+    "costNoCache": 0.05649,
+    "cacheCost": 0.0292915,
+    "ok": true,
+    "raw": [
+     {
+      "n": "bash",
+      "t": 2186,
+      "ms": 1030
+     },
+     {
+      "n": "bash",
+      "t": 21,
+      "ms": 304
+     }
+    ]
+   },
+   "M5": {
+    "calls": 5,
+    "obs": 3383,
+    "maxObs": 2155,
+    "ctxEnd": 26507,
+    "inputTot": 148172,
+    "outTot": 397,
+    "toolS": 1.3791684719999613,
+    "modelS": 15.616666666666667,
+    "totS": 16.995835138666628,
+    "costNoCache": 0.30031399999999997,
+    "cacheCost": 0.08240400000000002,
+    "ok": true,
+    "raw": [
+     {
+      "n": "open",
+      "t": 9,
+      "ms": 1052
+     },
+     {
+      "n": "snapshot",
+      "t": 2155,
+      "ms": 109
+     },
+     {
+      "n": "click",
+      "t": 127,
+      "ms": 28
+     },
+     {
+      "n": "wait_for_text",
+      "t": 6,
+      "ms": 118
+     },
+     {
+      "n": "get_text",
+      "t": 1086,
+      "ms": 72
+     }
+    ]
+   },
+   "M6": {
+    "calls": 2,
+    "obs": 9678,
+    "maxObs": 5342,
+    "ctxEnd": 17255,
+    "inputTot": 36481,
+    "outTot": 316,
+    "toolS": 2.0828973600000027,
+    "modelS": 9.766666666666666,
+    "totS": 11.849564026666668,
+    "costNoCache": 0.076122,
+    "cacheCost": 0.04822010000000001,
+    "ok": true,
+    "raw": [
+     {
+      "n": "browser_navigate",
+      "t": 4336,
+      "ms": 812
+     },
+     {
+      "n": "browser_batch_execute",
+      "t": 5342,
+      "ms": 1271
      }
     ]
    }

@@ -10,6 +10,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { serve } from './server.mjs';
 import { connect, TEST_ENV, TMP } from './mcp-client.mjs';
 import { createRequire } from 'node:module';
+import { m4, m5, m6, agentBrowserSkillStub } from './bench-rivals.mjs';
 
 const SCR = TMP;
 fs.mkdirSync(SCR, { recursive: true });
@@ -108,7 +109,7 @@ async function m2(task) {
   };
   const ref = (snap, role, name) => {
     const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const m = snap.match(new RegExp(`- ${role} "${esc}[^"]*"[^\\n]*\\[ref=((?:f\\d+)?e\\d+)\\]`));
+    const m = snap.match(new RegExp(`- ${role} "${esc}[^"\\n]*"[^\\n]*\\[ref=((?:f\\d+)?e\\d+)\\]`));
     if (!m) {
       fs.writeFileSync(SCR + '/m2-debug.txt', out.map((c) => `### ${c.name} ${JSON.stringify(c.args).slice(0, 300)}\n${c.text}`).join('\n\n'));
       throw new Error(`ref non trovato: ${role} "${name}"`);
@@ -282,6 +283,7 @@ const FINAL = 150; // risposta finale
 const TTFT = 1.5; // s per turno (ipotesi)
 const TPS = 60; // token/s di generazione (ipotesi)
 const tok = (s) => (s ? countTokens(s) : 0);
+const f = (n) => Math.round(n).toLocaleString('it-IT');
 
 function metrics(r, toolDefTok) {
   let ctx = BASE_CTX + toolDefTok;
@@ -313,29 +315,52 @@ function metrics(r, toolDefTok) {
   return { calls: r.calls.length, obs, maxObs: Math.max(...r.calls.map((c) => (c.img ? c.img : tok(c.text)))), ctxEnd: ctx, inputTot, outTot, toolS: toolMs / 1000, modelS, totS: toolMs / 1000 + modelS, costNoCache, cacheCost, ok: r.ok };
 }
 
+const NAMES = {
+  M1: 'Screenshot',
+  M2: 'Playwright MCP',
+  M3: 'Browser compatto',
+  M4: 'agent-browser CLI',
+  M5: 'agent-browser MCP',
+  M6: 'Fast Playwright MCP',
+  M4b: 'agent-browser CLI senza guida',
+};
+const ONLY = (process.env.METHODS || 'M1,M2,M3,M4,M5,M6').split(',');
 const results = {};
-let defs = {};
+const defs = {
+  M1: 1500, // ipotesi: definizione del tool computer/screenshot
+  M4: 1500 + tok(agentBrowserSkillStub()), // ipotesi per il tool Bash + skill di agent-browser sempre presente
+};
+const raw = (r) => r.calls.map((c) => ({ n: c.name, t: c.img ? c.img : tok(c.text), ms: Math.round(c.ms) }));
 for (const task of ['T1', 'T2', 'T3']) {
   results[task] = {};
-  const r1 = await m1(task);
-  const r2 = await m2(task);
-  const r3 = await m3(task);
-  defs.M2 = tok(JSON.stringify(r2.tools));
-  defs.M3 = tok(JSON.stringify(r3.tools));
-  defs.M1 = 1500; // ipotesi: definizione del tool computer/screenshot
-  results[task].M1 = { ...metrics(r1, defs.M1), raw: r1.calls.map((c) => ({ a: c.args, ms: Math.round(c.ms) })) };
-  results[task].M2 = { ...metrics(r2, defs.M2), raw: r2.calls.map((c) => ({ n: c.name, t: tok(c.text), ms: Math.round(c.ms) })) };
-  results[task].M3 = { ...metrics(r3, defs.M3), raw: r3.calls.map((c) => ({ n: c.name, t: tok(c.text), ms: Math.round(c.ms) })) };
+  const runs = {
+    M1: () => m1(task),
+    M2: () => m2(task),
+    M3: () => m3(task),
+    M4: () => m4(task, base),
+    M5: () => m5(task, base),
+    M6: () => m6(task, base, { VW, VH }),
+  };
+  for (const m of ONLY) {
+    const r = await runs[m]();
+    if (r.tools) defs[m] = tok(JSON.stringify(r.tools));
+    results[task][m] = { ...metrics(r, defs[m]), raw: raw(r) };
+    // variante: agente che conosce gia' i comandi e non carica la guida "core" (9.600 token circa)
+    if (m === 'M4') {
+      const r2 = { ...r, calls: r.calls.slice(1) };
+      defs.M4b = defs.M4;
+      results[task].M4b = { ...metrics(r2, defs.M4b), raw: raw(r2) };
+    }
+  }
 }
 srv.close();
-fs.writeFileSync(path.join(SCR, 'bench-results.json'), JSON.stringify({ defs, results, SHOT_TOK, assumptions: { BASE_CTX, PER_CALL, FINAL, TTFT, TPS } }, null, 1));
+fs.writeFileSync(path.join(SCR, 'bench-results.json'), JSON.stringify({ names: NAMES, defs, results, SHOT_TOK, assumptions: { BASE_CTX, PER_CALL, FINAL, TTFT, TPS } }, null, 1));
 
-const f = (n) => Math.round(n).toLocaleString('it-IT');
 console.log(`risultati completi: ${path.join(SCR, 'bench-results.json')}`);
-console.log(`definizioni tool (token): M1 ~${defs.M1} (ipotesi), M2 ${defs.M2}, M3 ${defs.M3}; screenshot ${VW}x${VH} = ${SHOT_TOK} token`);
+console.log('definizioni tool/istruzioni sempre nel contesto (token): ' + Object.entries(defs).map(([m, v]) => `${NAMES[m]} ${f(v)}`).join(', ') + ` (screenshot e agent-browser CLI: ipotesi per il tool di sistema); screenshot ${VW}x${VH} = ${SHOT_TOK} token`);
 for (const [task, R] of Object.entries(results)) {
   console.log(`\n${task}`);
-  console.log('metodo  ok  chiamate  token osservazioni  max singola  contesto finale  input totale  output  tempo tool  tempo modello  totale   costo API (no cache / cache)');
+  console.log('metodo                ok  chiamate  token osservazioni  max singola  contesto finale  input totale  output  tempo tool  tempo modello  totale   costo API (no cache / cache)');
   for (const [m, x] of Object.entries(R))
-    console.log(`${m.padEnd(6)}  ${x.ok ? 'si' : 'NO'}  ${String(x.calls).padStart(8)}  ${f(x.obs).padStart(17)}  ${f(x.maxObs).padStart(11)}  ${f(x.ctxEnd).padStart(15)}  ${f(x.inputTot).padStart(12)}  ${f(x.outTot).padStart(6)}  ${x.toolS.toFixed(1).padStart(9)}s  ${x.modelS.toFixed(1).padStart(12)}s  ${x.totS.toFixed(1).padStart(6)}s   $${x.costNoCache.toFixed(3)} / $${x.cacheCost.toFixed(3)}`);
+    console.log(`${NAMES[m].padEnd(20)}  ${x.ok ? 'si' : 'NO'}  ${String(x.calls).padStart(8)}  ${f(x.obs).padStart(17)}  ${f(x.maxObs).padStart(11)}  ${f(x.ctxEnd).padStart(15)}  ${f(x.inputTot).padStart(12)}  ${f(x.outTot).padStart(6)}  ${x.toolS.toFixed(1).padStart(9)}s  ${x.modelS.toFixed(1).padStart(12)}s  ${x.totS.toFixed(1).padStart(6)}s   $${x.costNoCache.toFixed(3)} / $${x.cacheCost.toFixed(3)}`);
 }

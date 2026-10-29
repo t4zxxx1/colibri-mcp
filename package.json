@@ -17,6 +17,8 @@
     "@anthropic-ai/tokenizer": "0.0.4",
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@playwright/mcp": "0.0.83",
+    "@tontoko/fast-playwright-mcp": "^0.2.0",
+    "agent-browser": "^0.41.0",
     "playwright-core": "^1.64.1"
   },
   "engines": {

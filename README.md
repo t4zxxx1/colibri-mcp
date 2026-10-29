@@ -99,23 +99,22 @@ http://127.0.0.1:8811/domanda1.html · 16 campi impostati come richiesto · 5 al
 | Browser invisibile | no | attivalo solo se non ti serve vedere la finestra |
 | Consenti screenshot | sì | screenshot ridotto (~900 token) quando il testo non basta |
 
-## Confronto con il metodo normale
+## Confronto con gli altri strumenti
 
-Stessi compiti, stesse pagine, tutti e tre i metodi completati con successo.
+Stessi compiti e stesse pagine per sei metodi: screenshot, Playwright MCP (Microsoft), agent-browser (Vercel) da riga di comando e via MCP, Fast Playwright MCP e il browser compatto. Tutti hanno completato tutti i compiti. Qui il compito più lungo: domanda su 2 pagine con 22 campi, menu dipendenti, autocompletamento, conferme e lettura del protocollo.
 
-| Compito | Metodo | Chiamate | Token delle pagine | Contesto riletto in totale | Tempo stimato |
+| Metodo | Dove si usa | Chiamate | Token delle pagine | Contesto riletto in totale | Tempo stimato |
 |---|---|---|---|---|---|
-| Domanda su 2 pagine, 22 campi, conferme | Screenshot | 54 | 74.304 | 2.480.688 | 154 s |
-| | Albero di accessibilità (Playwright MCP) | 14 | 23.421 | 318.910 | 51 s |
-| | **Browser compatto** | **4** | **1.191** | **38.495** | **24 s** |
-| Elenco → dettaglio progetto | Screenshot | 3 | 4.128 | 34.630 | 13 s |
-| | Playwright MCP | 4 | 10.698 | 73.371 | 15 s |
-| | **Browser compatto** | **2** | **1.101** | **22.026** | **11 s** |
-| Home → elenco, leggere il totale | Screenshot | 2 | 2.752 | 23.809 | 10 s |
-| | Playwright MCP | 4 | 12.301 | 69.739 | 15 s |
-| | **Browser compatto** | **2** | **487** | **21.050** | **11 s** |
+| Screenshot | computer use | 54 | 74.304 | 2.480.688 | 154 s |
+| agent-browser MCP | Claude Desktop | 40 | 16.971 | 1.374.342 | 108 s |
+| Playwright MCP | Claude Desktop, Code | 14 | 23.421 | 318.910 | 52 s |
+| Fast Playwright MCP | Claude Desktop, Code | 7 | 11.154 | 115.637 | 57 s |
+| agent-browser CLI (senza caricare la guida) | Claude Code | 5 | 9.358 | 84.124 | 35 s |
+| **Browser compatto** | **Claude Desktop** | **4** | **1.191** | **38.495** | **25 s** |
 
-Sui moduli lunghi il guadagno è grande (circa il 98% di token in meno rispetto agli screenshot e l'88% in meno di contesto rispetto a Playwright MCP); sui compiti brevi il tempo è simile e cambiano soprattutto i token. Metodo, ipotesi e limiti del confronto: [docs/benchmark.md](docs/benchmark.md).
+Una singola lettura del modulo costa 634 token con il browser compatto, contro 4.400-5.300 con gli strumenti ad albero di accessibilità. Sui compiti brevi (elenco → dettaglio, navigazione) i metodi a blocchi si avvicinano: stesse chiamate e tempi simili, con il browser compatto sempre il più leggero in token.
+
+Le pagine di prova sono state costruite durante lo sviluppo di questo strumento, che quindi gioca in casa. Tabelle complete, ipotesi, problemi riscontrati negli altri strumenti e limiti del confronto: [docs/benchmark.md](docs/benchmark.md).
 
 ## Limiti noti
 
@@ -130,7 +129,7 @@ Sui moduli lunghi il guadagno è grande (circa il 98% di token in meno rispetto 
 ```bash
 npm ci            # dipendenze di sviluppo e del server
 npm test          # 74 test end-to-end via protocollo MCP (Chrome o Edge installato)
-npm run bench     # confronto con screenshot e Playwright MCP
+npm run bench     # confronto con screenshot, Playwright MCP, agent-browser, Fast Playwright MCP
 npm run build     # crea dist/compact-browser.mcpb
 ```
 
