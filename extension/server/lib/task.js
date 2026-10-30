@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import * as P from './page-script.js';
-import { renderView, renderDiff, shortUrl } from './render.js';
+import { renderView, renderDiff, shortUrl, readCover } from './render.js';
 import { PRESETS, fold, fieldsFrom, groundParam, assign, decide, chooseOption, valueKind, formatDateFor, truthy, extractField, similarity, choice, optionScore, parseDateTime, monthOf } from './engine.js';
 
 const pct = (p) => Math.round(p * 100) + '%';
@@ -449,10 +449,12 @@ export async function runTask(S, a) {
       else extracted.push(`${key} = ${JSON.stringify(r.value)}${r.confidence < 0.97 ? ` (${pct(r.confidence)}, da ${r.from})` : ''}`);
     }
   }
+  let readText = '';
   if (a.read) {
     try {
       const mode = ['table', 'cards'].includes(a.read) ? a.read : 'text';
-      notes.push({ table: 'tabella:\n', cards: 'schede:\n', text: 'testo:\n' }[mode] + (await S.read({ mode })));
+      readText = await S.read({ mode });
+      notes.push({ table: 'tabella:\n', cards: 'schede:\n', text: 'testo:\n' }[mode] + readText);
     } catch (e) {
       notes.push('lettura: ' + firstLine(e));
     }
@@ -466,7 +468,11 @@ export async function runTask(S, a) {
   let body = '';
   const view = a.view || 'auto';
   const navigated = page.url() !== startUrl || S.last.page !== page;
-  if (view === 'full' || (view === 'auto' && (navigated || after.modal !== startModal))) {
+  const cover = view === 'auto' ? readCover(readText) : null;
+  if (cover && (navigated || after.modal !== startModal)) {
+    // l'esito e' gia' nella lettura: della pagina bastano intestazione e conteggi
+    body = (navigated ? 'pagina cambiata\n' : '') + renderView(after, { url: page.url(), tabs: S.tabs(), rows: false });
+  } else if (view === 'full' || (view === 'auto' && (navigated || after.modal !== startModal))) {
     body = (navigated ? 'pagina cambiata\n' : '') + renderView(after, { url: page.url(), tabs: S.tabs(), max: S.cfg.maxItems });
   } else if (view === 'auto') {
     let fresh = [];
@@ -474,15 +480,15 @@ export async function runTask(S, a) {
       fresh = await page.mainFrame().evaluate(P.addedTextInPage, 4);
     } catch {}
     const known = new Set([...after.alerts, ...after.items.map((i) => i.name)]);
-    fresh = fresh.filter((t) => !known.has(t) && !after.alerts.some((x) => x.includes(t) || t.includes(x)));
+    fresh = fresh.filter((t) => !known.has(t) && !after.alerts.some((x) => x.includes(t) || t.includes(x)) && !(cover && cover.has(t)));
     if ((a.url || a.before) && !(params.length || a.submit || a.extract || a.read || a.expect)) {
       // solo apertura/navigazione: Claude vuole vedere la pagina
       body = renderView(after, { url: page.url(), tabs: S.tabs(), max: S.cfg.maxItems });
     } else if (a.url || a.before) {
-      // Claude non ha ancora visto la pagina: riepilogo minimo (avvisi, pulsanti dei moduli)
-      const btns = after.items.filter((i) => i.role === 'btn' && i.inForm && !(after.regions[i.reg] && after.regions[i.reg].low));
+      // Claude non ha ancora visto la pagina: riepilogo minimo (avvisi, pulsanti dei moduli; con la lettura bastano gli avvisi)
+      const btns = cover ? [] : after.items.filter((i) => i.role === 'btn' && i.inForm && !(after.regions[i.reg] && after.regions[i.reg].low));
       body = [`${shortUrl(page.url())} | ${after.meta ? after.meta.title : ''}`, ...after.alerts.map((x) => '! ' + x), ...fresh.map((t) => '» ' + t), btns.length ? 'pulsanti: ' + btns.map((b) => `${b.id} "${b.name}"${b.s ? ' !' + b.s : ''}`).join(' · ') : ''].filter(Boolean).join('\n');
-    } else body = renderDiff(S.last.prev, after, { url: page.url(), tabs: S.tabs(), touched, fresh }) || renderView(after, { url: page.url(), tabs: S.tabs(), max: S.cfg.maxItems });
+    } else body = renderDiff(S.last.prev, after, { url: page.url(), tabs: S.tabs(), touched, fresh, skip: cover && cover.skip }) || renderView(after, { url: page.url(), tabs: S.tabs(), max: S.cfg.maxItems, rows: !cover });
   }
   S.remember(after);
   const lines = [...head, ...errors, ...asks];

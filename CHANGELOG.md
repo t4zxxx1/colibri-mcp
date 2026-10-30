@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.5.5
+
+Measured on a repeated real task: search trains Wien Hbf → Salzburg Hbf at 18:00 and find the cheapest (`npm run bench:task`, 3 runs, all correct):
+
+| Version | `browse_task` (1 call) | Steps (open + do) | Tool definitions per turn |
+|---|---|---|---|
+| 0.5.0 | ~385 tokens | ~859 tokens | ~1447 tokens (7 tools) |
+| 0.5.4 | ~291 tokens | ~774 tokens | ~1669 tokens (8 tools) |
+| **0.5.5** | **~176 tokens** | **~228 tokens** (`rows:false`, no `wait`) | **~1666 tokens** (8 tools) |
+
+**English**
+- **Lighter `browse_open`**: `rows:false` returns only the header (url, title, alerts, CAPTCHA/login lines) and element counts, for when you already know the field names. `filter` returns only the matching rows. On the train shop this is 153 characters instead of 1214.
+- **Cards with refs**: in `read:"cards"` every button or link inside a card comes back with its ref (`… | € 9,90 | [e54]`), and a card that is a link as a whole ends with `→e60`. Choosing a result no longer needs another view. Texts present in every card (stations, the button label) go into one `in tutte:` line instead of being repeated on each row.
+- **No repetition after a read**: when `browse_do` or `browse_task` ends with `read`/`find`, the diff no longer repeats the result texts (`»` lines) or the new buttons already listed with their ref (`+ 6 nuovi gia' elencati…`). If the page changed, only the header and counts follow instead of the full view. `browse_task` with `read` drops the form button list.
+- **Network-based waits before reading**: `read` and `find` (step or `browse_read`) wait for pending requests and, while the network is busy, for visible spinners. Results loaded after a click are read without `wait`/`waitFor`. A decorative spinner on an idle page adds no delay.
+- Tool definitions shortened: the new options cost no extra tokens per turn compared with 0.5.4.
+- New benchmark `test/bench-task.mjs` with a realistic SPA train shop (`test/fixtures/orari.html`): calls, tokens and seconds per version (`node test/bench-task.mjs path/to/old/index.js`).
+
+**Italiano**
+- **`browse_open` più leggero**: `rows:false` restituisce solo l'intestazione (url, titolo, avvisi, righe CAPTCHA/accesso) e il numero di elementi, quando conosci già i nomi dei campi. `filter` restituisce solo le righe che corrispondono. Sullo shop treni sono 153 caratteri invece di 1214.
+- **Schede con i ref**: in `read:"cards"` ogni pulsante o link dentro una scheda esce con il suo ref (`… | € 9,90 | [e54]`), e una scheda che è un link intero finisce con `→e60`. Per scegliere un risultato non serve un'altra vista. I testi presenti in tutte le schede (stazioni, etichetta del pulsante) vanno in una riga `in tutte:` invece di ripetersi su ogni riga.
+- **Niente ripetizioni dopo una lettura**: quando `browse_do` o `browse_task` finisce con `read`/`find`, il diff non ripete i testi dei risultati (righe `»`) né i nuovi pulsanti già elencati col loro ref (`+ 6 nuovi gia' elencati…`). Se la pagina è cambiata seguono solo intestazione e conteggi invece della vista completa. `browse_task` con `read` non elenca più i pulsanti del modulo.
+- **Attese basate sulla rete prima di leggere**: `read` e `find` (passo o `browse_read`) aspettano la fine delle richieste in corso e, finché la rete è occupata, gli spinner visibili. I risultati caricati dopo un clic si leggono senza `wait`/`waitFor`. Uno spinner decorativo su una pagina ferma non aggiunge attese.
+- Definizioni dei tool accorciate: le nuove opzioni non costano token in più a ogni turno rispetto alla 0.5.4.
+- Nuovo banco di prova `test/bench-task.mjs` con uno shop treni SPA realistico (`test/fixtures/orari.html`): chiamate, token e secondi per versione (`node test/bench-task.mjs percorso/vecchio/index.js`).
+
 ## 0.5.4
 
 **English**

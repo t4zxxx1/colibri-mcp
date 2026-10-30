@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>RailShop – Biglietti treno</title>
+<style>
+  body { font-family: sans-serif; margin: 0; }
+  header nav a, footer a { margin-right: 8px; }
+  .lb { position: absolute; background: #fff; border: 1px solid #999; list-style: none; padding: 0; margin: 0; z-index: 5; }
+  .lb li { padding: 4px 8px; cursor: pointer; }
+  .spinner { width: 40px; height: 40px; border: 4px solid #39f; border-radius: 50%; }
+  .card { border: 1px solid #ddd; margin: 6px 0; padding: 6px; display: flex; gap: 12px; }
+  .promo { display: inline-block; width: 200px; margin: 4px; border: 1px solid #eee; }
+</style>
+</head>
+<body>
+<header>
+  <nav aria-label="Principale">
+    <a href="#">Home</a><a href="#">Offerte</a><a href="#">Abbonamenti</a><a href="#">Nightjet</a><a href="#">Viaggi in Europa</a><a href="#">Gruppi</a><a href="#">Bagagli</a><a href="#">Bici</a><a href="#">Animali</a><a href="#">Assistenza</a><a href="#">Accessibilità</a><a href="#">Info traffico</a><a href="#">Cantieri</a><a href="#">App</a><a href="#">Business</a><a href="#">Carte vantaggi</a><a href="#">Buoni regalo</a><a href="#">Il mio account</a><a href="#">Lingua: Italiano</a><a href="#">Aiuto</a>
+  </nav>
+</header>
+<main>
+  <h1>Cerca il tuo viaggio</h1>
+  <form id="f" role="search" aria-label="Ricerca viaggio">
+    <label for="da">Da</label>
+    <input id="da" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="lb-da" autocomplete="off" placeholder="Stazione di partenza">
+    <ul id="lb-da" class="lb" role="listbox" hidden></ul>
+    <label for="a">A</label>
+    <input id="a" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="lb-a" autocomplete="off" placeholder="Stazione di arrivo">
+    <ul id="lb-a" class="lb" role="listbox" hidden></ul>
+    <label for="data">Data di andata</label>
+    <input id="data" type="date">
+    <label for="ora">Ora di partenza</label>
+    <select id="ora"></select>
+    <fieldset>
+      <legend>Passeggeri</legend>
+      <button type="button" aria-label="Rimuovi adulto" onclick="pax(-1)">−</button>
+      <span id="npax">1</span> adulti
+      <button type="button" aria-label="Aggiungi adulto" onclick="pax(1)">+</button>
+    </fieldset>
+    <label><input type="checkbox" id="diretti"> Solo collegamenti diretti</label>
+    <button type="submit">Cerca</button>
+  </form>
+  <div id="spin" class="spinner" hidden aria-busy="true"></div>
+  <section id="res" aria-label="Risultati"></section>
+  <section aria-label="Offerte">
+    <h2>Offerte del momento</h2>
+    <div class="promo"><h3>Sparschiene</h3><p>Da 9,90 € in tutta l'Austria</p><a href="#">Scopri</a></div>
+    <div class="promo"><h3>Klimaticket</h3><p>Viaggia un anno intero</p><a href="#">Scopri</a></div>
+    <div class="promo"><h3>Nightjet</h3><p>Dormi e arrivi riposato</p><a href="#">Scopri</a></div>
+  </section>
+</main>
+<footer>
+  <a href="#">Chi siamo</a><a href="#">Lavora con noi</a><a href="#">Stampa</a><a href="#">Condizioni</a><a href="#">Privacy</a><a href="#">Cookie</a><a href="#">Impressum</a><a href="#">Contatti</a><a href="#">Facebook</a><a href="#">Instagram</a><a href="#">YouTube</a><a href="#">LinkedIn</a><a href="#">Newsletter</a><a href="#">Mappa del sito</a>
+</footer>
+<script>
+  const ST = ['Wien Hbf', 'Wien Meidling', 'Wien Westbahnhof', 'Salzburg Hbf', 'Salzburg Taxham', 'Linz Hbf', 'Graz Hbf', 'Innsbruck Hbf'];
+  const ora = document.getElementById('ora');
+  for (let h = 0; h < 24; h++) ora.add(new Option(String(h).padStart(2, '0') + ':00', h));
+  ora.value = 8;
+  let n = 1;
+  function pax(d) { n = Math.max(1, n + d); document.getElementById('npax').textContent = n; }
+  for (const id of ['da', 'a']) {
+    const inp = document.getElementById(id), lb = document.getElementById('lb-' + id);
+    inp.addEventListener('input', async () => {
+      const q = inp.value.toLowerCase();
+      await fetch('/slow?ms=300&q=' + encodeURIComponent(q));
+      const m = ST.filter((s) => s.toLowerCase().includes(q));
+      lb.innerHTML = m.map((s) => `<li role="option">${s}</li>`).join('');
+      lb.hidden = !m.length; inp.setAttribute('aria-expanded', String(!!m.length));
+      lb.querySelectorAll('li').forEach((li) => li.addEventListener('click', () => { inp.value = li.textContent; lb.hidden = true; inp.setAttribute('aria-expanded', 'false'); }));
+    });
+  }
+  document.getElementById('f').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const da = document.getElementById('da').value, a = document.getElementById('a').value, d = document.getElementById('data').value, h = +ora.value;
+    const res = document.getElementById('res');
+    res.innerHTML = '';
+    if (!ST.includes(da) || !ST.includes(a) || !d) { res.innerHTML = '<p role="alert">Inserisci stazioni e data valide</p>'; return; }
+    const sp = document.getElementById('spin'); sp.hidden = false;
+    await fetch('/slow?ms=1200');
+    sp.hidden = true;
+    const prices = ['29,90', '19,90', '44,90', '9,90', '34,90', '59,90'];
+    const pad = (x) => String(x).padStart(2, '0');
+    res.innerHTML = `<h2>${da} → ${a}, ${d}</h2>` + prices.map((p, k) => {
+      const dep = h + k, m = (k * 13) % 60;
+      return `<article class="card"><div class="t"><time>${pad(dep % 24)}:${pad(m)}</time> <span>${da}</span></div><div class="t"><time>${pad((dep + 2) % 24)}:${pad((m + 22) % 60)}</time> <span>${a}</span></div><div>2 h ${pad(22 + k)}</div><div>${k % 3 ? '1 cambio' : 'diretto'}</div><div class="p">da € ${p}</div><button type="button" onclick="document.title='scelto ${k}'">Seleziona</button></article>`;
+    }).join('');
+  });
+</script>
+</body>
+</html>

@@ -3,7 +3,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { chromium } from 'playwright-core';
 import * as P from './page-script.js';
-import { renderView, renderDiff, snapKeys, lineOf, estTokens } from './render.js';
+import { renderView, renderDiff, snapKeys, lineOf, estTokens, readCover } from './render.js';
 import { fold, similarity, choice, decide, PRESETS } from './engine.js';
 import { runTask } from './task.js';
 import { cdpAlive, launchRealChrome } from './realchrome.js';
@@ -418,7 +418,7 @@ export class Session {
   }
 
   // ---------- tool: open ----------
-  async open(url) {
+  async open(url, { rows, filter } = {}) {
     let page = await this.ensure();
     const u = this.checkUrl(url);
     try {
@@ -437,7 +437,7 @@ export class Session {
     const snap = await this.collect();
     this.remember(snap);
     this.stats.observations++;
-    let txt = renderView(snap, { url: page.url(), tabs: this.tabs(), max: this.cfg.maxItems });
+    let txt = renderView(snap, { url: page.url(), tabs: this.tabs(), max: this.cfg.maxItems, rows, filter });
     if (ck) txt = `cookie: rifiutati i non necessari (${ck})\n` + txt;
     if (g.note) txt = g.note + '\n' + txt;
     const ev = this.events.splice(0);
@@ -691,6 +691,7 @@ export class Session {
     const startUrl = page.url();
     await page.mainFrame().evaluate(() => { window.__cbAdded = []; }).catch(() => {});
     const startModal = this.last.modal;
+    let readText = '';
 
     for (let i = 0; i < steps.length; i++) {
       const st = steps[i] || {};
@@ -711,6 +712,7 @@ export class Session {
           break;
         }
         if (r && r.note) notes.push(`${tag}: ${r.note}`);
+        if (r && r.note && (act === 'read' || act === 'find')) readText += '\n' + r.note;
         if (r && r.id && (act === 'fill' || act === 'check')) touched.set(r.id, act);
         done++;
         this.stats.actions++;
@@ -762,15 +764,18 @@ export class Session {
     if (view !== 'none') {
       const navigated = page.url() !== startUrl || this.last.page !== page;
       const modalChanged = after.modal !== startModal;
+      const cover = view === 'diff' ? readCover(readText) : null;
       if (view === 'diff' && !navigated && !modalChanged) {
         let fresh = [];
         try {
           fresh = await page.mainFrame().evaluate(P.addedTextInPage, 4);
         } catch {}
         const known = new Set([...after.alerts, ...after.items.map((i) => i.name)]);
-        fresh = fresh.filter((t) => !known.has(t) && !after.alerts.some((a) => a.includes(t) || t.includes(a)));
-        body = renderDiff(this.last.prev, after, { url: page.url(), tabs: this.tabs(), touched, fresh }) || '';
+        fresh = fresh.filter((t) => !known.has(t) && !after.alerts.some((a) => a.includes(t) || t.includes(a)) && !(cover && cover.has(t)));
+        body = renderDiff(this.last.prev, after, { url: page.url(), tabs: this.tabs(), touched, fresh, skip: cover && cover.skip }) || '';
       }
+      // l'esito e' gia' nella lettura finale: della pagina nuova bastano intestazione e conteggi
+      if (!body && cover) body = (navigated ? 'pagina cambiata\n' : '') + renderView(after, { url: page.url(), tabs: this.tabs(), rows: false });
       if (!body) body = (navigated ? 'pagina cambiata\n' : '') + renderView(after, { url: page.url(), tabs: this.tabs(), max: this.cfg.maxItems });
     }
     this.remember(after);
@@ -1212,11 +1217,21 @@ export class Session {
       }
     }
     if (mode === 'pdf') return this.readPdf({ query, offset, max });
+    if (mode !== 'describe') {
+      // risultati caricati dopo un clic (SPA): si attende la fine delle richieste (e degli spinner solo se la rete
+      // e' occupata: uno spinner decorativo sempre visibile non deve rallentare ogni lettura), non i testi
+      const net = this.net.get(page);
+      const now = Date.now();
+      const busy = net && [...net.values()].some((t) => now - t < 8000);
+      if (busy) await this.settle(page, 8000, 0);
+      await this.settle(page, 600, 120);
+    }
     if (mode === 'cards') {
+      if (!ref) await this.collect();
       const r = await frame.evaluate(P.readCardsInPage, { ref, selector, offset, max: max || 20 });
       if (r.err) throw new Error(r.err);
       const more = r.total - offset - r.rows.length;
-      return `schede ${offset + 1}-${offset + r.rows.length} di ${r.total} (${r.sel})\n` + r.rows.join('\n') + (more > 0 ? `\n… altre ${more} (offset:${offset + r.rows.length})` : '');
+      return `schede ${offset + 1}-${offset + r.rows.length} di ${r.total} (${r.sel})\n` + (r.common && r.common.length ? `in tutte: ${r.common.join(' · ')}\n` : '') + r.rows.join('\n') + (more > 0 ? `\n… altre ${more} (offset:${offset + r.rows.length})` : '');
     }
     if (mode === 'find') {
       if (!query) throw new Error('serve "query"');

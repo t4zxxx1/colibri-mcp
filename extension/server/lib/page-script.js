@@ -710,23 +710,66 @@ export function readCardsInPage(a) {
     }
   }
   if (!cards.length) return { err: 'nessun gruppo di schede ripetute: usa selector, oppure mode "table"/"text"' };
-  const rows = cards.map((c) => {
+  // i pulsanti e i link di ogni scheda escono con il loro ref: si sceglie un risultato senza un'altra vista
+  const ACT = 'a[href],button,[role=button],[role=link],[role=tab],[role=radio],[role=checkbox],input:not([type=hidden]),select,textarea';
+  const byEl = window.__cb && window.__cb.byEl;
+  const idOf = (e) => (byEl && e && byEl.get(e)) || '';
+  const partsOf = cards.map((c) => {
     const parts = [];
+    const done = new Set();
+    const whole = idOf(c.closest(ACT)) || (c.matches(ACT) ? idOf(c) : '');
     const w = document.createTreeWalker(c, NodeFilter.SHOW_TEXT);
     for (let n = w.nextNode(); n; n = w.nextNode()) {
       const t = n.textContent.replace(/\s+/g, ' ').trim();
       if (!t || t.length < 1) continue;
       const pe = n.parentElement;
       if (!pe || pe.closest('[aria-hidden=true],script,style,noscript,svg') || !vis(pe)) continue;
-      const v = t.length > 60 ? t.slice(0, 59) + '…' : t;
+      let v = t.length > 60 ? t.slice(0, 59) + '…' : t;
+      const act = pe.closest(ACT);
+      const id = act && act !== c && c.contains(act) ? idOf(act) : '';
+      if (id) {
+        if (done.has(id)) continue;
+        done.add(id);
+        v = `[${id} ${v}]`;
+      }
       if (parts[parts.length - 1] !== v && !parts.includes(v)) parts.push(v);
     }
-    const s = parts.join(' | ');
-    return s.length > 320 ? s.slice(0, 319) + '…' : s;
+    for (const e of c.querySelectorAll(ACT)) {
+      const id = idOf(e);
+      if (!id || done.has(id) || !vis(e) || done.size > 5) continue;
+      done.add(id);
+      const lab = (e.getAttribute('aria-label') || e.title || e.value || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+      parts.push(`[${id}${lab ? ' ' + lab : ''}]`);
+    }
+    return { parts, whole };
+  });
+  // testi presenti in tutte le schede (stazioni di partenza e arrivo, etichetta del pulsante): una riga "in tutte"
+  const common = [];
+  if (partsOf.length >= 3) {
+    const every = (pred) => partsOf.every((x) => x.parts.filter(pred).length === 1);
+    for (const p of partsOf[0].parts) {
+      const m = /^\[\S+ (.+)\]$/.exec(p);
+      if (m) {
+        const lab = m[1];
+        const isLab = (x) => x.endsWith(' ' + lab + ']') && /^\[\S+ /.test(x);
+        if (every(isLab)) {
+          common.push(`[ref]=${lab}`);
+          for (const x of partsOf) x.parts = x.parts.map((y) => (isLab(y) ? y.slice(0, y.indexOf(' ')) + ']' : y));
+        }
+      } else if (p.length >= 3 && !/^[\d\s.,:€$£%-]+$/.test(p) && every((x) => x === p)) {
+        common.push(p);
+        for (const x of partsOf) x.parts = x.parts.filter((y) => y !== p);
+      }
+    }
+  }
+  const rows = partsOf.map(({ parts, whole }) => {
+    let s = parts.join(' | ');
+    if (s.length > 320) s = s.slice(0, 319) + '…';
+    return whole ? `${s} →${whole}` : s;
   });
   const off = a.offset || 0;
   const max = a.max || 20;
-  return { total: rows.length, sel: how, rows: rows.slice(off, off + max) };
+  return { total: rows.length, sel: how, common, rows: rows.slice(off, off + max) };
 }
 
 /** Risultati di una pagina di ricerca (DuckDuckGo HTML, Bing, generica): titolo, URL reale, estratto. Niente annunci. */

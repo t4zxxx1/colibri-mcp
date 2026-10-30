@@ -59,9 +59,20 @@ function captchaLine(snap) {
 }
 
 /** Vista completa (o filtrata/paginata) della pagina. */
-export function renderView(snap, { url, tabs = 1, scope = 'main', filter = '', offset = 0, max = 120, maxChars = 5000 } = {}) {
+export function renderView(snap, { url, tabs = 1, scope = 'main', filter = '', offset = 0, max = 120, maxChars = 5000, rows = true } = {}) {
   const out = headerLines(snap, url, tabs);
   let items = snap.items;
+  if (rows === false) {
+    // solo intestazione e conteggi: chi conosce gia' i nomi dei campi agisce subito con browse_do/browse_task
+    const n = { campi: 0, pulsanti: 0, link: 0 };
+    for (const i of items) {
+      if (i.role === 'link') n.link++;
+      else if (i.role === 'btn') n.pulsanti++;
+      else n.campi++;
+    }
+    out.push(`${items.length} elementi (${Object.entries(n).filter(([, v]) => v).map(([k, v]) => `${v} ${k}`).join(', ') || 'nessuno'}): righe con browse_view`);
+    return out.join('\n');
+  }
   const f = (filter || '').toLowerCase().trim();
   if (f) items = items.filter((i) => `${i.name} ${i.role} ${i.value || ''} ${i.ctx || ''}`.toLowerCase().includes(f));
 
@@ -161,35 +172,54 @@ export function snapKeys(snap) {
   return { keys, neut, main };
 }
 
+/** Testo gia' restituito da una lettura (read/find): i ref che contiene e un test "questo testo e' gia' stato mostrato". */
+export function readCover(text) {
+  if (!text) return null;
+  const words = (s) => s.toLowerCase().match(/[\p{L}\p{N}]+/gu) || [];
+  const all = new Set(words(text.replace(/\[(?:f\d+)?e\d+ ?|→(?:f\d+)?e\d+/g, ' ')));
+  const skip = new Set(text.match(/\b(?:f\d+)?e\d+\b/g) || []);
+  return {
+    skip,
+    has: (t) => {
+      const w = words(t);
+      return w.length > 0 && w.every((x) => all.has(x));
+    },
+  };
+}
+
 /**
  * Diff rispetto all'ultima vista. Restituisce null se la pagina e' cambiata troppo
  * (in quel caso conviene la vista completa). touched: id -> azione dei passi appena eseguiti;
  * i valori impostati come richiesto non vengono ripetuti (sono gia' noti a chi li ha scritti).
  */
-export function renderDiff(prev, snap, { url, tabs = 1, touched = new Map(), fresh = [] } = {}) {
+export function renderDiff(prev, snap, { url, tabs = 1, touched = new Map(), fresh = [], skip = null } = {}) {
   const cur = snapKeys(snap);
   const added = [];
   const changed = [];
   const removed = [];
   let expected = 0;
+  let skipped = 0;
   const byId = new Map(snap.items.map((i) => [i.id, i]));
   const cnt = new Map();
   for (const i of snap.items) cnt.set(i.role + i.name, (cnt.get(i.role + i.name) || 0) + 1);
   for (const [id, l] of cur.keys) {
     const it = byId.get(id);
-    if (!prev.keys.has(id)) added.push(lineOf(it, cnt.get(it.role + it.name) > 1));
-    else if (prev.keys.get(id) !== l) {
+    if (!prev.keys.has(id)) {
+      // elementi gia' mostrati con il loro ref dalla lettura (schede): non si ripetono
+      if (skip && skip.has(id)) skipped++;
+      else added.push(lineOf(it, cnt.get(it.role + it.name) > 1));
+    } else if (prev.keys.get(id) !== l) {
       const t = touched.get(id);
       if (t && t !== 'select' && prev.neut.get(id) === cur.neut.get(id)) expected++;
       else changed.push(lineOf(it, false, 'chg'));
     }
   }
   for (const id of prev.keys.keys()) if (!cur.keys.has(id)) removed.push(id);
-  const churn = added.length + removed.length;
+  const churn = added.length + removed.length + skipped;
   if (churn > Math.max(10, 0.5 * Math.max(prev.main, cur.main))) return null;
 
   const out = [];
-  const n = added.length + changed.length + removed.length;
+  const n = added.length + changed.length + removed.length + skipped;
   // il diff si produce solo se la pagina non e' cambiata: l'URL e' gia' noto a chi legge e non si ripete
   const parts = [];
   if (expected) parts.push(`${expected} campi impostati come richiesto`);
@@ -203,6 +233,7 @@ export function renderDiff(prev, snap, { url, tabs = 1, touched = new Map(), fre
   for (const l of changed) out.push('~ ' + l);
   for (const l of added.slice(0, 60)) out.push('+ ' + l);
   if (added.length > 60) out.push(`+ … altri ${added.length - 60} (browse_view)`);
+  if (skipped) out.push(`+ ${skipped} nuovi gia' elencati con il ref nella lettura`);
   if (removed.length) out.push(`- ${removed.length} rimossi: ` + removed.slice(0, 12).join(' ') + (removed.length > 12 ? ' …' : ''));
   return out.join('\n');
 }
