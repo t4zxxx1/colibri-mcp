@@ -658,55 +658,104 @@ export function describeInPage(id) {
  * visibili separati da " | ". Le schede si trovano da sole (gruppo di fratelli simili con piu' testo) oppure con selector.
  */
 export function readCardsInPage(a) {
-  const vis = (e) => {
-    const r = e.getBoundingClientRect();
-    if (r.width < 2 || r.height < 2) return false;
+  // display:contents (componenti Angular/Lit) non ha un riquadro proprio: conta quello dei figli
+  const vis = (e, d = 0) => {
     const s = getComputedStyle(e);
-    return s.visibility !== 'hidden' && s.display !== 'none';
+    if (s.display === 'none' || s.visibility === 'hidden') return false;
+    if (s.display === 'contents') return d < 4 && [...e.children].some((c) => vis(c, d + 1));
+    if (/rect\(0/.test(s.clip) || /inset\(50%/.test(s.clipPath)) return false;
+    const r = e.getBoundingClientRect();
+    return r.width >= 2 && r.height >= 2;
   };
+  // testo per i lettori di schermo (riquadro 1px o clip): non visibile, ma spesso riassume la scheda
+  const srIn = (pe, c) => {
+    let found = false;
+    for (let e = pe; e && e !== c.parentElement; e = e.parentElement) {
+      const s = getComputedStyle(e);
+      if (s.display === 'none' || s.visibility === 'hidden') return false;
+      if (s.display === 'contents') continue;
+      const r = e.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2 || /rect\(0/.test(s.clip) || /inset\(50%/.test(s.clipPath)) found = true;
+    }
+    return found;
+  };
+  const SKIP = 'script,style,noscript,svg,template';
+  // icone a legatura (chevron_right) o caratteri privati dei font di icone
+  const iconish = (t) => /^[a-z]+(_[a-z]+)+$/.test(t) || /^[\uE000-\uF8FF\s]+$/.test(t);
+  // testo che l'utente vede, anche se marcato aria-hidden (molti siti nascondono gli orari ai lettori e li riassumono a parte)
+  const seen = (pe, t) => pe && !pe.closest(SKIP) && vis(pe) && !(pe.closest('[aria-hidden=true]') && iconish(t));
+  const visText = (c) => {
+    const out = [];
+    const w = document.createTreeWalker(c, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n && out.length < 60; n = w.nextNode()) {
+      const t = n.textContent.replace(/\s+/g, ' ').trim();
+      if (t && seen(n.parentElement, t)) out.push(t);
+    }
+    return out;
+  };
+  const DATA = /\b\d{1,2}[:.]\d{2}\b|\d[\d.,]*\s?(€|eur|\$|£|chf|kč|zł)|(€|\$|£)\s?\d/i;
   const root = (a.ref && window.__cb && window.__cb.byId.get(a.ref)) || document.body;
   if (!root) return { err: 'pagina vuota' };
-  const len = (e) => (e.innerText || '').replace(/\s+/g, ' ').trim().length;
   let cards = [];
   let how = '';
   if (a.selector) {
     try {
-      cards = [...root.querySelectorAll(a.selector)].filter(vis);
+      cards = [...root.querySelectorAll(a.selector)].filter((e) => vis(e));
     } catch (e) {
       return { err: 'selector non valido' };
     }
     how = a.selector;
   } else {
-    const sig = (e) => e.tagName + '.' + [...e.classList].map((c) => c.replace(/[-_]?\d+/g, '')).filter((c) => !/active|selected|open|odd|even|first|last|hover|focus/i.test(c)).sort().slice(0, 3).join('.');
-    let best = null;
-    const all = [root, ...root.querySelectorAll('*')].slice(0, 8000);
-    for (const p of all) {
-      if (p.children.length < 3 || /^(SELECT|DATALIST|HEAD|SCRIPT|STYLE|SVG)$/i.test(p.tagName)) continue;
-      if (p.closest('nav,header,footer,[role=navigation],[role=banner],[role=contentinfo]')) continue;
-      const groups = new Map();
+    const STATE = /active|selected|open|odd|even|first|last|hover|focus|expanded|collapsed|ng-|star-inserted|disabled/i;
+    const own = (e) => [...e.classList].map((c) => c.replace(/[-_]?\d+/g, '')).filter((c) => c && !STATE.test(c));
+    // classi proprie e del primo figlio: i componenti (app-solution.direct / .with-change) si somigliano dentro
+    const cls = (e) => new Set([...own(e), ...(e.firstElementChild ? own(e.firstElementChild).map((c) => '>' + c) : [])]);
+    // fratelli con lo stesso tag e almeno una classe in comune: le varianti (diretto / con cambio) restano nello stesso gruppo
+    const groupsOf = (p) => {
+      const gs = [];
       for (const c of p.children) {
-        const k = sig(c);
-        if (!groups.has(k)) groups.set(k, []);
-        groups.get(k).push(c);
+        const cs = cls(c);
+        const g = gs.find((x) => x.tag === c.tagName && (cs.size ? [...cs].some((k) => x.cls.has(k)) : !x.cls.size));
+        if (g) {
+          g.els.push(c);
+          cs.forEach((k) => g.cls.add(k));
+        } else gs.push({ tag: c.tagName, cls: cs, els: [c] });
       }
-      for (const g of groups.values()) {
-        if (g.length < 3) continue;
-        const shown = g.filter(vis);
+      return gs;
+    };
+    let best = null;
+    // visita senza i rami nascosti (menu enormi con display:none) e senza limite basso: i risultati stanno spesso in fondo
+    const tw = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
+      acceptNode: (e) => {
+        if (/^(SCRIPT|STYLE|NOSCRIPT|TEMPLATE|SELECT|DATALIST|svg)$/i.test(e.tagName) || e.matches('nav,header,footer,[role=navigation],[role=banner],[role=contentinfo]')) return NodeFilter.FILTER_REJECT;
+        const s = getComputedStyle(e);
+        return s.display === 'none' ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+      },
+    });
+    let visited = 0;
+    for (let p = root; p && visited < 40000; p = tw.nextNode(), visited++) {
+      if (p.children.length < 3) continue;
+      for (const g of groupsOf(p)) {
+        if (g.els.length < 3) continue;
+        const shown = g.els.filter((e) => vis(e));
         if (shown.length < 3) continue;
-        const lens = shown.map(len);
+        // misura solo il testo visibile: il testo per i lettori di schermo gonfiava gruppi di pulsanti senza dati
+        const sample = shown.slice(0, 6).map(visText);
+        const lens = sample.map((t) => t.join(' ').length);
         const avg = lens.reduce((x, y) => x + y, 0) / lens.length;
-        // le schede hanno piu' informazioni (orari, prezzi): servono almeno ~3 pezzi di testo
-        const parts = shown.slice(0, 5).map((c) => [...c.querySelectorAll('*')].filter((x) => !x.children.length && (x.textContent || '').trim()).length);
-        const avgParts = parts.reduce((x, y) => x + y, 0) / parts.length;
+        const avgParts = sample.reduce((x, t) => x + t.length, 0) / sample.length;
         if (avg < 15 || avgParts < 2.5) continue;
-        const score = shown.length * Math.min(avg, 250) * Math.min(avgParts, 8);
+        // orari e prezzi: i risultati veri li hanno, le etichette dei filtri no
+        const rich = sample.filter((t) => DATA.test(t.join(' '))).length / sample.length;
+        const score = shown.length * Math.min(avg, 250) * Math.min(avgParts, 8) * (1 + 2 * rich);
         if (!best || score > best.score) best = { score, els: shown };
       }
     }
     if (best) {
       cards = best.els;
       const f = cards[0];
-      how = f.tagName.toLowerCase() + (f.classList.length ? '.' + [...f.classList].slice(0, 2).join('.') : '');
+      const shared = [...f.classList].filter((k) => !STATE.test(k) && cards.every((c) => c.classList.contains(k)));
+      how = f.tagName.toLowerCase() + (shared.length ? '.' + shared.slice(0, 2).join('.') : '');
     }
   }
   if (!cards.length) return { err: 'nessun gruppo di schede ripetute: usa selector, oppure mode "table"/"text"' };
@@ -719,11 +768,17 @@ export function readCardsInPage(a) {
     const done = new Set();
     const whole = idOf(c.closest(ACT)) || (c.matches(ACT) ? idOf(c) : '');
     const w = document.createTreeWalker(c, NodeFilter.SHOW_TEXT);
+    const hidden = [];
     for (let n = w.nextNode(); n; n = w.nextNode()) {
       const t = n.textContent.replace(/\s+/g, ' ').trim();
       if (!t || t.length < 1) continue;
       const pe = n.parentElement;
-      if (!pe || pe.closest('[aria-hidden=true],script,style,noscript,svg') || !vis(pe)) continue;
+      if (!pe || pe.closest(SKIP)) continue;
+      if (!seen(pe, t)) {
+        const sr = !pe.closest('[aria-hidden=true]') && !(pe.closest(ACT) && pe.closest(ACT) !== c && c.contains(pe.closest(ACT))) && srIn(pe, c);
+        if (sr && !hidden.includes(t)) hidden.push(t);
+        continue;
+      }
       let v = t.length > 60 ? t.slice(0, 59) + '…' : t;
       const act = pe.closest(ACT);
       const id = act && act !== c && c.contains(act) ? idOf(act) : '';
@@ -738,9 +793,13 @@ export function readCardsInPage(a) {
       const id = idOf(e);
       if (!id || done.has(id) || !vis(e) || done.size > 5) continue;
       done.add(id);
-      const lab = (e.getAttribute('aria-label') || e.getAttribute('title') || (typeof e.value === 'string' ? e.value : '') || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+      const lab = (e.getAttribute('aria-label') || e.getAttribute('title') || (typeof e.value === 'string' ? e.value : '') || e.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40);
       parts.push(`[${id}${lab ? ' ' + lab : ''}]`);
     }
+    // riassunto per i lettori di schermo ("partenza ore 18:28 arrivo ore 19:16") solo se porta orari, prezzi o date che non si vedono
+    const shownText = parts.join(' ');
+    const extra = hidden.filter((t) => (t.match(/\d{1,2}[:.]\d{2}\b|\d+,\d{2}|\d{1,2}\/\d{1,2}/g) || []).some((x) => !shownText.includes(x)));
+    if (extra.length) parts.unshift(...extra.map((t) => (t.length > 120 ? t.slice(0, 119) + '…' : t)));
     return { parts, whole };
   });
   // testi presenti in tutte le schede (stazioni di partenza e arrivo, etichetta del pulsante): una riga "in tutte"

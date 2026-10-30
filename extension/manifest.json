@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "colibri",
   "display_name": "Colibri",
-  "version": "0.5.6",
+  "version": "0.5.7",
   "description": "Your AI browses and fills websites in Chrome by reading pages as compact text, with a local Jev-style decision engine: far fewer tokens and calls than screenshots.",
   "long_description": "Opens Google Chrome (or Edge) with a dedicated profile and returns a compact table of interactive elements instead of screenshots or full accessibility trees. The model runs many steps in one call (forms, menus, autocomplete, confirmations) and receives only what changed. browse_task maps your data to form fields with a local, calibrated Jev-style engine: no API key, no extra tokens. Side-effect actions (submit, confirm, save, delete, pay, accept terms, upload) are blocked until you confirm; passwords, cards, OTP and IBAN can never be typed by the AI. Works with your existing Claude plan.",
   "author": {

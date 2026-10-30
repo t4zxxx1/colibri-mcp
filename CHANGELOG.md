@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.5.7
+
+`read:"cards"` picks the real results on portals like Trenitalia. Before, it could return 20 filter chips (`[e130 1 cambio] | [e131] | [e132]`) instead of the 10 travel solutions, without times or prices.
+
+Causes found and fixed (reproduced in `test/fixtures/soluzioni.html`):
+
+- **`display:contents` components** (Angular/Lit hosts such as `<app-solution>`) have no box, so they counted as invisible. Visibility now looks at their children.
+- **Variants split the group**: direct and with-change solutions had different classes. Siblings now group by tag plus any shared class, including the classes of their first child.
+- **Screen-reader text inflated the score**: the chips looked rich because `innerText` counted hidden labels. The score now measures only visible text and gives extra weight to groups with times and prices.
+- **Large pages**: only the first 8000 nodes were scanned, so results after a huge hidden menu were never seen. The scan now skips `display:none` branches and goes up to 40000 nodes.
+- **Times marked `aria-hidden`** but visible were dropped. Visible text is now kept (icon ligatures are still skipped).
+- **Screen-reader summaries** ("Soluzione n. 1 ; partenza ore 18:28 arrivo ore 19:16") are added to the row only when they carry times, prices or dates not visible on screen, so there is no duplication.
+- Unlabeled buttons in a card take their hidden text as label. `selector` works on `display:contents` elements and returned only the first 4 matches before.
+
+Tests: `test/v057.mjs` (11), full suite and live tests green. Same tokens and times on `npm run bench:task`.
+
+**IT** — `read:"cards"` sceglie i risultati veri anche su portali come Trenitalia, invece delle 20 chip dei filtri. Le cause corrette:
+- i componenti `display:contents` erano considerati invisibili;
+- le varianti (diretto o con cambio) finivano in gruppi diversi;
+- il testo per i lettori di schermo gonfiava il punteggio;
+- venivano esaminati solo i primi 8000 nodi;
+- gli orari visibili ma `aria-hidden` venivano scartati.
+
+Il riassunto per i lettori di schermo entra nella riga solo se porta orari, prezzi o date che non si vedono.
+
 ## 0.5.6
 
 Fixes found while using 0.5.5 on real sites (Trenitalia, Trovaprezzi). Each one has a regression test (`test/v056.mjs`) that fails on 0.5.5.
