@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.4
+
+**English**
+- **Upload behind "drag here" areas**: a `<input type=file>` hidden inside a drop zone (`display:none`, no visible label) now gets a ref named after the visible area, for example `e12 file "Upload an image Click or drag and drop…"`. It was invisible to Colibri before (seen on IMGto3D.ai). `upload` aimed at the area itself tries, in order: the file input inside it, the file chooser opened by clicking it, then a file input right next to it. The note says which one was used. Upload still needs `"confirm": true`.
+- **Clickable areas with no label**: `browse_view` with `scope:"areas"` finds elements that act like buttons but have no role or name: pointer-cursor blocks, icons, canvases and drop zones. Each gets a ref (`area "~cube.png 48x48 @0.12,0.40"` = image, size and centre 0-1 when there is no text). They stay available to `click`, `hover` and `upload` in later views. The scan only runs on request, so normal views cost nothing extra. Before this, the only option was a screenshot.
+- `npm run test:live` also checks a real upload area (no file is sent).
+
+**Italiano**
+- **Upload dietro le aree "trascina qui"**: un `<input type=file>` nascosto dentro una drop-zone (`display:none`, senza etichetta visibile) ora riceve un ref col nome dell'area visibile, per esempio `e12 file "Carica un'immagine Fai clic per caricare o trascina…"`. Prima Colibri non lo vedeva (successo su IMGto3D.ai). Un `upload` sull'area stessa prova, in ordine: l'input file al suo interno, la finestra di scelta file aperta dal clic, poi un input file subito accanto. La nota dice quale è stato usato. L'upload richiede sempre `"confirm": true`.
+- **Aree cliccabili senza etichetta**: `browse_view` con `scope:"areas"` trova gli elementi che si comportano da pulsanti ma non hanno ruolo né nome: blocchi col cursore a mano, icone, canvas e zone di trascinamento. Ognuno riceve un ref (`area "~cube.png 48x48 @0.12,0.40"` = immagine, misura e centro 0-1 quando non c'è testo). Restano utilizzabili da `click`, `hover` e `upload` nelle viste successive. La scansione parte solo su richiesta, quindi le viste normali non costano niente in più. Prima l'unica strada era uno screenshot.
+- `npm run test:live` controlla anche un'area di caricamento reale (nessun file viene inviato).
+
 ## 0.5.3
 
 **English**

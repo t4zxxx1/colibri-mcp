@@ -63,6 +63,10 @@ ok(!/verifica|captcha|cloudflare/i.test(r.text.split('\n').slice(0, 3).join(' ')
 r = await timed('browse_read', { mode: 'find', query: 'becco', max: 3 });
 ok(!r.isError && has(r.text.toLowerCase(), 'becco'), `Wikipedia: find nel testo (${r.info})`, r.text);
 
+// area "trascina qui" con input file nascosto (nessun file viene caricato)
+r = await timed('browse_open', { url: 'https://www.imgto3d.ai/' });
+ok(/e\d+ file "[^"]*(carica|upload|drag|trascina)/i.test(r.text), `IMGto3D: area di caricamento con ref (${r.info})`, r.text.slice(0, 600));
+
 await c.close();
 console.log(log.join('\n'));
 console.log(`\nlive: ${pass} ok, ${fail} falliti`);

@@ -317,6 +317,62 @@ export function collectInPage(opts) {
     return false;
   }
 
+  // input file nascosto dietro un'area "trascina qui": il ref va all'input, il nome viene dall'area visibile
+  const big = (r) => r.width * r.height > 0.6 * vw * vh;
+  function dropZoneOf(el) {
+    if (el.tagName !== 'INPUT' || el.type !== 'file' || isVisible(el)) return null;
+    for (let a = el.parentElement, k = 0; a && k < 6 && a !== document.body; a = a.parentElement, k++) {
+      if (!isVisible(a)) continue;
+      const r = a.getBoundingClientRect();
+      if (r.width >= 40 && r.height >= 20 && !big(r)) return a;
+    }
+    return null;
+  }
+
+  // aree cliccabili senza ref (cursore a mano, zone di trascinamento): cercate solo su richiesta, poi ricordate
+  const areas = S.areas || (S.areas = new Set());
+  for (const e of areas) if (!e.isConnected) areas.delete(e);
+  if (opts && opts.areas) {
+    const els = document.body ? document.body.getElementsByTagName('*') : [];
+    const lim = Math.min(els.length, 8000);
+    const found = [];
+    const visCtl = (e) => [...e.querySelectorAll(STRICT)].some((c) => isVisible(c) && !(c.tagName === 'INPUT' && c.type === 'file'));
+    for (let i = 0; i < lim; i++) {
+      const e = els[i];
+      if (inc.has(e) || areas.has(e) || /^(SCRIPT|STYLE|NOSCRIPT|LABEL|OPTION|svg|path|g|use)$/.test(e.tagName)) continue;
+      const cs = getComputedStyle(e);
+      const pointer = cs.cursor === 'pointer' && !(e.parentElement && getComputedStyle(e.parentElement).cursor === 'pointer');
+      const cls = (typeof e.className === 'string' ? e.className : e.getAttribute('class') || '') + ' ' + (e.id || '');
+      const drop = /drop.?zone|drag.?(and.?|n.?|&.?)?drop|file.?drop|drop.?area|upload.?(area|zone|box)|uploader/i.test(cls) || e.hasAttribute('ondrop');
+      const canv = e.tagName === 'CANVAS';
+      if (!pointer && !drop && !canv) continue;
+      if (!isVisible(e) || e.closest(STRICT) || visCtl(e)) continue;
+      const r = e.getBoundingClientRect();
+      if (r.width < 12 || r.height < 12 || (big(r) && !canv) || ((drop || canv) && !pointer && (r.width < 60 || r.height < 30))) continue;
+      found.push(e);
+    }
+    for (const e of found) if (!found.some((o) => o !== e && o.contains(e))) areas.add(e);
+    for (const e of areas) if (!seen.has(e)) {
+      seen.add(e);
+      all.push(e);
+    }
+  } else for (const e of areas) if (e.isConnected && !seen.has(e)) {
+    seen.add(e);
+    all.push(e);
+  }
+  function areaName(el) {
+    let n = nameOf(el);
+    if (n && n !== el.id) return n;
+    const im = el.querySelector('img');
+    const src = im && (im.getAttribute('src') || '').split(/[?#]/)[0].split('/').pop();
+    const bg = getComputedStyle(el).backgroundImage;
+    const bgf = bg && bg !== 'none' && (bg.match(/url\("?([^")]+)/) || [])[1];
+    const hint = el.tagName === 'CANVAS' ? 'canvas' : (src || (bgf || '').split(/[?#]/)[0].split('/').pop() || '').slice(0, 40);
+    const r = el.getBoundingClientRect();
+    const pos = `${Math.round(r.width)}x${Math.round(r.height)} @${(Math.min(1, Math.max(0, (r.left + r.width / 2) / vw))).toFixed(2)},${(Math.min(1, Math.max(0, (r.top + r.height / 2) / vh))).toFixed(2)}`;
+    return (hint ? '~' + hint + ' ' : '') + pos;
+  }
+
   const occ = new Map();
   const newSig = new Map();
   const items = [];
@@ -324,14 +380,17 @@ export function collectInPage(opts) {
     if (modalEl && !modalEl.contains(el)) continue;
     const tag = el.tagName.toLowerCase();
     const formCtl = /^(input|select|textarea)$/.test(tag);
-    if (!(isVisible(el) || hiddenInputOk(el))) continue;
-    const role = roleOf(el);
-    if (!formCtl) {
+    const isArea = areas.has(el);
+    const dz = !isArea && formCtl && dropZoneOf(el);
+    if (!(isVisible(el) || hiddenInputOk(el) || dz)) continue;
+    const role = isArea ? 'area' : roleOf(el);
+    if (!formCtl && !isArea) {
       const p = el.parentElement && el.parentElement.closest(CONTAINER);
       if (p && p !== el && inc.has(p)) continue;
     }
     if (role === 'clk' && el.querySelector && el.querySelector(STRICT)) continue;
-    const name = nameOf(el);
+    let name = isArea ? areaName(el) : nameOf(el);
+    if (dz && !el.getAttribute('aria-label') && !(el.labels && el.labels.length)) name = cut(txt(dz), 60).replace(/"/g, "'") || name || 'area di caricamento';
     if (role === 'clk' && (!name || (name.length > 50 && el.children.length > 3))) continue;
 
     const flags = [];
@@ -379,7 +438,7 @@ export function collectInPage(opts) {
       if (role === 'pwd' || CRED_AC.test(fold(ac)) || CRED_ID.test(idn)) s = 'x';
       else if (PII_ID.test(idn)) s = 'p';
     }
-    if (/^(btn|link|clk|menu)$/.test(role)) {
+    if (/^(btn|link|clk|menu|area)$/.test(role)) {
       const isSubmit = (tag === 'button' || tag === 'input') && el.type === 'submit' && !!el.form;
       if ((STRONG.test(fname) && !LOGIN.test(fname)) || ACC.test(fname)) s = 'c';
       else if (isSubmit && !NAVW.test(fname) && !isSearchForm(el.form)) s = 'c';
@@ -442,6 +501,7 @@ export function collectInPage(opts) {
       id, role, name, value, checked, flags, s, reg, options, ctx, grp, gx,
       href: role === 'link' && typeof el.href === 'string' ? el.href : '',
       inForm: !!el.form,
+      hid: dz ? 1 : undefined,
     });
   }
   S.bySig = newSig;

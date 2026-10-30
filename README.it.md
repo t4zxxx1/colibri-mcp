@@ -300,7 +300,7 @@ ok 22/22
 |---|---|
 | `browse_open` | Apre un URL (avvia Chrome da solo), rifiuta i cookie non essenziali, restituisce le righe |
 | `browse_search` | Ricerca web senza i CAPTCHA di Google: una riga per risultato `n. titolo \| url \| estratto`, link reali, niente annunci. Prima DuckDuckGo, Bing di riserva in automatico se compare una verifica |
-| `browse_view` | Righe della pagina corrente, con `filter`, `scope:"all"` e paginazione |
+| `browse_view` | Righe della pagina corrente, con `filter`, `scope:"all"` e paginazione. `scope:"areas"` dà un ref alle aree cliccabili senza etichetta (icone, canvas, zone "trascina qui") |
 | `browse_do` | Fino a 40 passi in ordine; restituisce solo le differenze |
 | `browse_read` | Legge senza agire: `text`, `table`, `find`, `describe`, `cards` (una riga per risultato: `10:05 \| 13:40 \| 3h35 \| 1 cambio \| 29,90 €`), `pdf` (testo di un PDF scaricato o aperto, a pagine) |
 | `browse_task` | Compito guidato in stile Jev: dati per etichetta, `answers`, `submit`, `expect`, `extract` tipizzato (testo, numero, importo, data, url, tabella). Le date divise in giorno / mese / anno (+ ore / minuti) si compilano da un solo valore: `"partenza": "12/06/2026 10:30"` |
@@ -423,7 +423,7 @@ No. Le azioni con effetti (`!c`) richiedono il tuo ok esplicito, i dati segreti 
 ```bash
 npm ci            # dipendenze di sviluppo e di esecuzione
 npm test          # oltre 180 test end-to-end via protocollo MCP (serve Chrome o Edge)
-npm run test:live # prove facoltative su siti reali: ricerca, PDF, modulo httpbin, Wikipedia (serve la rete)
+npm run test:live # prove facoltative su siti reali: ricerca, PDF, modulo httpbin, Wikipedia, area di caricamento (serve la rete)
 npm run bench     # confronto con screenshot, Playwright MCP, agent-browser, Fast Playwright MCP
 npm run calibrate # calibrazione del motore (VERIFY5=1 aggiunge il Test 5 indipendente)
 npm run build     # dist/colibri.mcpb

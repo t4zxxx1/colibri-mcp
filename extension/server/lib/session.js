@@ -268,7 +268,7 @@ export class Session {
   }
 
   // ---------- lettura pagina ----------
-  async collect() {
+  async collect(o = {}) {
     const page = await this.ensure();
     const main = page.mainFrame();
     const out = { items: [], regions: [], alerts: [], modal: '', captcha: false, login: false, total: 0, meta: null, ngroups: 0 };
@@ -291,7 +291,7 @@ export class Session {
       let r;
       for (let attempt = 0; attempt < 2 && !r; attempt++) {
         try {
-          const arg = { prefix: this.framePrefix(f), start: this.idN, json: true };
+          const arg = { prefix: this.framePrefix(f), start: this.idN, json: true, areas: !!o.areas };
           r = JSON.parse(isMain ? await f.evaluate(P.collectInPage, arg) : await evalIn(f, P.collectInPage, arg, 4000));
         } catch (e) {
           if (!isMain) break;
@@ -514,8 +514,15 @@ export class Session {
     let page = await this.ensure();
     const g = await this.humanGate(page);
     page = g.page;
-    const snap = await this.collect();
+    const areas = opts.scope === 'areas';
+    const snap = await this.collect({ areas });
     this.stats.observations++;
+    if (areas) {
+      const list = snap.items.filter((i) => i.role === 'area' || i.hid);
+      this.remember(snap);
+      const head = `aree cliccabili senza nome: ${list.length} (nome ~file = immagine, LxA @x,y = centro 0-1)`;
+      return [g.note, head, ...list.map((i) => lineOf(i, true)), list.length ? 'usa il ref con click/hover/upload' : 'nessuna: prova browse_screenshot'].filter(Boolean).join('\n');
+    }
     if (!opts.filter && !opts.offset) this.remember(snap);
     const txt = renderView(snap, { url: page.url(), tabs: this.tabs(), max: this.cfg.maxItems, ...opts });
     return g.note ? g.note + '\n' + txt : txt;
@@ -891,7 +898,7 @@ export class Session {
                 return `${ed ? 1 : 0}|${a ? a.tagName + '#' + a.id + '|' + (a.getAttribute('aria-label') || a.name || '') : ''}|${dlg}`;
               })
               .catch(() => 'x');
-          const popup = it.role === 'combo' || /^(menu|clk)$/.test(it.role);
+          const popup = it.role === 'combo' || /^(menu|clk|area)$/.test(it.role);
           let last = '';
           let same = 0;
           for (let k = 0; k < 12; k++) {
@@ -1087,13 +1094,39 @@ export class Session {
         const files = [].concat(st.file || []).map((f) => String(f).replace(/^~(?=$|[\\/])/, os.homedir()));
         if (!files.length) throw new Error('indica "file": percorso o elenco di percorsi');
         for (const f of files) if (!fs.existsSync(f) || !fs.statSync(f).isFile()) throw new Error('file non trovato: ' + f);
+        let how = '';
         if (it.role === 'file') await el.setInputFiles(files, { timeout: 5000 });
         else {
-          const [fc] = await Promise.all([page.waitForEvent('filechooser', { timeout: 6000 }), el.click({ timeout: 5000 })]);
-          await fc.setFiles(files);
+          // area "trascina qui": prima l'input file dentro l'area, poi il file chooser del clic, poi un input vicino
+          const near = await el.evaluateHandle((e) => e.querySelector('input[type=file]'));
+          const inp = near.asElement();
+          if (inp) {
+            await inp.setInputFiles(files, { timeout: 5000 });
+            how = " (input file dell'area)";
+          } else {
+            await near.dispose();
+            try {
+              const [fc] = await Promise.all([page.waitForEvent('filechooser', { timeout: 6000 }), el.click({ timeout: 5000 })]);
+              await fc.setFiles(files);
+              how = ' (finestra di scelta file)';
+            } catch (e) {
+              const h = await el.evaluateHandle((e) => {
+                for (let a = e.parentElement, k = 0; a && k < 3 && a !== document.body; a = a.parentElement, k++) {
+                  const c = a.querySelectorAll('input[type=file]');
+                  if (c.length) return c.length === 1 ? c[0] : null;
+                }
+                const all = document.querySelectorAll('input[type=file]');
+                return all.length === 1 ? all[0] : null;
+              });
+              const only = h.asElement();
+              if (!only) throw new Error(`${it.id} non apre la scelta dei file e non ha un campo file vicino: indica il campo (browse_view scope:"areas")`);
+              await only.setInputFiles(files, { timeout: 5000 });
+              how = ' (campo file vicino)';
+            }
+          }
         }
         await after(1500);
-        return { note: `caricati ${files.length} file` };
+        return { note: `caricati ${files.length} file${how}` };
       }
       case 'find': {
         const t = await this.read({ mode: 'find', query: String(st.find), max: st.max || 10 });

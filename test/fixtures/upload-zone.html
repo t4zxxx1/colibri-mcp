@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Image to 3D</title>
+<style>
+  .upload-page { padding: 20px; }
+  .dropzone { width: 420px; height: 180px; border: 2px dashed #888; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .dropzone input { display: none; }
+  .picker { width: 300px; height: 80px; margin-top: 20px; border: 1px solid #ccc; cursor: pointer; }
+  .cube { width: 48px; height: 48px; margin-top: 20px; cursor: pointer; background: #39f url(/img/cube.png) center no-repeat; }
+</style>
+</head>
+<body>
+<main class="upload-page">
+  <h1>Image to 3D</h1>
+  <div class="dropzone" id="dz"><p>Drag &amp; drop your image here</p><input type="file" accept="image/*" id="fa"></div>
+  <div class="picker" id="pk"><span>Click to choose a file</span></div>
+  <div class="cube" id="cube"></div>
+  <div class="wrap"><div class="drop-area" id="da" style="width:300px;height:60px;border:1px dotted #999">Drop files</div><input type="file" id="fd" style="display:none"></div>
+  <canvas id="view3d" width="200" height="120"></canvas>
+  <button type="button" id="gen">Generate model</button>
+  <p id="out">a=; b=; c=; d=</p>
+</main>
+<script>
+  const st = { a: '', b: '', c: '', d: '' };
+  const show = () => (document.getElementById('out').textContent = `a=${st.a}; b=${st.b}; c=${st.c}; d=${st.d}`);
+  document.getElementById('fa').addEventListener('change', (e) => { st.a = [...e.target.files].map((f) => f.name).join(','); show(); });
+  document.getElementById('dz').addEventListener('click', () => document.getElementById('fa').click());
+  document.getElementById('pk').addEventListener('click', () => {
+    const i = document.createElement('input');
+    i.type = 'file';
+    i.addEventListener('change', () => { st.b = [...i.files].map((f) => f.name).join(','); show(); });
+    i.click();
+  });
+  document.getElementById('fd').addEventListener('change', (e) => { st.d = [...e.target.files].map((f) => f.name).join(','); show(); });
+  document.getElementById('cube').addEventListener('click', () => { st.c = 'cliccato'; show(); });
+</script>
+</body>
+</html>

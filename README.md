@@ -300,7 +300,7 @@ ok 22/22
 |---|---|
 | `browse_open` | Open a URL (auto-starts Chrome), reject non-essential cookies, return the rows |
 | `browse_search` | Web search without Google CAPTCHAs: one row per result `n. title \| url \| snippet`, real links, no ads. DuckDuckGo first, Bing as automatic fallback if a check appears |
-| `browse_view` | Rows of the current page, with `filter`, `scope:"all"` and paging |
+| `browse_view` | Rows of the current page, with `filter`, `scope:"all"` and paging. `scope:"areas"` gives refs to clickable areas with no label (icons, canvases, "drag here" zones) |
 | `browse_do` | Up to 40 steps in order; returns only the diff |
 | `browse_read` | Read without acting: `text`, `table`, `find`, `describe`, `cards` (one row per result card: `10:05 \| 13:40 \| 3h35 \| 1 change \| €29.90`), `pdf` (text of a downloaded or open PDF, paged) |
 | `browse_task` | Jev-style guided task: params by human labels, `answers`, `submit`, `expect`, typed `extract` (text, number, money, date, url, table). Dates split into day / month / year (+ hour / minutes) fields are filled from one value: `"departure": "12/06/2026 10:30"` |
@@ -423,7 +423,7 @@ No. Side effects (`!c`) need your explicit OK, secrets (`!x`) can never be typed
 ```bash
 npm ci            # dev + runtime deps
 npm test          # 180+ end-to-end tests over the real MCP protocol (needs Chrome or Edge)
-npm run test:live # optional checks on real sites: search, PDF, httpbin form, Wikipedia (network)
+npm run test:live # optional checks on real sites: search, PDF, httpbin form, Wikipedia, upload area (network)
 npm run bench     # vs screenshots, Playwright MCP, agent-browser, Fast Playwright MCP
 npm run calibrate # engine calibration (VERIFY5=1 adds the independent Test 5)
 npm run build     # dist/colibri.mcpb
