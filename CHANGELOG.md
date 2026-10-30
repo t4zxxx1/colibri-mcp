@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.5.8
+
+Fewer calls and tokens on real sites (Vinted, Amazon, Wikipedia, hotel calendars, checkout pages). On the same scenarios reproduced locally (`npm run bench:pages`), 0.5.7 needed 17 calls and ~2500 tokens, 0.5.8 needs 8 calls and ~690 tokens (-72%).
+
+| Scenario | 0.5.7 | 0.5.8 |
+|---|---|---|
+| 8 listings with their links (Vinted) | 10 calls, ~534 tok | 2 calls, ~192 tok |
+| Review text (Amazon, Wikipedia) | ~714 tok | ~287 tok |
+| Opening a 2-month calendar (Meliá) | ~305 tok | ~104 tok |
+| Discount code accepted or rejected | 3 calls, ~949 tok (screenshot) | 2 calls, ~110 tok |
+
+- **Cards with links**: `read:"cards"` with `links:true` adds each result's URL. Tracking parameters (`utm_`, `ref`, `gclid`...), `/ref=` path segments and Amazon title slugs (`/dp/ASIN`) are removed; a shared origin is written once. No more one `describe` per result.
+- **Main text only**: `read:"text"` skips nav, header, footer, sidebars, cookie banners and blocks made almost only of links. A note says how much was cut; `selector:"body"` gives everything. Lines of JavaScript/JSON that leak into page text are dropped (also from the new-text lines after a click).
+- **Compact calendars and lists**: consecutive buttons with consecutive numbers and refs (days, pages, sizes) become one line per month: `e100..e130 btn "1".."31" (31, ...)`, in views and diffs.
+- **Visible state without screenshots**: fields show `ok` (green/accepted) or `inv` plus their message, e.g. `e1 text "Codice sconto" ok »"Codice applicato: -10%"`. Success messages, progress bars (`! avanzamento Coda: 40%`) and a cookie banner that is still open (with its button refs) appear as `!` lines.
+- **Filter URL memory**: when clicks change only the query of the same page (filters, sort), the resulting URL is saved per site with the path of clicks; `browse_open` on that site shows it as a template. URLs with tokens, sessions, codes or CAPTCHA responses are never saved.
+- **Useless tabs closed**: tabs opened by a click that stay `about:blank` or land on ad/affiliate/tracking hosts are closed; at the end of `browse_do`, Colibri closes background tabs it opened that are junk or duplicates and keeps at most 3. The user's own tabs are never touched.
+- **Tool profiles** (`CB_TOOLS` or the "Profilo dei tool" option): `all` (default, ~1715 tokens per turn), `lite` = search, open, do, read (~1060), `read` = search, open, read (~550), or a list like `search,open,read`. Instructions mention only the active tools.
+- Amazon cards: leading/trailing boxes without prices (bestseller widgets, headers) are skipped, and text equal to a button label is not repeated.
+
+Tests: `test/v058.mjs` (31), full suite (256), live tests green; new `npm run bench:pages`.
+
+**IT** — Meno chiamate e token sui siti reali: negli scenari della sessione si passa da 17 chiamate e circa 2500 token a 8 chiamate e circa 690 token (−72%).
+- `read:"cards"` con `links:true` dà l'URL di ogni risultato, senza parametri di tracciamento.
+- `read:"text"` restituisce solo il contenuto principale, senza menu, intestazioni, piè di pagina, banner dei cookie e righe di codice.
+- I calendari diventano una riga per mese.
+- I campi mostrano `ok` o `inv` con il loro messaggio (codice sconto applicato o rifiutato) senza screenshot. Avanzamento e banner dei cookie aperto compaiono come righe `!`.
+- L'URL dei filtri viene ricordato per sito e mostrato all'apertura.
+- Le schede inutili (pubblicità, affiliazioni, `about:blank`) si chiudono da sole.
+- Ci sono profili di tool (`CB_TOOLS`: all, lite, read) per pagare meno definizioni a ogni turno.
 ## 0.5.7
 
 `read:"cards"` picks the real results on portals like Trenitalia. Before, it could return 20 filter chips (`[e130 1 cambio] | [e131] | [e132]`) instead of the 10 travel solutions, without times or prices.

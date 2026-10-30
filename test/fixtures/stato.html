@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Carrello</title>
+<style>
+  #cookie-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #eee; padding: 8px; }
+  .invalid-feedback, .valid-feedback { display: none; }
+  .is-invalid ~ .invalid-feedback, .is-valid ~ .valid-feedback { display: block; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Carrello</h1>
+  <p>Mini PC 16 GB, 299,00 €. Spedizione gratuita in 2 giorni lavorativi con corriere espresso.</p>
+  <div class="campo">
+    <label for="cod">Codice sconto</label>
+    <input id="cod" name="coupon">
+    <div class="valid-feedback">Codice applicato: -10%</div>
+    <div class="invalid-feedback">Codice non valido o scaduto</div>
+  </div>
+  <button id="applica" type="button" onclick="
+    const i = document.getElementById('cod');
+    i.classList.remove('is-valid', 'is-invalid');
+    i.classList.add(i.value === 'SCONTO10' ? 'is-valid' : 'is-invalid');">Usa codice</button>
+  <label for="coda">Coda di elaborazione</label> <progress id="coda" max="100" value="40"></progress>
+  <button type="button" onclick="
+    const d = document.createElement('div');
+    d.textContent = 'window.dataLayer = window.dataLayer || []; function gtag(){dataLayer.push(arguments);} gtag(\'js\', new Date());';
+    document.querySelector('main').appendChild(d);
+    const o = document.createElement('div');
+    o.textContent = 'Riepilogo aggiornato: totale 269,10 €';
+    document.querySelector('main').appendChild(o);">Aggiorna riepilogo</button>
+  <p>Note per il corriere: lasciare il pacco in portineria se assenti, grazie mille.</p>
+  <div>var config = {"shop":"demo","currency":"EUR","features":{"coupon":true}};</div>
+</main>
+<div id="cookie-bar">Usiamo i cookie per migliorare il sito.
+  <button type="button">Accetta</button> <button type="button">Personalizza</button></div>
+</body>
+</html>

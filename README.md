@@ -298,11 +298,11 @@ ok 22/22
 
 | Tool | What it does |
 |---|---|
-| `browse_open` | Open a URL (auto-starts Chrome), reject non-essential cookies, return the rows. `rows:false` = header and counts only (~150 chars), `filter` = matching rows only |
+| `browse_open` | Open a URL (auto-starts Chrome), reject non-essential cookies, return the rows. `rows:false` = header and counts only (~150 chars), `filter` = matching rows only. Shows the filter URLs you already used on that site as templates |
 | `browse_search` | Web search without Google CAPTCHAs: one row per result `n. title \| url \| snippet`, real links, no ads. DuckDuckGo first, Bing as automatic fallback if a check appears |
 | `browse_view` | Rows of the current page, with `filter`, `scope:"all"` and paging. `scope:"areas"` gives refs to clickable areas with no label (icons, canvases, "drag here" zones) |
 | `browse_do` | Up to 40 steps in order; returns only the diff |
-| `browse_read` | Read without acting: `text`, `table`, `find`, `describe`, `cards` (one row per result card with button refs: `21:39 \| 23:01 \| 2 h 25 \| direct \| € 9,90 \| [e54]`, shared texts in one line; finds results inside components and big portals, adds screen-reader summaries only when they carry hidden times or prices), `pdf` (text of a downloaded or open PDF, paged). Waits for pending requests first: no `wait` needed after a search |
+| `browse_read` | Read without acting: `text` (main content only: no menus, header, footer, cookie banners or stray JavaScript; `selector:"body"` for everything), `table`, `find`, `describe`, `cards` (one row per result card with button refs: `21:39 \| 23:01 \| 2 h 25 \| direct \| € 9,90 \| [e54]`, shared texts in one line; finds results inside components and big portals, adds screen-reader summaries only when they carry hidden times or prices; `links:true` adds each result's clean URL), `pdf` (text of a downloaded or open PDF, paged). Waits for pending requests first: no `wait` needed after a search |
 | `browse_task` | Jev-style guided task: params by human labels, `answers`, `submit`, `expect`, typed `extract` (text, number, money, date, url, table). Dates split into day / month / year (+ hour / minutes) fields are filled from one value: `"departure": "12/06/2026 10:30"`. A whole search in 1 call: `{url, params:{from, to, date, time}, submit:"Search", read:"cards"}` → ~176 tokens |
 | `browse_screenshot` | Small JPEG (~900 tokens) of the window, an element or a region — only when text is not enough |
 | `browse_stats` | Tokens used this session vs screenshots |
@@ -334,6 +334,7 @@ ok 22/22
 | `CB_CHROME_PATH` | auto | only if Chrome/Edge is not found |
 | `CB_ALLOW_SCREENSHOT` | `true` | |
 | `CB_HUMAN_WAIT` | `50` | seconds Colibri waits for you to solve a CAPTCHA / human check (`0` = don't wait) |
+| `CB_TOOLS` | `all` | tool profile: `all`, `lite` (search, open, do, read: ~1060 tokens per turn instead of ~1715), `read` (search, open, read: ~550), or a list like `search,open,read` |
 | `CB_HUMAN_SHOW` | `true` | when headless and a check doesn't clear on its own, reopen Chrome visibly on the same page |
 | `CB_MODE` / `CB_CDP_URL` | `launch` | `cdp` = **real Chrome mode**: attaches to a normal Chrome on `--remote-debugging-port=9222` (see FAQ) |
 | `CB_AUTO_CHROME` | `true` | in `cdp` mode, start the real Chrome by itself if nothing is listening on the port |
@@ -426,6 +427,7 @@ npm test          # 180+ end-to-end tests over the real MCP protocol (needs Chro
 npm run test:live # optional checks on real sites: search, PDF, httpbin form, Wikipedia, upload area (network)
 npm run bench     # vs screenshots, Playwright MCP, agent-browser, Fast Playwright MCP
 npm run bench:task # repeated train search: calls, tokens, seconds (add paths to older index.js to compare)
+npm run bench:pages # Vinted / Amazon / calendar / discount-code scenarios: calls and tokens (same)
 npm run calibrate # engine calibration (VERIFY5=1 adds the independent Test 5)
 npm run build     # dist/colibri.mcpb
 ```

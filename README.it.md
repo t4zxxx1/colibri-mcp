@@ -298,11 +298,11 @@ ok 22/22
 
 | Tool | Cosa fa |
 |---|---|
-| `browse_open` | Apre un URL (avvia Chrome da solo), rifiuta i cookie non essenziali, restituisce le righe. `rows:false` = solo intestazione e conteggi (~150 caratteri), `filter` = solo le righe che corrispondono |
+| `browse_open` | Apre un URL (avvia Chrome da solo), rifiuta i cookie non essenziali, restituisce le righe. `rows:false` = solo intestazione e conteggi (~150 caratteri), `filter` = solo le righe che corrispondono. Mostra come modelli gli URL dei filtri gia' usati su quel sito |
 | `browse_search` | Ricerca web senza i CAPTCHA di Google: una riga per risultato `n. titolo \| url \| estratto`, link reali, niente annunci. Prima DuckDuckGo, Bing di riserva in automatico se compare una verifica |
 | `browse_view` | Righe della pagina corrente, con `filter`, `scope:"all"` e paginazione. `scope:"areas"` dà un ref alle aree cliccabili senza etichetta (icone, canvas, zone "trascina qui") |
 | `browse_do` | Fino a 40 passi in ordine; restituisce solo le differenze |
-| `browse_read` | Legge senza agire: `text`, `table`, `find`, `describe`, `cards` (una riga per risultato con i ref dei pulsanti: `21:39 \| 23:01 \| 2 h 25 \| diretto \| € 9,90 \| [e54]`, testi comuni in una riga; trova i risultati anche dentro componenti e portali grandi, aggiunge il riassunto per i lettori di schermo solo se porta orari o prezzi nascosti), `pdf` (testo di un PDF scaricato o aperto, a pagine). Prima aspetta le richieste in corso: dopo una ricerca non serve `wait` |
+| `browse_read` | Legge senza agire: `text` (solo il contenuto principale: niente menu, intestazioni, piè di pagina, banner dei cookie o righe di JavaScript; `selector:"body"` per tutto), `table`, `find`, `describe`, `cards` (una riga per risultato con i ref dei pulsanti: `21:39 \| 23:01 \| 2 h 25 \| diretto \| € 9,90 \| [e54]`, testi comuni in una riga; trova i risultati anche dentro componenti e portali grandi, aggiunge il riassunto per i lettori di schermo solo se porta orari o prezzi nascosti; `links:true` aggiunge l'URL pulito di ogni risultato), `pdf` (testo di un PDF scaricato o aperto, a pagine). Prima aspetta le richieste in corso: dopo una ricerca non serve `wait` |
 | `browse_task` | Compito guidato in stile Jev: dati per etichetta, `answers`, `submit`, `expect`, `extract` tipizzato (testo, numero, importo, data, url, tabella). Le date divise in giorno / mese / anno (+ ore / minuti) si compilano da un solo valore: `"partenza": "12/06/2026 10:30"`. Una ricerca intera in 1 chiamata: `{url, params:{da, a, data, ora}, submit:"Cerca", read:"cards"}` → ~176 token |
 | `browse_screenshot` | JPEG ridotto (~900 token) della finestra, di un elemento o di una regione — solo quando il testo non basta |
 | `browse_stats` | Token usati nella sessione rispetto agli screenshot |
@@ -334,6 +334,7 @@ ok 22/22
 | `CB_CHROME_PATH` | automatico | solo se Chrome/Edge non viene trovato |
 | `CB_ALLOW_SCREENSHOT` | `true` | |
 | `CB_HUMAN_WAIT` | `50` | secondi di attesa mentre risolvi un CAPTCHA / una verifica (`0` = non aspettare) |
+| `CB_TOOLS` | `all` | profilo dei tool: `all`, `lite` (search, open, do, read: ~1060 token per turno invece di ~1715), `read` (search, open, read: ~550), oppure un elenco come `search,open,read` |
 | `CB_HUMAN_SHOW` | `true` | se il browser è invisibile e la verifica non si supera da sola, riapre Chrome visibile sulla stessa pagina |
 | `CB_MODE` / `CB_CDP_URL` | `launch` | `cdp` = **modalità Chrome reale**: si collega a un Chrome normale su `--remote-debugging-port=9222` (vedi FAQ) |
 | `CB_AUTO_CHROME` | `true` | in modalità `cdp`, avvia da solo il Chrome reale se sulla porta non risponde nessuno |
@@ -426,6 +427,7 @@ npm test          # oltre 180 test end-to-end via protocollo MCP (serve Chrome o
 npm run test:live # prove facoltative su siti reali: ricerca, PDF, modulo httpbin, Wikipedia, area di caricamento (serve la rete)
 npm run bench     # confronto con screenshot, Playwright MCP, agent-browser, Fast Playwright MCP
 npm run bench:task # ricerca treni ripetuta: chiamate, token, secondi (aggiungi i percorsi di index.js vecchi per confrontare)
+npm run bench:pages # scenari Vinted / Amazon / calendario / codice sconto: chiamate e token (idem)
 npm run calibrate # calibrazione del motore (VERIFY5=1 aggiunge il Test 5 indipendente)
 npm run build     # dist/colibri.mcpb
 ```

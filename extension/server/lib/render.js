@@ -19,7 +19,46 @@ export function lineOf(it, withCtx, mode = 'full') {
   }
   if (it.flags && it.flags.length) l += ' ' + it.flags.join(' ');
   if (it.s) l += ' !' + it.s;
+  if (it.msg && mode !== 'neutral') l += ' »' + q(it.msg);
   if (withCtx && it.ctx && it.ctx !== it.name) l += ' @' + q(it.ctx);
+  return l;
+}
+
+/**
+ * Sequenze di elementi uguali con ref e numeri consecutivi (giorni di un calendario, pagine, taglie): una riga sola.
+ * Il ref del k-esimo si ricava dal primo (e100 + k), quindi non si perde nessun riferimento.
+ */
+const idNum = (id) => {
+  const m = /^(f\d+)?e(\d+)$/.exec(id || '');
+  return m ? [m[1] || '', +m[2]] : null;
+};
+const numOf = (s) => {
+  const m = /\d+/.exec(s || '');
+  return m ? +m[0] : null;
+};
+const sameKind = (a, b) => a.role === b.role && a.reg === b.reg && (a.flags || []).join() === (b.flags || []).join() && (a.s || '') === (b.s || '') && !a.value === !b.value && a.checked === b.checked;
+export function runAt(items, k, min = 6) {
+  const a = items[k];
+  const n0 = idNum(a.id);
+  if (!n0 || numOf(a.name) === null) return 0;
+  let j = k;
+  while (j + 1 < items.length) {
+    const p = items[j];
+    const b = items[j + 1];
+    const nb = idNum(b.id);
+    const vb = numOf(b.name);
+    // il numero cresce di 1; quando ricomincia (nuovo mese) inizia una riga nuova, cosi' ogni riga e' un mese
+    if (!nb || nb[0] !== n0[0] || nb[1] !== n0[1] + (j + 1 - k) || vb === null || !sameKind(a, b) || vb !== numOf(p.name) + 1) break;
+    j++;
+  }
+  return j - k + 1 >= min ? j - k + 1 : 0;
+}
+export function runLine(g) {
+  const a = g[0];
+  const z = g[g.length - 1];
+  let l = `${a.id}..${z.id} ${a.role} ${q(a.name)}..${q(z.name)} (${g.length}, ref e numeri consecutivi)`;
+  if (a.flags && a.flags.length) l += ' ' + a.flags.join(' ');
+  if (a.s) l += ' !' + a.s;
   return l;
 }
 
@@ -108,6 +147,28 @@ export function renderView(snap, { url, tabs = 1, scope = 'main', filter = '', o
   let k = offset;
   while (k < items.length) {
     const i = items[k];
+    const rl = f ? 0 : runAt(items, k);
+    if (rl) {
+      flush();
+      shape = '';
+      prevRow = null;
+      const line = runLine(items.slice(k, k + rl));
+      if (shown >= max || budget - line.length < 0) {
+        out.push(`… altri ${items.length - k} elementi (offset:${k} o filter)`);
+        return finish(out, hidden);
+      }
+      if (i.reg !== cur) {
+        const r = snap.regions[i.reg];
+        if (r && !(snap.modal && r.kind === 'dlg')) out.push(`[${r.kind}${r.name ? ' ' + q(r.name) : ''}]`);
+        else if (!r && cur >= 0) out.push('[pagina]');
+        cur = i.reg;
+      }
+      out.push(line);
+      budget -= line.length + 1;
+      shown += 1;
+      k += rl;
+      continue;
+    }
     let j = k;
     if (i.grp >= 0) while (j + 1 < items.length && items[j + 1].grp === i.grp && items[j + 1].reg === i.reg) j++;
     const g = items.slice(k, j + 1);
@@ -202,12 +263,13 @@ export function renderDiff(prev, snap, { url, tabs = 1, touched = new Map(), fre
   const byId = new Map(snap.items.map((i) => [i.id, i]));
   const cnt = new Map();
   for (const i of snap.items) cnt.set(i.role + i.name, (cnt.get(i.role + i.name) || 0) + 1);
+  const addedIt = [];
   for (const [id, l] of cur.keys) {
     const it = byId.get(id);
     if (!prev.keys.has(id)) {
       // elementi gia' mostrati con il loro ref dalla lettura (schede): non si ripetono
       if (skip && skip.has(id)) skipped++;
-      else added.push(lineOf(it, cnt.get(it.role + it.name) > 1));
+      else addedIt.push(it);
     } else if (prev.keys.get(id) !== l) {
       const t = touched.get(id);
       if (t && t !== 'select' && prev.neut.get(id) === cur.neut.get(id)) expected++;
@@ -215,11 +277,23 @@ export function renderDiff(prev, snap, { url, tabs = 1, touched = new Map(), fre
     }
   }
   for (const id of prev.keys.keys()) if (!cur.keys.has(id)) removed.push(id);
-  const churn = added.length + removed.length + skipped;
+  // giorni di un calendario, pagine, taglie: una riga per sequenza
+  const nAdded = addedIt.length;
+  for (let k = 0; k < addedIt.length; ) {
+    const rl = runAt(addedIt, k);
+    if (rl) {
+      added.push(runLine(addedIt.slice(k, k + rl)));
+      k += rl;
+    } else {
+      added.push(lineOf(addedIt[k], cnt.get(addedIt[k].role + addedIt[k].name) > 1));
+      k++;
+    }
+  }
+  const churn = nAdded + removed.length + skipped;
   if (churn > Math.max(10, 0.5 * Math.max(prev.main, cur.main))) return null;
 
   const out = [];
-  const n = added.length + changed.length + removed.length + skipped;
+  const n = nAdded + changed.length + removed.length + skipped;
   // il diff si produce solo se la pagina non e' cambiata: l'URL e' gia' noto a chi legge e non si ripete
   const parts = [];
   if (expected) parts.push(`${expected} campi impostati come richiesto`);

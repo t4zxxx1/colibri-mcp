@@ -408,15 +408,7 @@ export async function runTask(S, a) {
           break;
         }
         if (r && r.note) notes.push(r.note);
-        if (S.newPages.length) {
-          const np = S.newPages.filter((x) => !x.isClosed()).pop();
-          S.newPages = [];
-          if (np) {
-            await np.waitForLoadState('domcontentloaded', { timeout: 10000 }).catch(() => {});
-            S.page = np;
-            notes.push(`aperta nuova scheda (${np.url()})`);
-          }
-        }
+        if (S.newPages.length) for (const n of await S.adoptNewPages()) notes.push(n);
         page = S.page;
       } catch (e) {
         blocked = `invio ${it.id}: ${firstLine(e)}`;

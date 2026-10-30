@@ -26,6 +26,16 @@ const evalIn = (f, fn, arg, ms = 2500) => {
   return Promise.race([f.evaluate(fn, arg), new Promise((_, rej) => (t = setTimeout(() => rej(new Error('frame non risponde')), ms)))]).finally(() => clearTimeout(t));
 };
 const firstLine = (e) => String((e && e.message) || e).split('\n')[0].replace(/^\w+Error: /, '').slice(0, 220);
+const hostOf = (u) => {
+  try {
+    return new URL(u).hostname;
+  } catch {
+    return '';
+  }
+};
+// reti pubblicitarie e di affiliazione: le schede che restano li' non servono a chi naviga
+const JUNK_HOST = /(^|\.)(doubleclick\.net|googlesyndication\.com|googleadservices\.com|adservice\.google\.[a-z.]+|awin1\.com|tradedoubler\.com|zanox\.com|webgains\.com|clickbank\.net|redirectingat\.com|skimresources\.com|tradetracker\.net|prf\.hn|linksynergy\.com|anrdoezrs\.net|dpbolvw\.net|jdoqocy\.com|kqzyfj\.com|tkqlhce\.com|go2cloud\.org|sjv\.io|pxf\.io|taboola\.com|outbrain\.com|criteo\.com|adnxs\.com|admitad\.com|kelkoogroup\.net)$|^(track|tracking|click|clicks|redirect|adclick)\./i;
+export const isJunkUrl = (u) => !u || u === 'about:blank' || JUNK_HOST.test(hostOf(u));
 
 export function loadConfig(env = process.env) {
   const home = os.homedir();
@@ -194,6 +204,54 @@ export class Session {
     this.owned = new Set();
   }
 
+  // schede aperte da un clic: la prima utile diventa attiva; quelle rimaste vuote o su domini di
+  // pubblicita'/affiliazione si chiudono (solo se aperte da Colibri)
+  async adoptNewPages() {
+    const list = this.newPages.filter((p) => !p.isClosed());
+    this.newPages = [];
+    const notes = [];
+    let keep = null;
+    for (const p of list) {
+      await p.waitForLoadState('domcontentloaded', { timeout: 10000 }).catch(() => {});
+      // redirect di affiliazione o popup che parte vuoto: si lascia il tempo di arrivare alla pagina vera
+      if (isJunkUrl(p.url())) await p.waitForURL((u) => !isJunkUrl(String(u)), { timeout: 4000, waitUntil: 'commit' }).catch(() => {});
+    }
+    for (const p of list) {
+      if (p.isClosed()) continue;
+      if (isJunkUrl(p.url()) && this.owned.has(p)) {
+        notes.push(`chiusa scheda inutile (${hostOf(p.url()) || 'vuota'})`);
+        await p.close().catch(() => {});
+      } else keep = p;
+    }
+    if (keep) {
+      this.page = keep;
+      await keep.bringToFront().catch(() => {});
+      notes.push(`aperta nuova scheda, ora attiva (${keep.url()})`);
+    }
+    return notes;
+  }
+
+  // schede di sfondo aperte da Colibri: via le vuote, le doppie, quelle pubblicitarie e oltre le 3 piu' recenti
+  async tidyTabs() {
+    if (!this.ctx) return '';
+    const bg = this.ctx.pages().filter((p) => !p.isClosed() && p !== this.page && this.owned.has(p));
+    const seen = new Set([this.page && this.page.url()]);
+    let n = 0;
+    for (const p of bg) {
+      const u = p.url();
+      if (isJunkUrl(u) || seen.has(u)) {
+        await p.close().catch(() => {});
+        n++;
+      } else seen.add(u);
+    }
+    const rest = bg.filter((p) => !p.isClosed());
+    for (const p of rest.slice(0, Math.max(0, rest.length - 3))) {
+      await p.close().catch(() => {});
+      n++;
+    }
+    return n ? `chiuse ${n} schede di sfondo (vuote, doppie, pubblicita' o oltre le 3 piu' recenti)` : '';
+  }
+
   hook(p) {
     if (this.hooked.has(p)) return;
     this.hooked.add(p);
@@ -327,7 +385,7 @@ export class Session {
     // nome e ruolo di ogni ref visto: se il ref scade (elemento ricreato) si ritrova lo stesso controllo per nome
     if (this.refInfo.size > 6000) this.refInfo.clear();
     for (const i of out.items) if (i.name) this.refInfo.set(i.id, { name: i.name, role: i.role, ctx: i.ctx });
-    out.alerts = out.alerts.slice(0, 5);
+    out.alerts = out.alerts.slice(0, 6);
     const ch = await this.challenge(page);
     if (ch && !ch.err) {
       out.captcha = true;
@@ -417,6 +475,60 @@ export class Session {
     return '';
   }
 
+  // ---------- modelli URL per sito: i filtri impostati a mano diventano un URL riusabile ----------
+  filtersFile() {
+    return path.join(path.dirname(this.cfg.profileDir), 'site-filters.json');
+  }
+
+  loadFilters() {
+    try {
+      return JSON.parse(fs.readFileSync(this.filtersFile(), 'utf8'));
+    } catch {
+      return {};
+    }
+  }
+
+  rememberFilters(from, to) {
+    if (!this.trail || !this.trail.length) return '';
+    let a, b;
+    try {
+      a = new URL(from);
+      b = new URL(to);
+    } catch {
+      return '';
+    }
+    b.hash = '';
+    // filtri e ordinamenti cambiano solo i parametri dello stesso elenco; una pagina di dettaglio non e' un modello
+    if (a.host !== b.host || a.pathname !== b.pathname || !b.search || a.href.replace(/#.*$/, '') === b.href) return '';
+    // mai salvare URL con credenziali, codici monouso o risposte di verifica
+    const risky = (k) => /^(.*[_-])?(token|session|sessionid|sid|auth|key|apikey|code|password|pass|email|otp|signature|sig|nonce|state)$/i.test(k) || /captcha|response/i.test(k);
+    if ([...b.searchParams.keys()].some(risky)) return '';
+    const host = b.host;
+    const m = this.loadFilters();
+    const via = this.trail.join(' › ').slice(0, 100);
+    m[host] = [{ url: b.href, via }, ...(m[host] || []).filter((x) => x.url !== b.href)].slice(0, 5);
+    try {
+      fs.mkdirSync(path.dirname(this.filtersFile()), { recursive: true });
+      fs.writeFileSync(this.filtersFile(), JSON.stringify(m, null, 1));
+    } catch {
+      return '';
+    }
+    return `URL salvato come modello per ${host}`;
+  }
+
+  savedFilters(url) {
+    let u;
+    try {
+      u = new URL(url);
+    } catch {
+      return '';
+    }
+    // solo sulle pagine senza parametri: chi apre gia' un URL con i filtri non ne ha bisogno
+    if (u.search) return '';
+    const list = (this.loadFilters()[u.host] || []).slice(0, 3);
+    return list.length ? `modelli URL gia' usati qui (cambia i parametri e apri):\n` + list.map((x) => `${x.url} (${x.via})`).join('\n') : '';
+  }
+
   // ---------- tool: open ----------
   async open(url, { rows, filter } = {}) {
     let page = await this.ensure();
@@ -445,6 +557,8 @@ export class Session {
     const pdf = await page.evaluate(() => document.contentType === 'application/pdf').catch(() => false);
     if (pdf) txt = 'documento PDF: testo con browse_read mode "pdf"\n' + txt;
     if (!this.allowedUrl(page.url())) txt = `ATTENZIONE: ${new URL(page.url()).hostname} e' fuori dai domini consentiti, le azioni sono bloccate\n` + txt;
+    const tpl = this.savedFilters(page.url());
+    if (tpl) txt += '\n' + tpl;
     return txt;
   }
 
@@ -692,6 +806,7 @@ export class Session {
     await page.mainFrame().evaluate(() => { window.__cbAdded = []; }).catch(() => {});
     const startModal = this.last.modal;
     let readText = '';
+    this.trail = [];
 
     for (let i = 0; i < steps.length; i++) {
       const st = steps[i] || {};
@@ -714,24 +829,15 @@ export class Session {
         if (r && r.note) notes.push(`${tag}: ${r.note}`);
         if (r && r.note && (act === 'read' || act === 'find')) readText += '\n' + r.note;
         if (r && r.id && (act === 'fill' || act === 'check')) touched.set(r.id, act);
+        if (act === 'select' && this.trail.length && st.option !== undefined) this.trail[this.trail.length - 1] += '=' + [].concat(st.option).join('/');
+        if (act === 'pick') this.trail.push(String(st.pick).slice(0, 30));
         done++;
         this.stats.actions++;
       } catch (e) {
         stop = `${tag} (${act}): errore: ${firstLine(e)}`;
         break;
       }
-      if (this.newPages.length) {
-        const np = this.newPages.filter((p) => !p.isClosed()).pop();
-        this.newPages = [];
-        if (np) {
-          try {
-            await np.waitForLoadState('domcontentloaded', { timeout: 10000 });
-          } catch {}
-          this.page = page = np;
-          await np.bringToFront().catch(() => {});
-          notes.push(`${tag}: aperta nuova scheda, ora attiva (${np.url()})`);
-        }
-      }
+      if (this.newPages.length) for (const n of await this.adoptNewPages()) notes.push(`${tag}: ${n}`);
       page = this.page;
       if (i < steps.length - 1) {
         if (/^(click|press|goto|back|tab|waitFor)$/.test(act)) {
@@ -754,6 +860,12 @@ export class Session {
       const g = await this.humanGate(page);
       page = g.page;
       if (g.note) notes.push(g.note);
+    }
+    const tidy = await this.tidyTabs().catch(() => '');
+    if (tidy) notes.push(tidy);
+    if (!stop) {
+      const saved = this.rememberFilters(startUrl, page.url());
+      if (saved) notes.push(saved);
     }
     const after = await this.collect();
     this.stats.observations++;
@@ -804,6 +916,7 @@ export class Session {
       }
       if (r.err) throw new Error(r.err);
       if (r.note) noteOut.push(r.note);
+      if (this.trail && r.it.name) this.trail.push(r.it.name.slice(0, 30));
       if (!el) throw new Error(`${r.it.id} non piu' presente: ref scaduto`);
       return { it: r.it, el };
     };
@@ -1141,7 +1254,7 @@ export class Session {
       case 'read': {
         const ref = typeof st.target === 'string' ? st.target : undefined;
         const mode = ['table', 'cards'].includes(st.read) ? st.read : 'text';
-        const t = await this.read({ mode, ref, max: st.max });
+        const t = await this.read({ mode, ref, max: st.max, links: st.links });
         this.stats.observations--;
         return { note: `${{ table: 'tabella', cards: 'schede', text: 'testo' }[mode]}:\n${t}` };
       }
@@ -1200,7 +1313,7 @@ export class Session {
   }
 
   // ---------- tool: read ----------
-  async read({ mode = 'text', ref, selector, query, offset = 0, max }) {
+  async read({ mode = 'text', ref, selector, query, offset = 0, max, links }) {
     const page = await this.ensure();
     this.stats.observations++;
     let frame = page.mainFrame();
@@ -1228,7 +1341,7 @@ export class Session {
     }
     if (mode === 'cards') {
       if (!ref) await this.collect();
-      const r = await frame.evaluate(P.readCardsInPage, { ref, selector, offset, max: max || 20 });
+      const r = await frame.evaluate(P.readCardsInPage, { ref, selector, offset, max: max || 20, links: !!links });
       if (r.err) throw new Error(r.err);
       const more = r.total - offset - r.rows.length;
       return `schede ${offset + 1}-${offset + r.rows.length} di ${r.total} (${r.sel})\n` + (r.common && r.common.length ? `in tutte: ${r.common.join(' · ')}\n` : '') + r.rows.join('\n') + (more > 0 ? `\n… altre ${more} (offset:${offset + r.rows.length})` : '');
@@ -1267,7 +1380,8 @@ export class Session {
     const r = await frame.evaluate(P.readTextInPage, { ref, selector, offset, maxChars: max || 3000 });
     if (r.err) throw new Error(r.err);
     const more = r.total - offset - r.text.length;
-    return r.text + (more > 0 ? `\n… altri ${more} caratteri (offset:${offset + r.text.length})` : '');
+    const cut = r.cut > 200 && !offset ? `[solo contenuto principale: esclusi ${r.cut} caratteri di menu e link; selector:"body" per tutto]\n` : '';
+    return cut + r.text + (more > 0 ? `\n… altri ${more} caratteri (offset:${offset + r.text.length})` : '');
   }
 
   // ---------- tool: screenshot ----------

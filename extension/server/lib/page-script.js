@@ -262,6 +262,50 @@ export function collectInPage(opts) {
   const CRED_AC = /(cc-(number|csc|exp|name)|one-time-code|current-password|new-password)/;
   const CRED_ID = /(passw|pwd|kennwort|contrasena|mot.?de.?passe|senha|\bclave\b|cvv|cvc|\bcsc\b|prufziffer|iban|\botp\b|\bpin\b|\btan\b|card.?(number|no)|numero.?carta|numero.?de.?tarjeta|numero.?de.?carte|kartennummer|numero.?do.?cartao|codice.?di.?sicurezza|security.?code)/;
   const PII_ID = /(codice.?fiscale|fiscal.?code|tax.?id|\bssn\b|passport|passaporto|carta.?d.?identit|\bdni\b|\bnie\b|\bnif\b|\bcpf\b|steuer.?id|steuernummer|personalausweis|reisepass|pasaporte|passeport|carte.?d.?identite|numero.?fiscal|securite.?sociale|sozialversicherung)/;
+  // esito di un campo come lo vede l'utente (bordo verde/rosso, "codice applicato"): classi del campo o dei contenitori
+  // vicini e messaggio collegato. I suggerimenti fissi ("formato gg/mm") non vengono riportati.
+  const OKC = /(^|[\s_-])(is-|has-)?(valid|success|succeeded|applied|verified|accepted)($|[\s_-])/i;
+  const BADC = /(^|[\s_-])(is-|has-)?(invalid|error|danger|failed)($|[\s_-])/i;
+  const STATEC = /(error|invalid|success|valid|danger|applied|feedback)/i;
+  const clsOf = (n) => (typeof n.className === 'string' ? n.className : '');
+  function fieldState(el) {
+    let ok = false;
+    let bad = false;
+    for (let n = el, k = 0; n && k < 3; n = n.parentElement, k++) {
+      const c = clsOf(n);
+      if (BADC.test(c)) {
+        bad = true;
+        break;
+      }
+      if (OKC.test(c)) {
+        ok = true;
+        break;
+      }
+      if (n.matches('form,fieldset')) break;
+    }
+    let msg = '';
+    let mcls = '';
+    const take = (m, strict) => {
+      if (msg || !m || !isVisible(m)) return;
+      if (strict && !(ok || bad || STATEC.test(clsOf(m)) || m.matches('[role=alert],[role=status],[aria-live]'))) return;
+      msg = norm(txt(m));
+      mcls = clsOf(m) + (m.matches('[role=alert]') ? ' error' : '');
+    };
+    for (const id of ((el.getAttribute('aria-errormessage') || '') + ' ' + (el.getAttribute('aria-describedby') || '')).split(/\s+/)) if (id) take(document.getElementById(id), true);
+    for (let n = el, k = 0; n && k < 3 && !msg; n = n.parentElement, k++) {
+      for (let s = n.nextElementSibling, j = 0; s && j < 2 && !msg; s = s.nextElementSibling, j++) {
+        if (s.matches(SEL) || s.querySelector(SEL)) break;
+        if (STATEC.test(clsOf(s)) || s.matches('[role=alert],[role=status],[aria-live]')) take(s, true);
+      }
+      if (n.matches('form,fieldset')) break;
+    }
+    if (msg && !ok && !bad) {
+      if (/(error|invalid|danger)/i.test(mcls)) bad = true;
+      else if (/(success|valid|applied)/i.test(mcls)) ok = true;
+    }
+    return { ok, bad, msg: cut(msg, 80).replace(/"/g, "'") };
+  }
+
   // etichetta di un gruppo di radio: testo che precede la prima opzione del gruppo (es. "Ruolo *") o la legenda
   function radioGroupLabel(el) {
     const fs = el.closest && el.closest('fieldset,[role=radiogroup]');
@@ -402,6 +446,11 @@ export function collectInPage(opts) {
       if (!inv && el.matches(':user-invalid')) inv = true;
     } catch (e) {}
     if (inv) flags.push('inv');
+    const fst = formCtl || role === 'edit' || role === 'combo' ? fieldState(el) : null;
+    if (fst) {
+      if (fst.bad && !inv) flags.push('inv');
+      else if (fst.ok && !inv) flags.push('ok');
+    }
     if (!formCtl || isVisible(el)) {
       const r = el.getBoundingClientRect();
       if (covered(el, r)) flags.push('cop');
@@ -502,25 +551,48 @@ export function collectInPage(opts) {
       href: role === 'link' && typeof el.href === 'string' ? el.href : '',
       inForm: !!el.form,
       hid: dz ? 1 : undefined,
+      msg: fst && fst.msg ? fst.msg : undefined,
     });
   }
   S.bySig = newSig;
   for (const [id, e] of S.byId) if (!e.isConnected) S.byId.delete(id);
 
-  // messaggi di errore/avviso visibili
+  // messaggi di errore/avviso/esito visibili (i messaggi gia' mostrati accanto al loro campo non si ripetono)
   const alerts = [];
-  const seenA = new Set();
+  const seenA = new Set(items.map((i) => i.msg).filter(Boolean));
+  const addA = (t) => {
+    if (t && !seenA.has(t) && ![...seenA].some((x) => x.length > 20 && t.includes(x))) {
+      seenA.add(t);
+      alerts.push(t);
+    }
+  };
   document
-    .querySelectorAll('[role=alert],[role=status],[aria-live=assertive],.alert-danger,.alert-error,.invalid-feedback,.field-error,.form-error,.error-message,.text-danger,.has-error .help-block,.msg-error,.errorlist li')
+    .querySelectorAll(
+      '[role=alert],[role=status],[aria-live=assertive],[aria-live=polite],.alert,.alert-danger,.alert-error,.alert-success,.invalid-feedback,.valid-feedback,.field-error,.form-error,.error-message,.success-message,.text-danger,.text-success,.has-error .help-block,.msg-error,.msg-success,.errorlist li,.toast,.notification'
+    )
     .forEach((e) => {
-      if (!isVisible(e)) return;
-      const t = cut(txt(e), 140);
-      if (t && !seenA.has(t)) {
-        seenA.add(t);
-        alerts.push(t);
-      }
+      if (!isVisible(e) || (e.parentElement && e.parentElement.closest('[role=alert],[role=status],[aria-live],.alert,.toast'))) return;
+      addA(cut(txt(e), 140));
     });
-  alerts.length = Math.min(alerts.length, 5);
+  // avanzamento (caricamenti, code, conversioni): percentuale o testo, senza screenshot
+  document.querySelectorAll('progress,[role=progressbar],[role=meter]').forEach((p) => {
+    if (!isVisible(p)) return;
+    const isP = p.tagName === 'PROGRESS';
+    const now = isP ? (p.hasAttribute('value') ? p.value : NaN) : parseFloat(p.getAttribute('aria-valuenow'));
+    const max = isP ? p.max : parseFloat(p.getAttribute('aria-valuemax') || '100');
+    const lab = p.getAttribute('aria-label') || (p.labels && p.labels[0] ? txt(p.labels[0]) : '') || (p.getAttribute('aria-labelledby') ? txt(document.getElementById(p.getAttribute('aria-labelledby'))) : '');
+    const v = p.getAttribute('aria-valuetext') || (isFinite(now) && max > 0 ? Math.round((now / max) * 100) + '%' : 'in corso');
+    addA('avanzamento' + (lab ? ' ' + cut(lab, 40) : '') + ': ' + v);
+  });
+  // banner dei cookie ancora aperto: i suoi pulsanti, cosi' si sceglie senza guardare la pagina
+  const ckBox = [...document.querySelectorAll('[id*=cookie i],[class*=cookie i],[id*=consent i],[class*=consent i]')].find(
+    (e) => isVisible(e) && !(e.parentElement && e.parentElement.closest('[id*=cookie i],[class*=cookie i],[id*=consent i],[class*=consent i]')) && e.querySelectorAll('button,[role=button],input[type=button],input[type=submit]').length >= 2
+  );
+  if (ckBox) {
+    const bs = items.filter((i) => /^(btn|link|clk)$/.test(i.role) && ckBox.contains(S.byId.get(i.id))).slice(0, 4);
+    if (bs.length) addA('banner cookie aperto: ' + bs.map((b) => `${b.id} "${b.name}"`).join(' · '));
+  }
+  alerts.length = Math.min(alerts.length, 6);
 
   const capEls = [...document.querySelectorAll('.g-recaptcha,.h-captcha,.cf-turnstile,iframe[src*="hcaptcha" i],iframe[src*="turnstile" i],iframe[src*="recaptcha" i],#challenge-running,#challenge-stage')].filter(
     (e) => !(e.closest && e.closest('.grecaptcha-badge')) && isVisible(e)
@@ -575,6 +647,8 @@ export function dismissCookiesInPage() {
 
 /** Testo nuovo apparso dopo le azioni (messaggi di esito non marcati come alert). */
 export function addedTextInPage(max) {
+  // codice finito nel testo (script resi come testo, JSON di configurazione): non e' contenuto per l'utente
+  const codey = (t) => t.length > 30 && (((t.match(/[{};=]/g) || []).length >= 4 && (t.match(/[{};=]/g) || []).length / t.length > 0.05 && /[{;]/.test(t)) || /\bfunction\s*\(|=>\s*\{|\b(var|const|let)\s+[\w$]+\s*=[^=]|\b(window|document)\.[a-zA-Z]+\s*(\(|=[^=])|^\s*[{[]\s*"[\w$-]+"\s*:/.test(t));
   const arr = (window.__cbAdded || []).slice(-300);
   window.__cbAdded = [];
   const els = new Set();
@@ -589,8 +663,8 @@ export function addedTextInPage(max) {
     if (e.checkVisibility && !e.checkVisibility()) continue;
     if (e.closest('[aria-hidden="true"],[role=listbox],[role=option]')) continue;
     if (e.matches('input,select,textarea,option,button,a')) continue;
-    const t = (e.innerText || e.textContent || '').replace(/\s+/g, ' ').trim();
-    if (t.length < 2) continue;
+    const t = ('innerText' in e ? e.innerText : e.textContent || '').replace(/\s+/g, ' ').trim();
+    if (t.length < 2 || codey(t)) continue;
     out.push(t.length > 160 ? t.slice(0, 159) + '…' : t);
     total += Math.min(t.length, 160);
     if (out.length >= max || total > 480) break;
@@ -600,10 +674,71 @@ export function addedTextInPage(max) {
 
 export function readTextInPage(a) {
   const reg = window.__cb;
-  const el = a.ref ? reg && reg.byId.get(a.ref) : a.selector ? document.querySelector(a.selector) : document.querySelector('main') || document.body;
-  if (!el) return { err: 'elemento non trovato' };
-  const t = (el.innerText || el.textContent || '').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
-  return { total: t.length, text: t.slice(a.offset, a.offset + a.maxChars) };
+  const codey = (t) => t.length > 30 && (((t.match(/[{};=]/g) || []).length >= 4 && (t.match(/[{};=]/g) || []).length / t.length > 0.05 && /[{;]/.test(t)) || /\bfunction\s*\(|=>\s*\{|\b(var|const|let)\s+[\w$]+\s*=[^=]|\b(window|document)\.[a-zA-Z]+\s*(\(|=[^=])|^\s*[{[]\s*"[\w$-]+"\s*:/.test(t));
+  // le righe di codice si tolgono; restano intatte se si legge apposta un elemento (ref/selector) che contiene codice
+  const tidy = (s, keep) =>
+    (s || '')
+      .split('\n')
+      .filter((l) => keep || !codey(l))
+      .join('\n')
+      .replace(/[ \t]+/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  if (a.ref || a.selector) {
+    const el = a.ref ? reg && reg.byId.get(a.ref) : document.querySelector(a.selector);
+    if (!el) return { err: 'elemento non trovato' };
+    const raw = 'innerText' in el ? el.innerText : el.textContent;
+    const t = tidy(raw, /^(PRE|CODE)$/.test(el.tagName) || el.closest('pre,code'));
+    return { total: t.length, text: t.slice(a.offset, a.offset + a.maxChars) };
+  }
+  // contenuto principale: senza menu, intestazioni, piè di pagina, banner dei cookie e blocchi fatti quasi solo di link
+  const NAV = 'nav,[role=navigation],[role=banner],[role=contentinfo],[role=complementary],[role=search],[role=menu],[role=menubar],header,footer,aside,[id*=cookie i],[class*=cookie i],[id*=consent i],[class*=consent i]';
+  const PRICE = /\d[\d.,]*\s?(€|eur\b|\$|£)|(€|\$|£)\s?\d|\b\d{1,2}[:.]\d{2}\b/gi;
+  const isNav = (e) => {
+    if (!e.matches(NAV)) return false;
+    // header/footer di un articolo o di una scheda fanno parte del contenuto
+    return !(e.matches('header,footer') && e.parentElement && e.parentElement.closest('article,[role=article],li'));
+  };
+  const linky = (e, t) => {
+    if (t.length < 150) return false;
+    const links = e.querySelectorAll('a[href]');
+    if (links.length < 8) return false;
+    let lt = 0;
+    for (const l of links) lt += (l.innerText || '').length;
+    if (lt / t.length <= 0.7 || (t.match(PRICE) || []).length >= 3) return false;
+    // un paragrafo vero dentro (voce breve piena di link): si divide, non si scarta
+    return ![...e.querySelectorAll('p')].some((p) => (p.innerText || '').trim().length >= 60);
+  };
+  let cut = 0;
+  const out = [];
+  const walk = (e) => {
+    const s = getComputedStyle(e);
+    if (s.display === 'none' || s.visibility === 'hidden' || /^(SCRIPT|STYLE|NOSCRIPT|TEMPLATE|SVG)$/i.test(e.tagName)) return;
+    const t = e.innerText || '';
+    if (isNav(e) || linky(e, t)) {
+      cut += t.length;
+      return;
+    }
+    const split = e.querySelector(NAV) || (e.children.length > 1 && e.querySelectorAll('a[href]').length >= 8);
+    if (!split) {
+      if (t.trim()) out.push(t);
+      return;
+    }
+    for (const c of e.childNodes) {
+      if (c.nodeType === 3) {
+        if (c.textContent.trim()) out.push(c.textContent);
+      } else if (c.nodeType === 1) walk(c);
+    }
+  };
+  const mains = [...document.querySelectorAll('main,[role=main]')].filter((m) => (m.innerText || '').trim().length > 200);
+  for (const m of mains.length ? mains.filter((m) => !mains.some((o) => o !== m && o.contains(m))) : [document.body]) walk(m);
+  let t = tidy(out.map((x) => x.trim()).join('\n'));
+  if (t.length < 80 && cut) {
+    // pagina fatta solo di link (indice, elenco): meglio il testo intero che niente
+    t = tidy(document.body.innerText);
+    cut = 0;
+  }
+  return { total: t.length, text: t.slice(a.offset, a.offset + a.maxChars), cut };
 }
 
 export function readTableInPage(a) {
@@ -694,6 +829,19 @@ export function readCardsInPage(a) {
     return out;
   };
   const DATA = /\b\d{1,2}[:.]\d{2}\b|\d[\d.,]*\s?(€|eur|\$|£|chf|kč|zł)|(€|\$|£)\s?\d/i;
+  // URL senza parametri di tracciamento e frammento: il link resta valido e costa meno token
+  const cleanUrl = (h) => {
+    try {
+      const u = new URL(h, location.href);
+      u.hash = '';
+      for (const k of [...u.searchParams.keys()]) if (/^(utm_|ref_?$|ref_src|refid|gclid|fbclid|msclkid|spm|_ga|mc_|pd_rd|pf_rd|psc$|qid$|sr$|crid$|sprefix$|dib|dib_tag|content-id|keywords$)/i.test(k)) u.searchParams.delete(k);
+      // percorsi di tracciamento (/ref=sr_1_1) e titoli nel percorso dei prodotti Amazon (/titolo-lungo/dp/ASIN -> /dp/ASIN)
+      u.pathname = u.pathname.replace(/\/ref=[^/]*$/i, '').replace(/^\/[^/]+\/(dp|gp\/product)\/([A-Z0-9]{10})(\/.*)?$/, '/dp/$2');
+      return u.href.replace(/\?$/, '');
+    } catch {
+      return '';
+    }
+  };
   const root = (a.ref && window.__cb && window.__cb.byId.get(a.ref)) || document.body;
   if (!root) return { err: 'pagina vuota' };
   let cards = [];
@@ -759,6 +907,17 @@ export function readCardsInPage(a) {
     }
   }
   if (!cards.length) return { err: 'nessun gruppo di schede ripetute: usa selector, oppure mode "table"/"text"' };
+  // riquadri in testa o in coda senza prezzi ne' orari (widget "bestseller", intestazioni) in un elenco che li ha quasi sempre
+  if (!a.selector && cards.length >= 5) {
+    const has = cards.map((c) => DATA.test(visText(c).join(' ')));
+    if (has.filter(Boolean).length / cards.length >= 0.7) {
+      let s = 0;
+      let e = cards.length;
+      while (s < e && !has[s]) s++;
+      while (e > s && !has[e - 1]) e--;
+      cards = cards.slice(s, e);
+    }
+  }
   // i pulsanti e i link di ogni scheda escono con il loro ref: si sceglie un risultato senza un'altra vista
   const ACT = 'a[href],button,[role=button],[role=link],[role=tab],[role=radio],[role=checkbox],input:not([type=hidden]),select,textarea';
   const byEl = window.__cb && window.__cb.byEl;
@@ -796,11 +955,26 @@ export function readCardsInPage(a) {
       const lab = (e.getAttribute('aria-label') || e.getAttribute('title') || (typeof e.value === 'string' ? e.value : '') || e.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40);
       parts.push(`[${id}${lab ? ' ' + lab : ''}]`);
     }
+    // testo uguale all'etichetta di un pulsante della scheda ("Aggiungi al carrello" | [e64 Aggiungi al carrello]): solo il pulsante
+    for (let k = parts.length - 1; k >= 0; k--) if (!parts[k].startsWith('[') && parts.some((y) => y.startsWith('[') && y.endsWith(' ' + parts[k] + ']'))) parts.splice(k, 1);
     // riassunto per i lettori di schermo ("partenza ore 18:28 arrivo ore 19:16") solo se porta orari, prezzi o date che non si vedono
     const shownText = parts.join(' ');
     const extra = hidden.filter((t) => (t.match(/\d{1,2}[:.]\d{2}\b|\d+,\d{2}|\d{1,2}\/\d{1,2}/g) || []).some((x) => !shownText.includes(x)));
     if (extra.length) parts.unshift(...extra.map((t) => (t.length > 120 ? t.slice(0, 119) + '…' : t)));
-    return { parts, whole };
+    let url = '';
+    if (a.links) {
+      // link della scheda: la scheda intera, altrimenti il link con il testo piu' lungo (il titolo)
+      let l = c.closest('a[href]') || (c.matches('a[href]') ? c : null);
+      if (!l) {
+        let bestLen = -1;
+        for (const x of c.querySelectorAll('a[href]')) {
+          const n = (x.innerText || '').trim().length;
+          if (n > bestLen && !/^(javascript|mailto|tel):/i.test(x.getAttribute('href') || '')) [l, bestLen] = [x, n];
+        }
+      }
+      if (l) url = cleanUrl(l.href);
+    }
+    return { parts, whole, url };
   });
   // testi presenti in tutte le schede (stazioni di partenza e arrivo, etichetta del pulsante): una riga "in tutte"
   const common = [];
@@ -821,10 +995,26 @@ export function readCardsInPage(a) {
       }
     }
   }
-  const rows = partsOf.map(({ parts, whole }) => {
+  // i link con la stessa origine escono come percorso: l'origine una volta sola nella riga "in tutte"
+  const urls = partsOf.map((x) => x.url).filter(Boolean);
+  let origin = '';
+  if (urls.length) {
+    const o0 = new URL(urls[0]).origin;
+    if (urls.every((u) => u.startsWith(o0 + '/'))) {
+      origin = o0;
+      common.push(`url:${o0}+percorso`);
+    }
+  }
+  const rows = partsOf.map(({ parts, whole, url }) => {
     let s = parts.join(' | ');
     if (s.length > 320) s = s.slice(0, 319) + '…';
-    return whole ? `${s} →${whole}` : s;
+    if (whole) s += ` →${whole}`;
+    if (url) {
+      let u = origin ? url.slice(origin.length) : url;
+      if (u.length > 140) u = u.slice(0, 139) + '…';
+      s += ` url:${u}`;
+    }
+    return s;
   });
   const off = a.offset || 0;
   const max = a.max || 20;
