@@ -113,7 +113,7 @@ export function collectInPage(opts) {
     if (!norm(n)) n = el.getAttribute('title') || el.getAttribute('placeholder') || el.getAttribute('alt') || '';
     if (!norm(n) && el.querySelector) n = txt(el.querySelector('svg title')) || '';
     if (!norm(n) && !/^(input|select|textarea)$/.test(tag)) n = iconName(el);
-    if (!norm(n)) n = el.getAttribute('name') || el.id || '';
+    if (!norm(n)) n = el.getAttribute('name') || el.getAttribute('id') || '';
     return cut(norm(n).replace(/^[\s*:]+|[\s*:]+$/g, ''), 60).replace(/"/g, "'");
   }
   // etichetta completa (non troncata) per l'abbinamento dei parametri
@@ -163,7 +163,7 @@ export function collectInPage(opts) {
     const lb = r.getAttribute('aria-labelledby');
     let nm = r.getAttribute('aria-label') || (lb ? txt(document.getElementById(lb)) : '');
     if (!nm && tag === 'fieldset') nm = txt(r.querySelector('legend'));
-    if (!nm && tag === 'form') nm = r.getAttribute('name') || r.id || '';
+    if (!nm && tag === 'form') nm = r.getAttribute('name') || r.getAttribute('id') || '';
     if (!nm && (tag === 'dialog' || /dialog/.test(role))) nm = txt(r.querySelector('h1,h2,h3,[role=heading]'));
     const i = regions.length;
     const inMain = !!r.closest('main,[role=main]');
@@ -462,7 +462,7 @@ export function collectInPage(opts) {
       gx = {
         full: name.endsWith('…') ? cut(nameFull(el), 200) : undefined,
         ph: el.getAttribute('placeholder') || '',
-        nm: el.getAttribute('name') || el.id || '',
+        nm: el.getAttribute('name') || el.getAttribute('id') || '',
         ty: (el.getAttribute('type') || tag).toLowerCase(),
         ac,
         near: cut(near, 60),
@@ -738,7 +738,7 @@ export function readCardsInPage(a) {
       const id = idOf(e);
       if (!id || done.has(id) || !vis(e) || done.size > 5) continue;
       done.add(id);
-      const lab = (e.getAttribute('aria-label') || e.title || e.value || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+      const lab = (e.getAttribute('aria-label') || e.getAttribute('title') || (typeof e.value === 'string' ? e.value : '') || '').replace(/\s+/g, ' ').trim().slice(0, 40);
       parts.push(`[${id}${lab ? ' ' + lab : ''}]`);
     }
     return { parts, whole };

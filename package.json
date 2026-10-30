@@ -1,6 +1,6 @@
 {
   "name": "colibri-mcp",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "private": true,
   "description": "MCP server that lets Claude, Copilot, Cursor and any AI agent drive Chrome by reading pages as compact text instead of screenshots, with a local Jev-style form engine (browse_task).",
   "keywords": [
@@ -36,7 +36,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node test/functional.mjs && node test/resilience.mjs && node test/v2.mjs && node test/realsite.mjs && node test/captcha.mjs && node test/v052.mjs && node test/v053.mjs && node test/v054.mjs && node test/v055.mjs",
+    "test": "node test/functional.mjs && node test/resilience.mjs && node test/v2.mjs && node test/realsite.mjs && node test/captcha.mjs && node test/v052.mjs && node test/v053.mjs && node test/v054.mjs && node test/v055.mjs && node test/v056.mjs",
     "test:live": "node test/live.mjs",
     "calibrate": "node test/calibrate.mjs",
     "bench": "node test/bench.mjs",

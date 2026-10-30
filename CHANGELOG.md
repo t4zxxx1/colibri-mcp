@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.6
+
+Fixes found while using 0.5.5 on real sites (Trenitalia, Trovaprezzi). Each one has a regression test (`test/v056.mjs`) that fails on 0.5.5.
+
+**English**
+- **`browse_task` read after a submit that changes page**: when the submit leads to another page (even another domain) whose results appear in waves, the task now waits for the new document and retries `read:"cards"`/`"table"` for up to ~8 s instead of answering "no repeated card group".
+- **Drop-down buttons**: a parameter that matches a collapsed button (for example the time on Trenitalia) is no longer just "none 100%": the question now says it is a drop-down and how to use it (`before:[{"click":"eN"},{"click":"<option>"}]`).
+- **Fields called `id`, `name`, `title` or `action`**: on a form with such a field the browser returns the element instead of the text, which made the page read fail with `(s || "").replace is not a function`. Ids, names and titles are now read with `getAttribute`.
+
+**Italiano**
+- **Lettura di `browse_task` dopo un invio che cambia pagina**: quando l'invio porta a un'altra pagina (anche di un altro dominio) con risultati che arrivano a ondate, il task aspetta il nuovo documento e riprova `read:"cards"`/`"table"` fino a ~8 s invece di rispondere "nessun gruppo di schede ripetute".
+- **Pulsanti a tendina**: un parametro che corrisponde a un pulsante chiuso (per esempio l'ora su Trenitalia) non è più solo "nessuno 100%": la domanda dice che è una tendina e come usarla (`before:[{"click":"eN"},{"click":"<opzione>"}]`).
+- **Campi chiamati `id`, `name`, `title` o `action`**: in un modulo con un campo così il browser restituisce l'elemento al posto del testo, e la lettura della pagina falliva con `(s || "").replace is not a function`. Ora id, nomi e titoli si leggono con `getAttribute`.
+
 ## 0.5.5
 
 Measured on a repeated real task: search trains Wien Hbf → Salzburg Hbf at 18:00 and find the cheapest (`npm run bench:task`, 3 runs, all correct):

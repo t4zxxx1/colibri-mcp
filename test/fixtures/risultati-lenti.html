@@ -1,0 +1,10 @@
+<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Risultati</title></head><body>
+<main><h1>Risultati</h1><div id="out"></div></main>
+<script>
+// shell vuota, le schede arrivano dopo ~2,5 s senza richieste di rete (simula una SPA lenta)
+setTimeout(() => {
+  const o = document.getElementById('out');
+  for (const [h, p] of [['18:28', '2,80'], ['18:58', '2,80'], ['19:33', '2,80']])
+    o.insertAdjacentHTML('beforeend', `<article class="soluzione"><h3>${h} arrivo</h3><p>da ${p} euro</p><button>Scegli</button></article>`);
+}, 2500);
+</script></body></html>

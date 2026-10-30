@@ -316,7 +316,14 @@ export async function runTask(S, a) {
     toGround.push(p);
   }
   const { acts, asks: unsure, taken } = assign(toGround, fields, { memory, preset, fixed });
-  for (const [p, r, extra] of unsure) asks.push(question(p, r, extra, taken));
+  for (const [p, r, extra] of unsure) {
+    let q = question(p, r, extra, taken);
+    // un pulsante a tendina col nome del parametro (es. l'ora di Trenitalia) non e' un campo: si indica come aprirlo
+    const key = fold(p.key);
+    const dd = key && snap.items.find((i) => /^(btn|clk)$/.test(i.role) && i.flags.includes('col') && fold(i.name).includes(key));
+    if (dd) q += ` · ${dd.id} "${dd.name}" e' una tendina, non un campo: usa before:[{"click":"${dd.id}"},{"click":"<opzione>"}]`;
+    asks.push(q);
+  }
   const order = new Map(snap.items.map((it, i) => [it.id, i]));
   const firstId = (f) => (f.kind === 'dateparts' ? f.parts[0].it.id : f.id);
   const todo = [...acts].sort((x, y) => (order.get(firstId(x.f)) ?? 0) - (order.get(firstId(y.f)) ?? 0));
@@ -453,7 +460,19 @@ export async function runTask(S, a) {
   if (a.read) {
     try {
       const mode = ['table', 'cards'].includes(a.read) ? a.read : 'text';
-      readText = await S.read({ mode });
+      // dopo un invio che porta su un'altra pagina (anche di un altro dominio) i risultati arrivano a ondate: prima
+      // si attende il nuovo documento, poi si riprova la lettura finche' compaiono schede/tabelle (massimo ~8 s)
+      const moved = page.url() !== startUrl || S.last.page !== S.page;
+      if (a.submit && moved) await S.settle(S.page, 15000, 500, 800);
+      for (let k = 0; ; k++) {
+        try {
+          readText = await S.read({ mode });
+          break;
+        } catch (e) {
+          if (mode === 'text' || !moved || k >= 8 || !/nessun gruppo|tabella non trovata|nessun elemento/i.test(String(e.message))) throw e;
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+      }
       notes.push({ table: 'tabella:\n', cards: 'schede:\n', text: 'testo:\n' }[mode] + readText);
     } catch (e) {
       notes.push('lettura: ' + firstLine(e));
