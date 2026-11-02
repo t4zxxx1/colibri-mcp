@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="it">
+<head><meta charset="utf-8"><title>Pagina appesa</title></head>
+<body>
+<h1>Pagina che si blocca</h1>
+<button>Continua</button>
+<script>
+  // il renderer si blocca poco dopo il caricamento (come una scheda bloccata dopo molte chiamate)
+  if (location.search.includes('hang')) setTimeout(() => { for (;;) {} }, 1500);
+</script>
+</body>
+</html>

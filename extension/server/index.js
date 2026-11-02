@@ -29,22 +29,56 @@ const serial = (fn) => {
   return p;
 };
 
-// tempo massimo per chiamata: un browser bloccato non deve tenere fermo l'agente per minuti
-const HW = cfg.humanWait || 0;
-const LIMIT = {
-  browse_do: Math.max(180, HW + 90),
-  browse_task: Math.max(180, HW + 90),
-  browse_open: Math.max(75, HW + 60),
-  browse_search: Math.max(75, HW + 60),
-  browse_view: Math.max(60, HW + 45),
-  browse_read: 75,
+// tempo massimo per chiamata: un browser bloccato non deve tenere fermo l'agente per minuti.
+// Il tempo in cui si aspetta che l'utente risolva una verifica (CB_HUMAN_WAIT) non conta.
+const LIMIT = { browse_task: 90, browse_open: 60, browse_search: 60, browse_read: 45, browse_view: 30, browse_screenshot: 30, browse_stats: 10 };
+const TABS_ONLY = (a) => Array.isArray(a && a.steps) && a.steps.length > 0 && a.steps.every((s) => s && s.tab === 'list' && Object.keys(s).length === 1);
+// browse_do: budget dai passi richiesti, massimo 90 s; il solo elenco schede risponde in pochi secondi
+const stepSec = (s) => {
+  if (!s || typeof s !== 'object') return 5;
+  if (s.tab !== undefined) return s.tab === 'list' ? 2 : 8;
+  if (s.goto !== undefined || s.back !== undefined) return 35;
+  if (s.upload !== undefined) return 25;
+  if (s.waitFor !== undefined) return Math.min(60, (Number(s.timeout) || 10000) / 1000) + 5;
+  if (typeof s.wait === 'number') return Math.min(30, s.wait / 1000) + 3;
+  if (s.wait === 'idle') return 15;
+  if (s.click !== undefined || s.press !== undefined || s.submit !== undefined) return 15;
+  return 8;
 };
+const limitOf = (name, a) => {
+  if (name !== 'browse_do') return LIMIT[name] || 45;
+  if (TABS_ONLY(a)) return 10;
+  const steps = (a && Array.isArray(a.steps) && a.steps) || [];
+  return Math.min(90, 15 + steps.reduce((t, s) => t + stepSec(s), 0));
+};
+// come within(), ma il tempo passato con una verifica in attesa dell'utente non viene contato
+const guarded = (p, ms, msg) =>
+  new Promise((res, rej) => {
+    let left = ms;
+    let last = Date.now();
+    let t;
+    const tick = () => {
+      const now = Date.now();
+      if (!S.humanActive) left -= now - last;
+      last = now;
+      if (left <= 0) return rej(new Error(msg));
+      t = setTimeout(tick, Math.min(left, 1000));
+    };
+    t = setTimeout(tick, Math.min(left, 1000));
+    p.then(
+      (v) => (clearTimeout(t), res(v)),
+      (e) => (clearTimeout(t), rej(e)),
+    );
+  });
 const RETRY = new Set(['browse_open', 'browse_search', 'browse_view', 'browse_read', 'browse_screenshot']);
 
 function wrap(fn, name) {
-  const once = (args) => within(Promise.resolve().then(() => fn(args || {})), (LIMIT[name] || 45) * 1000, `${name} oltre ${LIMIT[name] || 45} s: pagina non risponde`);
-  // ricerche e letture di altri URL usano schede proprie: non aspettano le altre chiamate
-  const lane = (args) => name === 'browse_search' || (name === 'browse_read' && args && args.url && args.mode !== 'pdf');
+  const once = (args) => {
+    const sec = limitOf(name, args);
+    return guarded(Promise.resolve().then(() => fn(args || {})), sec * 1000, `${name} oltre ${sec} s: pagina non risponde`);
+  };
+  // ricerche, letture di altri URL ed elenco schede non aspettano le altre chiamate (una chiamata bloccata non le ferma)
+  const lane = (args) => name === 'browse_search' || (name === 'browse_read' && args && args.url && args.mode !== 'pdf') || (name === 'browse_do' && TABS_ONLY(args));
   return (args) => {
     const job = async () => {
       const t0 = Date.now();
@@ -301,7 +335,7 @@ const INSTRUCTIONS = [
   .filter(Boolean)
   .join('\n');
 
-const server = new McpServer({ name: 'colibri', version: '0.5.9' }, { instructions: INSTRUCTIONS });
+const server = new McpServer({ name: 'colibri', version: '0.5.10' }, { instructions: INSTRUCTIONS });
 
 for (const t of ACTIVE) {
   server.registerTool(t.name, { title: t.title, description: t.description, inputSchema: t.input, annotations: t.annotations }, wrap(t.run, t.name));

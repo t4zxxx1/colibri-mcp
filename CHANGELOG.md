@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.10
+
+**Hang limits that are really short** (fix of the 0.5.9 timeouts, which still allowed up to 180 s).
+- `browse_do` now gets a time budget computed from its steps (15 s + a few seconds per step, 35 s per navigation, the `waitFor` timeout), capped at **90 s** instead of 180 s. Other tools: open/search 60 s, read 45 s, view/screenshot 30 s, task 90 s.
+- `browse_do {tab:"list"}` answers in milliseconds: it lists the tabs without touching the pages and doesn't queue behind a stuck call (test: 3 ms with a frozen renderer and a call pending).
+- Time spent waiting for the user to solve a verification (`CB_HUMAN_WAIT`) is not counted against the limit, so the CAPTCHA pause works as before.
+- Test with a page whose renderer freezes: a step on it ends with an error after 23 s, then the tab is restored.
+
+**IT** — Limiti di attesa davvero brevi: `browse_do` calcola il tempo massimo dai passi (al massimo 90 s, prima 180 s); `tab:"list"` risponde subito anche con una scheda bloccata e non aspetta le altre chiamate; l'attesa di una verifica risolta dall'utente non conta nel limite.
+
 ## 0.5.9
 
 Shopping and comparison sites (Trovaprezzi, idealo, Unieuro, Amazon) and robustness after long sessions. Live check in real-Chrome mode: idealo category with 36 cards, sorted by total price in 0.6 s; `filter:"samsung"` + `maxPrice:500` gives 4 cards in 87 ms; a product page's fields are read in a background tab in 6.7 s and then come from the cache in 2 ms.

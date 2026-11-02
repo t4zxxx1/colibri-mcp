@@ -139,6 +139,24 @@ await c2.close();
   await S.close();
 }
 
+// 9. scheda bloccata (renderer in un ciclo infinito): l'elenco schede risponde subito, gli altri passi entro il loro limite
+{
+  const c3 = await connect({ CB_PROFILE_DIR: path.join(root, 'prof4'), CB_HUMAN_WAIT: '0' });
+  await c3.call('browse_open', { url: base + '/appesa.html?hang=1', rows: false });
+  await new Promise((r) => setTimeout(r, 2500));
+  t0 = Date.now();
+  const pend = c3.call('browse_do', { steps: [{ find: 'Continua' }], view: 'none' });
+  await new Promise((r) => setTimeout(r, 300));
+  const t1 = Date.now();
+  r = (await c3.call('browse_do', { steps: [{ tab: 'list' }] })).text;
+  const dt = Date.now() - t1;
+  ok(/^ok 1\/1 · schede: 1\* .*appesa\.html/.test(r) && dt < 5000, `tab:"list" con una scheda bloccata e una chiamata appesa in coda: risposta in ${dt} ms`, r);
+  r = (await pend).text;
+  const dt2 = Date.now() - t0;
+  ok(dt2 < 60000 && /oltre 23 s|ripeti il passo|non risponde/.test(r), `passo su scheda bloccata: errore dopo ${Math.round(dt2 / 1000)} s (limite dai passi, non minuti)`, r);
+  await c3.close();
+}
+
 srv.close();
 console.log(log.join('\n'));
 console.log(`\nv059: ${pass} ok, ${fail} falliti`);

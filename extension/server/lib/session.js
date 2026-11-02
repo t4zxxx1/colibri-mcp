@@ -1049,6 +1049,15 @@ export class Session {
     const pre = [];
     const done = (c) => !c || (!c.err && (inline ? !c.block && c.solved : !c.block));
     const poll = async (until, banner) => {
+      // l'attesa dell'utente non conta nel tempo massimo della chiamata (vedi index.js)
+      this.humanActive = (this.humanActive || 0) + 1;
+      try {
+        return await pollInner(until, banner);
+      } finally {
+        this.humanActive--;
+      }
+    };
+    const pollInner = async (until, banner) => {
       let c = ch;
       if (banner) await page.bringToFront().catch(() => {});
       while (!done(c) && Date.now() < until) {
@@ -1144,7 +1153,23 @@ export class Session {
     return el;
   }
 
+  // elenco schede senza toccare le pagine: risponde anche se una scheda e' bloccata
+  async tabList() {
+    if (!this.ctx) await this.ensure();
+    const cur = this.page;
+    const pages = this.ctx.pages().filter((p) => !p.isClosed() && !this.inUse.has(p));
+    const url = (p) => {
+      try {
+        return p.url();
+      } catch {
+        return '?';
+      }
+    };
+    return 'schede: ' + pages.map((p, k) => `${k + 1}${p === cur ? '*' : ''} ${url(p)}`).join(' | ');
+  }
+
   async run(steps, { view = 'diff' } = {}) {
+    if (steps.length && steps.every((s) => s && s.tab === 'list' && Object.keys(s).length === 1)) return `ok ${steps.length}/${steps.length} · ${await this.tabList()}`;
     let page = await this.ensure();
     const notes = [];
     let done = 0;
