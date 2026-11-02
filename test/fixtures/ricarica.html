@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="it">
+<head><meta charset="utf-8"><title>Offerte</title></head>
+<body>
+<main><h1>Offerte</h1><div id="list"></div></main>
+<script>
+  // come idealo: la pagina si ricarica da sola poco dopo l'apertura, poi disegna l'elenco in ritardo
+  if (!sessionStorage.getItem('reloaded')) {
+    sessionStorage.setItem('reloaded', '1');
+    setTimeout(() => location.reload(), 200);
+  } else {
+    setTimeout(() => {
+      document.getElementById('list').innerHTML = [1, 2, 3, 4, 5]
+        .map((n) => `<article class="offer-item"><a href="/o${n}">Offerta numero ${n} aspirapolvere</a><span>Negozio ${n}</span><b>${100 + n * 10},00 €</b></article>`)
+        .join('');
+    }, 900);
+  }
+</script>
+</body>
+</html>

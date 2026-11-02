@@ -3,7 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
-import { Session, loadConfig } from './lib/session.js';
+import { Session, loadConfig, within, BROKEN } from './lib/session.js';
 
 const cfg = loadConfig();
 
@@ -29,14 +29,40 @@ const serial = (fn) => {
   return p;
 };
 
-function wrap(fn) {
-  return (args) =>
-    serial(async () => {
+// tempo massimo per chiamata: un browser bloccato non deve tenere fermo l'agente per minuti
+const HW = cfg.humanWait || 0;
+const LIMIT = {
+  browse_do: Math.max(180, HW + 90),
+  browse_task: Math.max(180, HW + 90),
+  browse_open: Math.max(75, HW + 60),
+  browse_search: Math.max(75, HW + 60),
+  browse_view: Math.max(60, HW + 45),
+  browse_read: 75,
+};
+const RETRY = new Set(['browse_open', 'browse_search', 'browse_view', 'browse_read', 'browse_screenshot']);
+
+function wrap(fn, name) {
+  const once = (args) => within(Promise.resolve().then(() => fn(args || {})), (LIMIT[name] || 45) * 1000, `${name} oltre ${LIMIT[name] || 45} s: pagina non risponde`);
+  // ricerche e letture di altri URL usano schede proprie: non aspettano le altre chiamate
+  const lane = (args) => name === 'browse_search' || (name === 'browse_read' && args && args.url && args.mode !== 'pdf');
+  return (args) => {
+    const job = async () => {
       const t0 = Date.now();
-      const tok = (S.actTok = (S.actTok || 0) + 1);
-      S.acting = true;
+      const bg = lane(args);
+      const tok = bg ? 0 : (S.actTok = (S.actTok || 0) + 1);
+      if (!bg) S.acting = true;
       try {
-        const r = await fn(args || {});
+        let r;
+        try {
+          r = await once(args);
+        } catch (e) {
+          const m = String((e && e.message) || e);
+          if (!BROKEN.test(m) || bg) throw e;
+          // scheda bloccata o scollegata: se ne apre una nuova sulla stessa pagina; le letture si ripetono da sole
+          await within(S.recover(), 30000, 'ripristino del browser non riuscito').catch(() => S.reset());
+          if (!RETRY.has(name)) throw new Error(m.split('\n')[0] + ' (scheda ripristinata sulla stessa pagina: ripeti il passo)');
+          r = await once(args);
+        }
         if (r && r.image) {
           S.record(r.text, Date.now() - t0);
           return { content: [{ type: 'image', data: r.image, mimeType: 'image/jpeg' }, { type: 'text', text: r.text }] };
@@ -49,9 +75,11 @@ function wrap(fn) {
         return { content: [{ type: 'text', text: msg }], isError: true };
       } finally {
         // le schede aperte poco dopo (popup lenti) contano ancora come aperte da Colibri
-        setTimeout(() => S.actTok === tok && (S.acting = false), 1500);
+        if (!bg) setTimeout(() => S.actTok === tok && (S.acting = false), 1500);
       }
-    });
+    };
+    return lane(args) ? job() : serial(job);
+  };
 }
 
 // ---------- validazione (zod, lato server: invariata) ----------
@@ -84,7 +112,11 @@ const Step = z.object({
   file: z.union([z.string(), z.array(z.string())]).optional(),
   dialog: z.enum(['accept', 'dismiss']).optional(),
   find: z.string().optional(),
-  read: z.enum(['text', 'table', 'cards']).optional(),
+  read: z.enum(['text', 'table', 'cards', 'fields']).optional(),
+  query: z.string().optional(),
+  sort: z.enum(['price', '-price']).optional(),
+  filter: z.string().optional(),
+  maxPrice: z.number().optional(),
   max: z.number().int().optional(),
   links: z.boolean().optional(),
   confirm: z.boolean().optional(),
@@ -103,24 +135,24 @@ const STEPS_DOC =
   'select:T+option (native <select>; label, value or part) · check:T (on:false unchecks) · press:key (+target:T) · ' +
   'pick:"text" (visible suggestion/option) · hover:T · scroll:down|up|top|bottom|T · wait:ms (max 10000)|"idle" (network+spinners done) · ' +
   'waitFor:"visible text" (+timeout ms) · goto:url · back:true · tab:n|"list"|"close" · upload:T+file (path or list; T may be a "drag here" area) · ' +
-  'dialog:accept|dismiss (next alert/confirm) · find:"text" (matching lines) · read:text|table|cards (+target, max, links) · ' +
+  'dialog:accept|dismiss (next alert/confirm) · find:"text" (matching lines) · read:text|table|cards|fields (+target, max, links; cards: sort:"price"|"-price", filter:"words -excluded", maxPrice; fields: query:"key, key") · ' +
   'confirm:true only after the user OKs a !c step.';
 
 const TOOLS = [
   {
     name: 'browse_open',
     title: 'Apri pagina',
-    description: 'Open URL (starts the browser), reject non-essential cookies, return rows. rows:false: header+counts only; filter: matching rows.',
-    schema: obj({ url: str(), rows: bool(), filter: str() }, ['url']),
-    input: { url: z.string(), rows: z.boolean().optional(), filter: z.string().optional() },
-    run: ({ url, rows, filter }) => S.open(url, { rows, filter }),
+    description: 'Open URL (starts the browser), reject non-essential cookies, return rows. rows:false: header+counts only; filter: matching rows; search: type it in the site\'s own search box (no guessed search URLs).',
+    schema: obj({ url: str(), rows: bool(), filter: str(), search: str() }, ['url']),
+    input: { url: z.string(), rows: z.boolean().optional(), filter: z.string().optional(), search: z.string().optional() },
+    run: ({ url, rows, filter, search }) => S.open(url, { rows, filter, search }),
   },
   {
     name: 'browse_search',
     title: 'Cerca sul web',
-    description: 'Web search (DuckDuckGo): rows "n. title | url | snippet", no ads.',
-    schema: obj({ query: str(), max: int('results, default 8, max 20') }, ['query']),
-    input: { query: z.string(), max: z.number().int().optional() },
+    description: 'Web search (DuckDuckGo) in a background tab: rows "n. title | url | snippet", no ads; site: one domain. Parallel calls OK.',
+    schema: obj({ query: str(), max: int('results, default 8, max 20'), site: str() }, ['query']),
+    input: { query: z.string(), max: z.number().int().optional(), site: z.string().optional() },
     run: (a) => S.search(a),
   },
   {
@@ -143,16 +175,35 @@ const TOOLS = [
   {
     name: 'browse_read',
     title: 'Leggi contenuto',
-    description: 'Read without acting. mode: text (main content, no menus; ref/selector "body"=all; paged) | table (tab-separated rows) | cards (repeated results: trains, flights, products → 1 row each, buttons as [ref], +links:true URLs; auto or selector) | find (lines containing query) | describe (ref: options, value, href, box) | pdf (open/downloaded PDF; query=URL or file in downloads).',
-    schema: obj({ mode: en(['text', 'table', 'cards', 'find', 'describe', 'pdf']), ref: str(), selector: str(), query: str(), offset: int(), max: int('chars (text) or rows'), links: bool() }),
+    description:
+      'Read without acting. mode: text (main content, no menus; ref/selector "body"=all; paged) | table (tab-separated rows) | cards (repeated results: trains, flights, products → 1 row each, buttons as [ref], +links:true URLs, price total/shipping/reference/conditional; sort, filter "words -excluded", maxPrice on total) | fields (query "energy class, dimensions, color, price": only those values) | find (lines containing query) | describe (ref: options, value, href, box) | pdf (open/downloaded PDF; query=URL or file in downloads). url: read another page in a background tab (cached 10 min, current page unchanged, parallel OK).',
+    schema: obj({
+      mode: en(['text', 'table', 'cards', 'fields', 'find', 'describe', 'pdf']),
+      url: str(),
+      ref: str(),
+      selector: str(),
+      query: str(),
+      offset: int(),
+      max: int('chars (text) or rows'),
+      links: bool(),
+      sort: en(['price', '-price']),
+      filter: str(),
+      maxPrice: { type: 'number' },
+      fresh: bool('ignore cache'),
+    }),
     input: {
-      mode: z.enum(['text', 'table', 'cards', 'find', 'describe', 'pdf']).optional(),
+      mode: z.enum(['text', 'table', 'cards', 'fields', 'find', 'describe', 'pdf']).optional(),
+      url: z.string().optional(),
       ref: z.string().optional(),
       selector: z.string().optional(),
       query: z.string().optional(),
       offset: z.number().int().optional(),
       max: z.number().int().optional(),
       links: z.boolean().optional(),
+      sort: z.enum(['price', '-price']).optional(),
+      filter: z.string().optional(),
+      maxPrice: z.number().optional(),
+      fresh: z.boolean().optional(),
     },
     annotations: { readOnlyHint: true },
     run: (a) => S.read(a),
@@ -238,7 +289,7 @@ const INSTRUCTIONS = [
     ? 'Flow: browse_open (rows:false if you know the field names; web search: browse_search) -> browse_do with ALL foreseeable steps in one call (name targets survive page changes; end with read/find, they wait for loading) -> read only the diff.'
     : 'Flow: browse_search -> browse_open (rows:false) -> browse_read.',
   has('task') ? 'Forms and searches (trains, flights): browse_task {url, params, submit, read:"cards"} = 1 call, no need to view first.' : '',
-  'Listings: prefer sort/filter URL params (saved ones shown on open).',
+  'Listings: prefer sort/filter URL params (saved ones shown on open); unknown search URL: browse_open {url:home, search:"terms"}. Compare: read cards sort/maxPrice, specs: mode fields, other pages: browse_read {url} (parallel).',
   'Row: id role "name" [x]/[ ] ="value" opz:N|a|b flags !s »"msg". Flags: req inv ok off ro exp col on, cop=covered by overlay; ~name=guessed from icon. e1..e9=consecutive refs. "! "=alert/progress/cookie banner.',
   act ? 'Table rows: @"row text": e12 link "View" · e13 btn "Del"; following rows with the same elements list only their refs in the same order. Without ref: {"name":"View","row":"row text"}.' : '',
   act ? 'Diff: "N campi impostati come richiesto"=verified writes; ~changed +new -removed »new text !alert.' : '',
@@ -250,10 +301,10 @@ const INSTRUCTIONS = [
   .filter(Boolean)
   .join('\n');
 
-const server = new McpServer({ name: 'colibri', version: '0.5.8' }, { instructions: INSTRUCTIONS });
+const server = new McpServer({ name: 'colibri', version: '0.5.9' }, { instructions: INSTRUCTIONS });
 
 for (const t of ACTIVE) {
-  server.registerTool(t.name, { title: t.title, description: t.description, inputSchema: t.input, annotations: t.annotations }, wrap(t.run));
+  server.registerTool(t.name, { title: t.title, description: t.description, inputSchema: t.input, annotations: t.annotations }, wrap(t.run, t.name));
 }
 
 // L'SDK genererebbe dagli schemi zod un JSON Schema ~3 volte piu' lungo ($ref, additionalProperties, $schema e la

@@ -792,6 +792,124 @@ export function describeInPage(id) {
  * Risultati ripetuti (treni, voli, prodotti, offerte) come righe compatte: una riga per scheda con i testi
  * visibili separati da " | ". Le schede si trovano da sole (gruppo di fratelli simili con piu' testo) oppure con selector.
  */
+/**
+ * Installa window.__cbPrice(el): prezzo corrente, spedizione, totale, prezzo di riferimento (barrato, "consigliato")
+ * e sconti condizionati (extra in carrello, codice, cashback) di un riquadro. Le funzioni passate a evaluate sono
+ * serializzate una per una: l'analisi sta qui per essere condivisa da schede e schede tecniche.
+ */
+export function priceHelperInPage() {
+  if (window.__cbPrice && window.__cbPrice.v === 2) return;
+  const CUR = '(?:€|eur\\b|euro\\b|\\$|£|chf)';
+  const AMT = "(\\d{1,3}(?:[.\\s\\u00a0']\\d{3})+(?:[.,]\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?)";
+  const MONEY = new RegExp(`${CUR}\\s?${AMT}|${AMT}\\s?${CUR}`, 'i');
+  const MONEYG = new RegExp(MONEY.source, 'gi');
+  const num = (s) => {
+    s = String(s).replace(/[\s\u00a0']/g, '');
+    if (/,\d{1,2}$/.test(s)) s = s.replace(/\./g, '').replace(',', '.');
+    else if (/\.\d{1,2}$/.test(s)) s = s.replace(/,/g, '');
+    else s = s.replace(/[.,]/g, '');
+    const n = parseFloat(s);
+    return isFinite(n) ? n : null;
+  };
+  // prezzi spezzati in piu' elementi (22 | , | 46 | €)
+  const tidy = (t) => t.replace(/\s+/g, ' ').replace(/(\d)\s*([,.])\s*(\d{2})(?!\d)/g, '$1$2$3').trim();
+  const amountOf = (t) => {
+    const m = MONEY.exec(t);
+    return m ? num(m[1] || m[2]) : null;
+  };
+  const vis = (e) => {
+    const s = getComputedStyle(e);
+    if (s.display === 'none' || s.visibility === 'hidden') return false;
+    const r = e.getBoundingClientRect();
+    return r.width >= 1 && r.height >= 1;
+  };
+  const REFL = /consigliat|listino|invece di|prima era|\bera\b|anzich|\brrp\b|\buvp\b|\bstatt\b|prix conseill|precio recomendado|\bwas\b|list price|prezzo originale|prezzo di riferimento|ultimi 30 giorni|30 days/i;
+  const SHIP = /sped|spedizion|consegna|shipping|delivery|versand|livraison|env[ií]o|\bporto\b/i;
+  const COND = /extra|carrello|checkout|\bcodice\b|coupon|cashback|con (la )?carta|membri|iscritt|\bsoci\b|\bprime\b|abbonat|permuta|\brate\b|al mese|\/\s?mese|mensil|per month|\/mo\b|tan\b|taeg/i;
+  const UNIT = /\/\s?(kg|g|l|lt|ml|m|m2|m²|pz|pezzo|100\s?g|100\s?ml|unit)\b|al (kg|litro|pezzo|metro)|cad\.|\bpro (kg|liter|stück)/i;
+  const STRUCK = /(^|[-_\s])(old|was|strike|striked|crossed|list-?price|rrp|uvp|before|original|barrat|regular|compare|prev|previous|del)([-_\s]|$)/i;
+  const FREE = /spedizione gratuita|sped\.? grat|consegna gratuita|free (shipping|delivery)|kostenlose?r? versand|livraison gratuite|env[ií]o gratis/i;
+  const SAVE = /risparmi|you save|\bsave\b|sparen|[ée]conomis|ahorr|^\s*[-−–]\s?(€|\$|£|\d)|\(\s*[-−–]\s?\d+\s?%\s*\)\s*$/i;
+  const CONDTXT = /(\d+\s?%|€\s?\d+|\d+\s?€).{0,30}(extra|in pi[uù]|aggiuntiv).{0,40}|(extra|ulteriore) sconto.{0,40}|sconto (extra|aggiuntivo).{0,40}|con (il )?codice\s+\S+.{0,30}|coupon.{0,40}|codice (sconto|promo).{0,40}|cashback.{0,40}/i;
+  const fn = (c) => {
+    const units = new Set();
+    const w = document.createTreeWalker(c, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode()) {
+      if (!/\d/.test(n.textContent) && !/[€$£]/.test(n.textContent)) continue;
+      const pe = n.parentElement;
+      if (!pe || pe.closest('script,style,noscript,template') || !vis(pe)) continue;
+      // il piu' piccolo elemento che contiene un importo intero
+      let u = pe;
+      for (let k = 0; u && k < 4 && !MONEY.test(tidy(u.innerText || '')); k++) u = u === c ? null : u.parentElement;
+      if (u && c.contains(u) && MONEY.test(tidy(u.innerText || ''))) units.add(u);
+    }
+    // un riquadro che contiene un altro riquadro con importo: conta il piu' interno
+    const list = [...units].filter((u) => ![...units].some((o) => o !== u && u.contains(o)));
+    let price = null;
+    let ship = null;
+    let ref = null;
+    let refKind = '';
+    const cond = [];
+    for (const u of list) {
+      const t = tidy(u.innerText || '');
+      if (t.length > 160) continue;
+      const amt = amountOf(t);
+      if (amt === null) continue;
+      const prev = u.previousElementSibling ? tidy(u.previousElementSibling.innerText || '').slice(0, 60) : '';
+      const par = u.parentElement && u.parentElement !== c ? tidy(u.parentElement.innerText || '') : '';
+      const ctx = [t, prev, par.length <= 90 ? par : ''].join(' ');
+      if (UNIT.test(t)) continue;
+      // risparmio ("Risparmi 9,87 €", "9,87 € (-17%)", "-9,87 €"): non e' un prezzo
+      if (SAVE.test(t) || /risparmi|you save|sparen|economis|ahorr/i.test(prev)) continue;
+      let saving = false;
+      for (let e = u.parentElement, k = 0; e && e !== c && k < 3; e = e.parentElement, k++) {
+        const et = tidy(e.innerText || '');
+        if (et.length > 90) break;
+        if (SAVE.test(et) || /saving|you-?save|risparmi|bargain/i.test(typeof e.className === 'string' ? e.className : '')) saving = true;
+      }
+      if (saving) continue;
+      // "84,90 € + Sped. 9,90 €" in un solo elemento: prima il prezzo, dopo la parola spedizione il suo costo
+      const ams = [...t.matchAll(MONEYG)];
+      const si = t.search(SHIP);
+      if (ams.length >= 2 && si > 0) {
+        const pre = ams.filter((m) => m.index < si);
+        const post = ams.filter((m) => m.index > si);
+        if (pre.length && post.length) {
+          if (price === null) price = num(pre[0][1] || pre[0][2]);
+          if (ship === null) ship = num(post[0][1] || post[0][2]);
+          continue;
+        }
+      }
+      let struck = false;
+      for (let e = u, k = 0; e && e !== c.parentElement && k < 3; e = e.parentElement, k++) {
+        if (/^(DEL|S|STRIKE)$/.test(e.tagName) || /line-through/.test(getComputedStyle(e).textDecorationLine) || STRUCK.test(typeof e.className === 'string' ? e.className : '')) struck = true;
+      }
+      const shipHere = si >= 0 && !(ams.length && ams[0].index < si);
+      if (shipHere || (SHIP.test(prev) && !FREE.test(prev) && !MONEY.test(prev) && !REFL.test(ctx))) {
+        if (ship === null) ship = amt;
+      } else if (COND.test(t)) {
+        if (cond.length < 2) cond.push(t.slice(0, 60));
+      } else if (struck || REFL.test(t) || REFL.test(prev)) {
+        if (ref === null) {
+          ref = amt;
+          const m = /consigliat|listino|30 giorni|30 days|rrp|uvp/i.exec(ctx);
+          refKind = m ? (/30/.test(m[0]) ? 'minimo 30 gg' : /listino/i.test(m[0]) ? 'listino' : 'consigliato') : 'barrato';
+        }
+      } else if (price === null) price = amt;
+    }
+    const all = tidy(c.innerText || '');
+    if (ship === null && FREE.test(all)) ship = 0;
+    for (const line of (c.innerText || '').split('\n')) {
+      const m = CONDTXT.exec(tidy(line));
+      if (m && cond.length < 2 && !cond.some((x) => m[0].includes(x) || x.includes(m[0]))) cond.push(m[0].trim().slice(0, 60));
+    }
+    if (ref !== null && price !== null && ref <= price) ref = null;
+    return { price, ship, tot: price !== null && ship !== null ? Math.round((price + ship) * 100) / 100 : null, ref, refKind, cond };
+  };
+  fn.v = 2;
+  window.__cbPrice = fn;
+}
+
 export function readCardsInPage(a) {
   // display:contents (componenti Angular/Lit) non ha un riquadro proprio: conta quello dei figli
   const vis = (e, d = 0) => {
@@ -872,6 +990,20 @@ export function readCardsInPage(a) {
       return gs;
     };
     let best = null;
+    const consider = (els) => {
+      const shown = els.filter((e) => vis(e));
+      if (shown.length < 3) return;
+      // misura solo il testo visibile: il testo per i lettori di schermo gonfiava gruppi di pulsanti senza dati
+      const sample = shown.slice(0, 6).map(visText);
+      const lens = sample.map((t) => t.join(' ').length);
+      const avg = lens.reduce((x, y) => x + y, 0) / lens.length;
+      const avgParts = sample.reduce((x, t) => x + t.length, 0) / sample.length;
+      if (avg < 15 || avgParts < 2.5) return;
+      // orari e prezzi: i risultati veri li hanno, le etichette dei filtri no
+      const rich = sample.filter((t) => DATA.test(t.join(' '))).length / sample.length;
+      const score = shown.length * Math.min(avg, 250) * Math.min(avgParts, 8) * (1 + 2 * rich);
+      if (!best || score > best.score) best = { score, els: shown };
+    };
     // visita senza i rami nascosti (menu enormi con display:none) e senza limite basso: i risultati stanno spesso in fondo
     const tw = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT, {
       acceptNode: (e) => {
@@ -883,21 +1015,57 @@ export function readCardsInPage(a) {
     let visited = 0;
     for (let p = root; p && visited < 40000; p = tw.nextNode(), visited++) {
       if (p.children.length < 3) continue;
-      for (const g of groupsOf(p)) {
-        if (g.els.length < 3) continue;
-        const shown = g.els.filter((e) => vis(e));
-        if (shown.length < 3) continue;
-        // misura solo il testo visibile: il testo per i lettori di schermo gonfiava gruppi di pulsanti senza dati
-        const sample = shown.slice(0, 6).map(visText);
-        const lens = sample.map((t) => t.join(' ').length);
-        const avg = lens.reduce((x, y) => x + y, 0) / lens.length;
-        const avgParts = sample.reduce((x, t) => x + t.length, 0) / sample.length;
-        if (avg < 15 || avgParts < 2.5) continue;
-        // orari e prezzi: i risultati veri li hanno, le etichette dei filtri no
-        const rich = sample.filter((t) => DATA.test(t.join(' '))).length / sample.length;
-        const score = shown.length * Math.min(avg, 250) * Math.min(avgParts, 8) * (1 + 2 * rich);
-        if (!best || score > best.score) best = { score, els: shown };
+      for (const g of groupsOf(p)) if (g.els.length >= 3) consider(g.els);
+    }
+    if (!best) {
+      // schede divise in righe di griglia (2 per riga) o in piu' contenitori: stesso tag e stessa classe con un link,
+      // anche sotto genitori diversi
+      const sig = new Map();
+      for (const e of root.querySelectorAll('[class]')) {
+        if (e.closest('nav,header,footer,[role=navigation],[role=banner],[role=contentinfo]')) continue;
+        if (!e.matches('a[href]') && !e.querySelector('a[href]')) continue;
+        const c0 = own(e)[0];
+        if (!c0) continue;
+        const k = e.tagName + '.' + c0;
+        if (!sig.has(k)) sig.set(k, []);
+        sig.get(k).push(e);
       }
+      for (const els of sig.values()) {
+        if (els.length < 3 || els.length > 400) continue;
+        consider(els.filter((e) => !els.some((o) => o !== e && o.contains(e))));
+      }
+    }
+    if (best) {
+      // righe di una griglia (2-4 prodotti per riga) scelte come schede: si scende ai prodotti che contengono
+      const rowsOf = best.els;
+      const cnt = new Map();
+      for (const e of rowsOf) {
+        const local = new Map();
+        for (const d of e.querySelectorAll('[class]')) {
+          if (!d.matches('a[href]') && !d.querySelector('a[href]')) continue;
+          const c0 = own(d)[0];
+          if (!c0) continue;
+          const k = d.tagName + '.' + c0;
+          if (!local.has(k)) local.set(k, []);
+          local.get(k).push(d);
+        }
+        for (const [k, ds] of local) if (ds.length >= 2) cnt.set(k, [...(cnt.get(k) || []), ...ds.filter((d) => !ds.some((o) => o !== d && o.contains(d)))]);
+      }
+      const prev = best;
+      let inner = null;
+      for (const ds of cnt.values()) {
+        const hosts = new Set(ds.map((d) => rowsOf.find((r) => r.contains(d))));
+        if (hosts.size < rowsOf.length * 0.8) continue;
+        // prodotti diversi: link diversi e (quasi) tutti con un prezzo o un orario
+        const hrefs = new Set(ds.map((d) => (d.matches('a[href]') ? d : d.querySelector('a[href]')).getAttribute('href')));
+        if (hrefs.size < ds.length * 0.8) continue;
+        const withData = ds.filter((d) => DATA.test(visText(d).join(' '))).length;
+        if (withData < ds.length * 0.7) continue;
+        best = null;
+        consider(ds);
+        if (best && (!inner || best.score > inner.score)) inner = best;
+      }
+      best = inner || prev;
     }
     if (best) {
       cards = best.els;
@@ -961,6 +1129,13 @@ export function readCardsInPage(a) {
     const shownText = parts.join(' ');
     const extra = hidden.filter((t) => (t.match(/\d{1,2}[:.]\d{2}\b|\d+,\d{2}|\d{1,2}\/\d{1,2}/g) || []).some((x) => !shownText.includes(x)));
     if (extra.length) parts.unshift(...extra.map((t) => (t.length > 120 ? t.slice(0, 119) + '…' : t)));
+    // prezzo: spedizione, totale, riferimento e sconti condizionati (questi fuori dal testo: non sono il prezzo)
+    let pr = null;
+    try {
+      pr = window.__cbPrice ? window.__cbPrice(c) : null;
+    } catch {}
+    if (pr && pr.cond.length)
+      for (let k = parts.length - 1; k >= 0; k--) if (!parts[k].startsWith('[') && pr.cond.some((x) => x.includes(parts[k]) || (parts[k].length > 8 && parts[k].includes(x)))) parts.splice(k, 1);
     let url = '';
     if (a.links) {
       // link della scheda: la scheda intera, altrimenti il link con il testo piu' lungo (il titolo)
@@ -974,7 +1149,7 @@ export function readCardsInPage(a) {
       }
       if (l) url = cleanUrl(l.href);
     }
-    return { parts, whole, url };
+    return { parts, whole, url, pr };
   });
   // testi presenti in tutte le schede (stazioni di partenza e arrivo, etichetta del pulsante): una riga "in tutte"
   const common = [];
@@ -1005,20 +1180,27 @@ export function readCardsInPage(a) {
       common.push(`url:${o0}+percorso`);
     }
   }
-  const rows = partsOf.map(({ parts, whole, url }) => {
+  const eur = (n) => n.toFixed(2).replace('.', ',');
+  const items = partsOf.slice(0, 300).map(({ parts, whole, url, pr }) => {
     let s = parts.join(' | ');
     if (s.length > 320) s = s.slice(0, 319) + '…';
+    if (pr) {
+      if (pr.tot !== null && pr.ship) s += ` | tot ${eur(pr.tot)}€ (sped ${eur(pr.ship)}€)`;
+      if (pr.ref !== null && pr.price !== null) {
+        const pct = Math.round((1 - pr.price / pr.ref) * 100);
+        s += ` | rif ${eur(pr.ref)}€ ${pr.refKind} -${pct}%` + (pct >= 50 ? ' ⚠ sconto non plausibile' : /consigliato|listino/.test(pr.refKind) ? ' (non e\' un prezzo di vendita)' : '');
+      }
+      if (pr.cond.length) s += ` | cond:"${pr.cond.join('; ')}" non confermato`;
+    }
     if (whole) s += ` →${whole}`;
     if (url) {
       let u = origin ? url.slice(origin.length) : url;
       if (u.length > 140) u = u.slice(0, 139) + '…';
       s += ` url:${u}`;
     }
-    return s;
+    return { row: s, p: pr ? pr.price : null, t: pr ? (pr.tot !== null ? pr.tot : pr.price) : null };
   });
-  const off = a.offset || 0;
-  const max = a.max || 20;
-  return { total: rows.length, sel: how, common, rows: rows.slice(off, off + max) };
+  return { total: items.length, sel: how, common, items };
 }
 
 /** Risultati di una pagina di ricerca (DuckDuckGo HTML, Bing, generica): titolo, URL reale, estratto. Niente annunci. */
@@ -1145,6 +1327,73 @@ export function pairsInPage(a) {
   return JSON.stringify({ pairs: pairs.slice(0, 300), lines, tables });
 }
 
+/** Coppie etichetta/valore di una scheda tecnica (dl, tabelle, righe a due colonne, "Etichetta: valore") e prezzo del prodotto. */
+export function specPairsInPage() {
+  const norm = (s) => (s || '').replace(/\s+/g, ' ').trim();
+  const vis = (e) => {
+    const s = getComputedStyle(e);
+    if (s.display === 'none' || s.visibility === 'hidden') return false;
+    const r = e.getBoundingClientRect();
+    return r.width >= 1 && r.height >= 1;
+  };
+  const BAR = 'script,style,noscript,template,nav,header,footer,[role=navigation],[role=banner],[role=contentinfo]';
+  const pairs = [];
+  const seen = new Set();
+  const add = (l, v) => {
+    l = norm(l).replace(/[:：]\s*$/, '');
+    v = norm(v);
+    if (!l || !v || l.length > 60 || v.length > 160 || l === v || /^\d+([.,]\d+)?$/.test(l)) return;
+    const k = l.toLowerCase() + '\u0000' + v;
+    if (seen.has(k) || pairs.length >= 400) return;
+    seen.add(k);
+    pairs.push([l, v]);
+  };
+  // anche i pannelli chiusi ("Specifiche" a fisarmonica): sono nel documento
+  document.querySelectorAll('dt').forEach((dt) => {
+    if (dt.closest(BAR)) return;
+    const dd = dt.nextElementSibling;
+    if (dd && dd.tagName === 'DD') add(dt.textContent, dd.textContent);
+  });
+  document.querySelectorAll('tr').forEach((tr) => {
+    if (tr.closest(BAR)) return;
+    const c = tr.querySelectorAll(':scope > th, :scope > td');
+    if (c.length === 2) add(c[0].textContent, c[1].textContent);
+  });
+  // righe a due colonne fatte di div/span/li
+  for (const e of document.body.querySelectorAll('li,div,p,span')) {
+    if (pairs.length >= 400) break;
+    const ch = e.children;
+    if (ch.length !== 2 || ch[0].children.length > 2 || ch[1].children.length > 3 || e.closest(BAR)) continue;
+    const l = norm(ch[0].textContent);
+    const v = norm(ch[1].textContent);
+    if (l && v && l.length <= 50 && v.length <= 120 && !/[.!?]$/.test(l)) add(l, v);
+  }
+  const main = document.querySelector('main,[role=main]') || document.body;
+  const lines = (main.innerText || '').split('\n').map(norm).filter(Boolean).slice(0, 1500);
+  for (let i = 0; i < lines.length; i++) {
+    const m = /^([^:]{2,50}):\s*(.{1,140})$/.exec(lines[i]);
+    if (m && !/https?$/i.test(m[1])) add(m[1], m[2]);
+  }
+  const h1 = [...document.querySelectorAll('h1')].find(vis);
+  const title = norm(h1 ? h1.textContent : document.title).slice(0, 140);
+  // prezzo del prodotto: il primo antenato del titolo che contiene un importo
+  let price = null;
+  const MONEY = /(€|eur\b|\$|£|chf)\s?\d|\d[\d.,]*\s?(€|eur\b|\$|£|chf)/i;
+  if (window.__cbPrice && h1) {
+    let e = h1.parentElement;
+    for (let k = 0; e && e !== document.body && k < 7; k++, e = e.parentElement) {
+      if (MONEY.test(e.innerText || '')) {
+        try {
+          const p = window.__cbPrice(e);
+          if (!price || (price.price === null && p.price !== null)) price = p;
+        } catch {}
+        if (price && price.price !== null) break;
+      }
+    }
+  }
+  return { title, pairs, price };
+}
+
 /**
  * Verifiche anti-bot (CAPTCHA, pagine "Just a moment", bot manager).
  * block: la pagina e' bloccata finche' non si supera la verifica (muro a pagina intera o puzzle aperto).
@@ -1167,6 +1416,10 @@ export function challengeInPage() {
   const kindOf = (src) =>
     /challenges\.cloudflare|turnstile/i.test(src) ? 'Turnstile' : /hcaptcha/i.test(src) ? 'hCaptcha' : /recaptcha/i.test(src) ? 'reCAPTCHA' : 'CAPTCHA';
 
+  // 0) blocco definitivo del sito (Cloudflare 1020 "you have been blocked", Akamai "Access Denied", pagine di errore con
+  // codice di riferimento): non c'e' niente da risolvere, aspettare l'utente non serve
+  const HARD = /(sorry, you have been blocked|you are unable to access|access denied|you don'?t have permission to access|the requested url was rejected|request (was )?blocked|accesso negato|error 10(05|06|07|20)\b|something has gone wrong.{0,300}reference id)/i;
+  if (body.length < 3000 && document.links.length < 30 && document.querySelectorAll('input:not([type=hidden])').length < 2 && HARD.test(title + ' ' + body)) return { kind: 'blocco', block: true, hard: true };
   // 1) muri a pagina intera
   if ((window._cf_chl_opt && (WALL.test(title + ' ' + body) || body.length < 150)) || any('#challenge-form,#challenge-running,#challenge-stage,#cf-challenge-running,.cf-browser-verification,#cf-please-wait,#cf-wrapper #challenge-body-text'))
     return { kind: 'Cloudflare', block: true };

@@ -15,6 +15,8 @@ export function serve(port = 0) { return new Promise(res => { const s = http.cre
   if (p === '/slow') { const ms = +new URL(req.url, 'http://x').searchParams.get('ms') || 1000; return setTimeout(() => { rsp.writeHead(200, { 'content-type': 'text/plain' }); rsp.end('ok dopo ' + ms + ' ms'); }, ms); }
   if (p === '/ricevuta.pdf') { rsp.writeHead(200, { 'content-type': 'application/pdf', 'content-disposition': 'attachment; filename="ricevuta.pdf"' }); return rsp.end('%PDF-1.4\n%demo\n'); }
   if (p === '/biglietto.pdf') { rsp.writeHead(200, { 'content-type': 'application/pdf' }); return rsp.end(miniPdf(['Biglietto treno Wien Hbf - Salzburg Hbf', 'Partenza 08:30 arrivo 11:02', 'Totale EUR 59,90']), 'latin1'); }
+  // pagina d'errore vera (con campo di ricerca) per gli URL indovinati
+  if (p.startsWith('/nf-')) { rsp.writeHead(404, { 'content-type': 'text/html; charset=utf-8' }); return fs.createReadStream(path.join(dir, 'notfound.html')).pipe(rsp); }
   const f = path.join(dir, path.normalize(p)); if (!f.startsWith(dir) || !fs.existsSync(f)) { rsp.writeHead(404); return rsp.end('nf'); }
   rsp.writeHead(200, { 'content-type': types[path.extname(f)] || 'application/octet-stream' }); fs.createReadStream(f).pipe(rsp); });
   s.listen(port, '127.0.0.1', () => res(s)); }); }

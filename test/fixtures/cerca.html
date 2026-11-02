@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="it">
+<head><meta charset="utf-8"><title>Risultati</title></head>
+<body>
+<header><form action="/cerca.html" method="get"><input type="search" name="q" aria-label="Cerca un prodotto"><button>Cerca</button></form></header>
+<main><h1 id="h">Risultati</h1><ul id="r"></ul></main>
+<script>
+  const q = new URLSearchParams(location.search).get('q') || '';
+  document.getElementById('h').textContent = 'Risultati per ' + q;
+  document.getElementById('r').innerHTML = ['A', 'B', 'C'].map((x) => `<li><a href="/p${x}">${q} modello ${x}</a> 1${x === 'A' ? 0 : 2}9,00 €</li>`).join('');
+</script>
+</body>
+</html>

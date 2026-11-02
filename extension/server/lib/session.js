@@ -26,6 +26,15 @@ const evalIn = (f, fn, arg, ms = 2500) => {
   return Promise.race([f.evaluate(fn, arg), new Promise((_, rej) => (t = setTimeout(() => rej(new Error('frame non risponde')), ms)))]).finally(() => clearTimeout(t));
 };
 const firstLine = (e) => String((e && e.message) || e).split('\n')[0].replace(/^\w+Error: /, '').slice(0, 220);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+export const within = (p, ms, msg = 'tempo scaduto') => {
+  let t;
+  return Promise.race([p, new Promise((_, rej) => (t = setTimeout(() => rej(new Error(msg)), ms)))]).finally(() => clearTimeout(t));
+};
+// scheda o collegamento rotti (CDP fuori sincrono, renderer bloccato): si ripristina con una scheda nuova
+export const BROKEN = /No frame with given id|Target page, context or browser has been closed|Target closed|Target crashed|Page crashed|Session closed|browser has been disconnected|frame non risponde|pagina non risponde/i;
+// parametri che servono solo a tracciare chi clicca: l'URL resta lo stesso senza
+const TRACK_PARAM = /^(utm_\w+|gclid|gclsrc|gbraid|wbraid|dclid|fbclid|msclkid|yclid|twclid|ttclid|li_fat_id|mc_cid|mc_eid|_hsenc|_hsmi|igshid|srsltid|_gl|oly_anon_id|oly_enc_id|vero_id|mkt_tok)$/i;
 const hostOf = (u) => {
   try {
     return new URL(u).hostname;
@@ -36,6 +45,99 @@ const hostOf = (u) => {
 // reti pubblicitarie e di affiliazione: le schede che restano li' non servono a chi naviga
 const JUNK_HOST = /(^|\.)(doubleclick\.net|googlesyndication\.com|googleadservices\.com|adservice\.google\.[a-z.]+|awin1\.com|tradedoubler\.com|zanox\.com|webgains\.com|clickbank\.net|redirectingat\.com|skimresources\.com|tradetracker\.net|prf\.hn|linksynergy\.com|anrdoezrs\.net|dpbolvw\.net|jdoqocy\.com|kqzyfj\.com|tkqlhce\.com|go2cloud\.org|sjv\.io|pxf\.io|taboola\.com|outbrain\.com|criteo\.com|adnxs\.com|admitad\.com|kelkoogroup\.net)$|^(track|tracking|click|clicks|redirect|adclick)\./i;
 export const isJunkUrl = (u) => !u || u === 'about:blank' || JUNK_HOST.test(hostOf(u));
+
+const eur = (n) => n.toFixed(2).replace('.', ',') + '€';
+
+/** Schede filtrate, ordinate e paginate lato server: si legge solo cio' che serve. */
+export function cardsOut(r, { offset = 0, max = 20, sort, filter, maxPrice } = {}) {
+  let items = r.items;
+  const how = [];
+  if (filter) {
+    const words = String(filter).split(/\s+/).filter(Boolean);
+    const inc = words.filter((w) => !w.startsWith('-')).map((w) => fold(w).trim()).filter(Boolean);
+    const exc = words.filter((w) => w.startsWith('-') && w.length > 1).map((w) => fold(w.slice(1)).trim()).filter(Boolean);
+    items = items.filter((it) => {
+      const f = fold(it.row);
+      return inc.every((w) => f.includes(w)) && !exc.some((w) => f.includes(w));
+    });
+    how.push(`filtro "${filter}"`);
+  }
+  if (maxPrice !== undefined && maxPrice !== null && maxPrice !== '') {
+    items = items.filter((it) => it.t !== null && it.t !== undefined && it.t <= Number(maxPrice));
+    how.push(`max ${eur(Number(maxPrice))}`);
+  }
+  if (sort === 'price' || sort === '-price') {
+    const d = sort === 'price' ? 1 : -1;
+    items = [...items].sort((a, b) => (a.t === null) - (b.t === null) || d * ((a.t || 0) - (b.t || 0)));
+    how.push(`per prezzo totale ${d > 0 ? 'crescente' : 'decrescente'}`);
+  }
+  const tag = `${r.sel}${how.length ? '; ' + how.join(', ') : ''}`;
+  if (!items.length) return `nessuna scheda corrisponde su ${r.total} (${tag})`;
+  const part = items.slice(offset, offset + max);
+  const more = items.length - offset - part.length;
+  const of = items.length !== r.total ? `${items.length} (filtrate da ${r.total})` : `${r.total}`;
+  return (
+    `schede ${offset + 1}-${offset + part.length} di ${of} (${tag})\n` +
+    (r.common && r.common.length ? `in tutte: ${r.common.join(' · ')}\n` : '') +
+    part.map((it) => it.row).join('\n') +
+    (more > 0 ? `\n… altre ${more} (offset:${offset + part.length})` : '')
+  );
+}
+
+const PRICE_KEY = /^(prezzo|price|costo|cost|prix|preis|precio)( totale| total)?$|^(totale|total)$|^(spedizione|sped|shipping|consegna|versand)$|prezzo (di )?riferimento|prezzo consigliato|listino/;
+const DIMS = [
+  [/^(larghezza|width|breite|largeur|ancho)\b/, 'L'],
+  [/^(altezza|height|hohe|hauteur|alto)\b/, 'A'],
+  [/^(profondita|depth|tiefe|profondeur|fondo)\b/, 'P'],
+];
+
+/** Valore di una chiave nella scheda tecnica: etichetta uguale, contenuta o simile. */
+export function fieldOf(d, key) {
+  const fk = fold(key).replace(/\s+/g, ' ').trim();
+  if (d.price && PRICE_KEY.test(fk)) {
+    const p = d.price;
+    if (/sped|shipping|consegna|versand/.test(fk)) return p.ship === null ? null : p.ship ? eur(p.ship) : 'gratis';
+    if (/riferimento|consigliato|listino/.test(fk)) return p.ref === null ? null : `${eur(p.ref)} ${p.refKind} (non verificato)`;
+    if (/total/.test(fk)) return p.tot !== null ? eur(p.tot) : p.price !== null ? eur(p.price) : null;
+    if (p.price !== null) {
+      let s = eur(p.price);
+      if (p.ship === 0) s += ' (sped gratis)';
+      else if (p.tot !== null) s += ` (tot ${eur(p.tot)} con sped ${eur(p.ship)})`;
+      if (p.ref !== null) s += ` | rif ${eur(p.ref)} ${p.refKind} -${Math.round((1 - p.price / p.ref) * 100)}%`;
+      if (p.cond.length) s += ` | cond:"${p.cond.join('; ')}" non confermato`;
+      return s;
+    }
+  }
+  let best = null;
+  for (const [l, v] of d.pairs) {
+    const fl = fold(l).replace(/\s+/g, ' ').trim();
+    let sc = 0;
+    if (fl === fk) sc = 3;
+    else if ((' ' + fl + ' ').includes(' ' + fk + ' ')) sc = 2 + 1 / (1 + fl.length);
+    else if (fk.length >= 4 && fl.includes(fk)) sc = 1.5 + 1 / (1 + fl.length);
+    else {
+      const s = similarity(fk, fl);
+      if (s >= 0.8) sc = s;
+    }
+    if (sc && (!best || sc > best.sc)) best = { sc, v };
+  }
+  if (best) return best.v;
+  if (/^(dimensioni|dimensions|misure|abmessungen|ingombro)/.test(fk)) {
+    const got = [];
+    for (const [re, tag] of DIMS) {
+      const hit = d.pairs.find(([l]) => re.test(fold(l).trim()));
+      if (hit) got.push(`${tag} ${hit[1]}`);
+    }
+    if (got.length >= 2) return got.join(' x ');
+  }
+  return null;
+}
+
+// codice del modello nel titolo (lettere e cifre): serve a riconoscere lo stesso prodotto su siti diversi
+const modelTokens = (title) => [...new Set((String(title).match(/[A-Za-z0-9][A-Za-z0-9-]{4,}/g) || []).filter((t) => /\d/.test(t) && /[A-Za-z]/.test(t)).map((t) => t.toUpperCase().replace(/-/g, '')))];
+
+/** Testo con i ref tolti: le schede lette in una scheda di sfondo non hanno elementi cliccabili. */
+const noRefs = (s) => s.replace(/ →\S+/g, '').replace(/\[[a-z]?\d*e\d+\]( \| )?/g, '').replace(/\[[a-z]?\d*e\d+ ([^\]]*)\]/g, '$1');
 
 export function loadConfig(env = process.env) {
   const home = os.homedir();
@@ -57,6 +159,7 @@ export function loadConfig(env = process.env) {
     confirmSensitive: yes(env.CB_CONFIRM_SENSITIVE, true),
     allowScreenshot: yes(env.CB_ALLOW_SCREENSHOT, true),
     rejectCookies: yes(env.CB_REJECT_COOKIES, true),
+    stripTracking: yes(env.CB_STRIP_TRACKING, true),
     maxItems: Math.max(20, parseInt(clean(env.CB_MAX_ITEMS) || '120', 10) || 120),
     extraArgs: clean(env.CB_EXTRA_ARGS) ? clean(env.CB_EXTRA_ARGS).split(/\s+/) : [],
     // secondi di attesa quando compare un CAPTCHA o una verifica anti-bot (0 = non aspettare)
@@ -83,6 +186,7 @@ export class Session {
     this.page = null;
     this.launching = null;
     this.hooked = new WeakSet();
+    this.crashed = new WeakSet();
     this.frameIds = new WeakMap();
     this.frameN = 0;
     this.idN = 0;
@@ -93,6 +197,16 @@ export class Session {
     this.events = [];
     this.pending = new Set();
     this.net = new WeakMap();
+    this.navAt = new WeakMap();
+    // schede aperte da Colibri per conto suo (ricerche, letture di sfondo, ripristino): non sono popup da adottare
+    this.internal = new WeakSet();
+    this.bgBusy = 0;
+    this.bgQueue = [];
+    this.inUse = new Set();
+    // pagine appena lette: testo, coppie etichetta-valore, schede; valgono 10 minuti
+    this.cache = new Map();
+    // valori letti con mode "fields" per l'avviso di incoerenza tra fonti
+    this.facts = [];
     this.dialogAccept = false;
     this.last = null; // { page, url, modal, keys }
     this.PICK_SEL = PICK_SEL;
@@ -101,13 +215,18 @@ export class Session {
 
   // ---------- avvio e gestione browser ----------
   async ensure() {
+    if (this.page && this.crashed.has(this.page)) {
+      this.events.push('la scheda era andata in crash: riaperta sulla stessa pagina');
+      return this.recover();
+    }
     if (this.ctx && this.page && !this.page.isClosed()) return this.page;
     if (this.ctx) {
-      const pages = this.ctx.pages().filter((p) => !p.isClosed());
+      const pages = this.ctx.pages().filter((p) => !p.isClosed() && !this.inUse.has(p));
       this.page = pages[pages.length - 1];
       if (!this.page) {
-        this.page = await this.ctx.newPage();
+        this.page = await within(this.ctx.newPage(), 10000, 'il browser non risponde');
         this.owned.add(this.page);
+        this.internal.add(this.page);
       }
       this.hook(this.page);
       return this.page;
@@ -144,6 +263,7 @@ export class Session {
       else {
         this.page = await this.ctx.newPage();
         this.owned.add(this.page);
+        this.internal.add(this.page);
       }
       this.browser.on('disconnected', () => this.reset());
     } else {
@@ -204,10 +324,99 @@ export class Session {
     this.owned = new Set();
   }
 
+  /**
+   * Scheda bloccata o non piu' collegata ("No frame with given id", renderer fermo): se ne apre una nuova
+   * sulla stessa pagina; se nemmeno il browser risponde ci si ricollega (cdp) o lo si riavvia (launch).
+   */
+  async recover() {
+    const old = this.page;
+    let url = '';
+    try {
+      url = old && !old.isClosed() ? old.url() : '';
+    } catch {}
+    this.last = null;
+    let p = null;
+    if (this.ctx) {
+      try {
+        p = await within(this.ctx.newPage(), 8000);
+        this.internal.add(p);
+        this.owned.add(p);
+        this.hook(p);
+        this.page = p;
+        // la scheda dell'utente (cdp) resta aperta; le altre si chiudono senza aspettarle
+        if (old && old !== p && !old.isClosed() && (this.owned.has(old) || this.cfg.mode !== 'cdp')) within(old.close(), 3000).catch(() => {});
+      } catch {
+        p = null;
+      }
+    }
+    if (!p) {
+      try {
+        if (this.cfg.mode === 'cdp') {
+          if (this.browser) await within(this.browser.close(), 3000);
+        } else if (this.ctx) await within(this.ctx.close(), 5000);
+      } catch {}
+      this.reset();
+      p = await this.ensure();
+    }
+    if (/^https?:/.test(url)) {
+      await within(p.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 }), 16000).catch(() => {});
+      await this.settle(p, 4000, 200).catch(() => {});
+    }
+    return p;
+  }
+
+  /** goto che regge le navigazioni interrotte (pagine che si ricaricano da sole) e le schede scollegate. */
+  async nav(page, url, timeout = 30000) {
+    for (let k = 0; ; k++) {
+      try {
+        const resp = await within(page.goto(url, { waitUntil: 'domcontentloaded', timeout }), timeout + 5000, 'pagina non risponde');
+        return { page, resp };
+      } catch (e) {
+        const m = String((e && e.message) || e);
+        if (k >= 1 || /download is starting/i.test(m)) throw e;
+        if (BROKEN.test(m)) {
+          if (page === this.page) page = await this.recover();
+          else throw e;
+        } else if (/ERR_ABORTED|interrupted by another navigation|frame was detached/i.test(m)) await sleep(600);
+        else throw e;
+      }
+    }
+  }
+
+  /** Scheda di sfondo per ricerche e letture indipendenti: al massimo 3 insieme, la pagina attiva non cambia. */
+  async bgPage() {
+    if (this.bgBusy >= 3) await new Promise((r) => this.bgQueue.push(r));
+    this.bgBusy++;
+    try {
+      await this.ensure();
+      const p = await within(this.ctx.newPage(), 10000, 'il browser non risponde');
+      this.internal.add(p);
+      this.owned.add(p);
+      this.inUse.add(p);
+      this.hook(p);
+      return p;
+    } catch (e) {
+      this.bgDone();
+      throw e;
+    }
+  }
+
+  async bgClose(p) {
+    if (p) this.inUse.delete(p);
+    if (p && !p.isClosed()) await within(p.close(), 3000).catch(() => {});
+    this.bgDone();
+  }
+
+  bgDone() {
+    this.bgBusy = Math.max(0, this.bgBusy - 1);
+    const next = this.bgQueue.shift();
+    if (next) next();
+  }
+
   // schede aperte da un clic: la prima utile diventa attiva; quelle rimaste vuote o su domini di
   // pubblicita'/affiliazione si chiudono (solo se aperte da Colibri)
   async adoptNewPages() {
-    const list = this.newPages.filter((p) => !p.isClosed());
+    const list = this.newPages.filter((p) => !p.isClosed() && !this.internal.has(p));
     this.newPages = [];
     const notes = [];
     let keep = null;
@@ -234,7 +443,7 @@ export class Session {
   // schede di sfondo aperte da Colibri: via le vuote, le doppie, quelle pubblicitarie e oltre le 3 piu' recenti
   async tidyTabs() {
     if (!this.ctx) return '';
-    const bg = this.ctx.pages().filter((p) => !p.isClosed() && p !== this.page && this.owned.has(p));
+    const bg = this.ctx.pages().filter((p) => !p.isClosed() && p !== this.page && this.owned.has(p) && !this.inUse.has(p));
     const seen = new Set([this.page && this.page.url()]);
     let n = 0;
     for (const p of bg) {
@@ -255,6 +464,8 @@ export class Session {
   hook(p) {
     if (this.hooked.has(p)) return;
     this.hooked.add(p);
+    // renderer morto (memoria, crash): ogni evaluate resterebbe appeso, la scheda va riaperta
+    p.on('crash', () => this.crashed.add(p));
     const net = new Map();
     this.net.set(p, net);
     const SKIP = /^(websocket|eventsource|ping|media|manifest|other)$/;
@@ -265,7 +476,10 @@ export class Session {
     p.on('requestfinished', (r) => net.delete(r));
     p.on('requestfailed', (r) => net.delete(r));
     p.on('framenavigated', (f) => {
-      if (f === p.mainFrame()) net.clear();
+      if (f === p.mainFrame()) {
+        net.clear();
+        this.navAt.set(p, Date.now());
+      }
     });
     p.on('dialog', async (d) => {
       const type = d.type();
@@ -350,7 +564,7 @@ export class Session {
       for (let attempt = 0; attempt < 2 && !r; attempt++) {
         try {
           const arg = { prefix: this.framePrefix(f), start: this.idN, json: true, areas: !!o.areas };
-          r = JSON.parse(isMain ? await f.evaluate(P.collectInPage, arg) : await evalIn(f, P.collectInPage, arg, 4000));
+          r = JSON.parse(isMain ? await evalIn(f, P.collectInPage, arg, 15000) : await evalIn(f, P.collectInPage, arg, 4000));
         } catch (e) {
           if (!isMain) break;
           if (attempt) throw e;
@@ -429,7 +643,7 @@ export class Session {
     while (Date.now() - t0 < maxMs) {
       let st;
       try {
-        st = await page.mainFrame().evaluate((spin) => {
+        st = await evalIn(page.mainFrame(), (spin) => {
           let s = 0;
           // indicatori di caricamento visibili (SPA che caricano i risultati dopo la risposta di rete)
           if (spin)
@@ -442,11 +656,11 @@ export class Session {
               break;
             }
           return { m: window.__cbMut ? performance.now() - window.__cbMut : 1e9, r: document.readyState, s };
-        }, maxMs >= 4000);
-      } catch {
-        if (navWaits++ > 3) return;
+        }, maxMs >= 4000, 3000);
+      } catch (e) {
+        if (page.isClosed() || navWaits++ > 3) return;
         try {
-          await page.waitForLoadState('domcontentloaded', { timeout: Math.max(1000, 15000 - (Date.now() - t0)) });
+          await page.waitForLoadState('domcontentloaded', { timeout: Math.max(1000, Math.min(maxMs, 15000) - (Date.now() - t0)) });
         } catch {}
         continue;
       }
@@ -455,7 +669,9 @@ export class Session {
       if (net) for (const t of net.values()) if (now - t < 8000) busy++;
       // uno spinner sempre visibile (decorativo) non deve bloccare oltre 6 s
       const spinning = st.s && now - t0 < 6000;
-      if (now - t0 >= minMs && st.r !== 'loading' && st.m >= quietMs && busy === 0 && !spinning) return true;
+      // pagine che si ricaricano da sole subito dopo il caricamento (controlli anti-bot, redirect JS): si aspetta il documento nuovo
+      const justNav = now - (this.navAt.get(page) || 0) < 350;
+      if (now - t0 >= minMs && st.r !== 'loading' && st.m >= quietMs && busy === 0 && !spinning && !justNav) return true;
       await new Promise((r) => setTimeout(r, 40));
     }
     return false;
@@ -530,11 +746,12 @@ export class Session {
   }
 
   // ---------- tool: open ----------
-  async open(url, { rows, filter } = {}) {
+  async open(url, { rows, filter, search } = {}) {
     let page = await this.ensure();
-    const u = this.checkUrl(url);
+    const u = this.checkUrl(url, { strip: true });
+    let resp = null;
     try {
-      await page.goto(u, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      ({ page, resp } = await this.nav(page, u));
     } catch (e) {
       // link a un file (PDF, CSV...): Chrome lo scarica invece di aprirlo
       if (!/download is starting/i.test(String(e && e.message))) throw e;
@@ -546,10 +763,23 @@ export class Session {
     const g = await this.humanGate(page);
     page = g.page;
     const ck = await this.dismissCookies(page);
-    const snap = await this.collect();
+    let sr = null;
+    if (search && !g.stuck) {
+      sr = await this.siteSearch(page, String(search));
+      page = this.page;
+    }
+    let snap = await this.collect();
+    // pagina ancora vuota (contenuto disegnato tardi, pagina che si ricarica da sola): un'altra breve attesa
+    if (!snap.total && !g.stuck) {
+      await this.settle(page, 5000, 300, 600);
+      snap = await this.collect();
+    }
     this.remember(snap);
     this.stats.observations++;
     let txt = renderView(snap, { url: page.url(), tabs: this.tabs(), max: this.cfg.maxItems, rows, filter });
+    if (sr) txt = (sr.err || sr.note) + '\n' + txt;
+    const status = !sr && resp ? resp.status() : 0;
+    if (status >= 400) txt = this.badStatus(status, page.url(), snap) + '\n' + txt;
     if (ck) txt = `cookie: rifiutati i non necessari (${ck})\n` + txt;
     if (g.note) txt = g.note + '\n' + txt;
     const ev = this.events.splice(0);
@@ -557,61 +787,157 @@ export class Session {
     const pdf = await page.evaluate(() => document.contentType === 'application/pdf').catch(() => false);
     if (pdf) txt = 'documento PDF: testo con browse_read mode "pdf"\n' + txt;
     if (!this.allowedUrl(page.url())) txt = `ATTENZIONE: ${new URL(page.url()).hostname} e' fuori dai domini consentiti, le azioni sono bloccate\n` + txt;
-    const tpl = this.savedFilters(page.url());
+    const tpl = status >= 400 || sr ? '' : this.savedFilters(page.url());
     if (tpl) txt += '\n' + tpl;
     return txt;
   }
 
+  /** Cerca con il campo di ricerca del sito: l'URL dei risultati e' sempre valido (niente indirizzi indovinati). */
+  async siteSearch(page, q) {
+    const SEL = [
+      'input[type=search]', 'input[role=searchbox]', 'input[role=combobox]', 'input[name=q]', 'input[name=query]', 'input[name=search]', 'input[name*=search i]', 'input[name*=keyword i]', 'input[name=libera]', 'input[name=k]', 'input[name=s]',
+      'input[placeholder*=cerc i]', 'input[placeholder*=search i]', 'input[placeholder*=such i]', 'input[placeholder*=recherch i]', 'input[placeholder*=busc i]',
+      'input[aria-label*=cerc i]', 'input[aria-label*=search i]', 'input[aria-label*=such i]', 'input[aria-label*=recherch i]',
+    ].join(',');
+    const visible = async () => {
+      const l = page.locator(SEL);
+      const n = Math.min(await l.count().catch(() => 0), 12);
+      for (let i = 0; i < n; i++) {
+        const x = l.nth(i);
+        if ((await x.isVisible().catch(() => false)) && (await x.isEditable().catch(() => false))) return x;
+      }
+      return null;
+    };
+    let box = await visible();
+    if (!box) {
+      // campo nascosto dietro l'icona della lente
+      const btn = page.locator('button[aria-label*=cerc i],button[aria-label*=search i],a[aria-label*=cerc i],a[aria-label*=search i],[role=button][aria-label*=search i],[role=button][aria-label*=cerc i],button[title*=cerc i],button[title*=search i]').first();
+      if (await btn.isVisible().catch(() => false)) {
+        await btn.click({ timeout: 3000 }).catch(() => {});
+        await this.settle(page, 1500, 150);
+        box = await visible();
+      }
+    }
+    if (!box) return { err: 'nessun campo di ricerca sul sito: usa browse_search con site' };
+    const before = page.url();
+    await box.fill(q, { timeout: 5000 });
+    await box.press('Enter', { timeout: 5000 });
+    await page.waitForURL((x) => String(x) !== before, { timeout: 8000, waitUntil: 'commit' }).catch(() => {});
+    await this.settle(page, 8000, 300, 500);
+    const after = page.url();
+    if (after === before) return { note: `cercato "${q}" con il campo del sito (stesso URL: risultati nella pagina)` };
+    const saved = this.rememberSearch(after, q);
+    return { note: `cercato "${q}" con il campo del sito${saved ? '; ' + saved : ''}` };
+  }
+
+  /** URL dei risultati con {q} al posto del testo cercato: la prossima volta si apre direttamente. */
+  rememberSearch(url, q) {
+    let b;
+    try {
+      b = new URL(url);
+    } catch {
+      return '';
+    }
+    const fq = fold(q);
+    const key = [...b.searchParams.keys()].find((k) => fold(b.searchParams.get(k)) === fq);
+    if (!key) return '';
+    if ([...b.searchParams.keys()].some((k) => /^(.*[_-])?(token|session|sessionid|sid|auth|apikey|password|otp|signature|sig|nonce)$/i.test(k))) return '';
+    b.hash = '';
+    b.searchParams.set(key, '{q}');
+    const tpl = b.href.replace(/%7Bq%7D/i, '{q}');
+    const m = this.loadFilters();
+    m[b.host] = [{ url: tpl, via: 'ricerca del sito' }, ...(m[b.host] || []).filter((x) => x.url !== tpl)].slice(0, 5);
+    try {
+      fs.mkdirSync(path.dirname(this.filtersFile()), { recursive: true });
+      fs.writeFileSync(this.filtersFile(), JSON.stringify(m, null, 1));
+    } catch {
+      return '';
+    }
+    return `modello di ricerca salvato: ${tpl}`;
+  }
+
+  /** Errore HTTP: si dice subito che l'URL non e' buono e come arrivare ai risultati veri. */
+  badStatus(status, url, snap) {
+    let host = '';
+    let origin = '';
+    try {
+      ({ host, origin } = new URL(url));
+    } catch {}
+    const what =
+      status === 404 || status === 410 ? 'pagina inesistente (URL indovinato o scaduto)' : status === 400 ? "richiesta non valida (parametri dell'URL sbagliati)" : status === 403 || status === 429 ? 'accesso rifiutato dal sito' : 'errore del sito';
+    if (status >= 500 || status === 403 || status === 429) return `HTTP ${status}: ${what}`;
+    const tpl = (this.loadFilters()[host] || []).find((x) => x.url.includes('{q}'));
+    const box = snap.items.find((i) => /^(text|combo)$/.test(i.role) && /cerc|search|such|recherch|busc|cosa/i.test(i.name || ''));
+    const how = tpl ? `modello di ricerca di ${host}: ${tpl.url}` : `cerca dal sito: browse_open {url:"${origin}", search:"testo"}${box ? ` o il campo ${box.id}` : ''}`;
+    return `HTTP ${status}: ${what}. ${how}`;
+  }
+
   // ---------- tool: search ----------
-  async search({ query, max = 8 }) {
+  // in una scheda propria: la pagina attiva resta com'e' e piu' ricerche possono girare insieme
+  async search({ query, max = 8, site }) {
     const q = String(query || '').trim();
     if (!q) throw new Error('serve "query"');
+    const dom = String(site || '').trim().replace(/^https?:\/\//i, '').replace(/[/?#].*$/, '');
+    const full = dom ? `${q} site:${dom}` : q;
     const urls = [];
     let denied = null;
     for (const s of this.cfg.searchUrls) {
       try {
-        urls.push(this.checkUrl((s.includes('{q}') ? s : s + '{q}').replace('{q}', encodeURIComponent(q))));
+        urls.push(this.checkUrl((s.includes('{q}') ? s : s + '{q}').replace('{q}', encodeURIComponent(full))));
       } catch (e) {
         denied = denied || e;
       }
     }
     if (!urls.length) throw denied;
-    let page = await this.ensure();
+    let page = await this.bgPage();
+    let keep = false;
     const n = Math.min(Math.max(1, max), 20);
     const notes = [];
     let rows = [];
-    for (const [k, u] of urls.entries()) {
-      await page.goto(u, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      await this.settle(page, 6000, 200, 200);
-      const host = new URL(u).hostname.replace(/^(www|html)\./, '');
-      const last = k === urls.length - 1;
-      const ch = await this.challenge(page);
-      if (ch && ch.block && !last) {
-        // un altro motore costa meno di una verifica da far risolvere all'utente
-        notes.push(`${host} chiede una verifica ${ch.kind}: uso il motore successivo`);
-        continue;
+    try {
+      for (const [k, u] of urls.entries()) {
+        ({ page } = await this.nav(page, u));
+        await this.settle(page, 6000, 200, 200);
+        const host = new URL(u).hostname.replace(/^(www|html)\./, '');
+        const last = k === urls.length - 1;
+        const ch = await this.challenge(page);
+        if (ch && ch.block && !last) {
+          // un altro motore costa meno di una verifica da far risolvere all'utente
+          notes.push(`${host} chiede una verifica ${ch.kind}: uso il motore successivo`);
+          continue;
+        }
+        if (last) {
+          const g = await this.humanGate(page);
+          page = g.page;
+          if (g.note) notes.push(g.note);
+          if (g.stuck) keep = true;
+        }
+        rows = await page.evaluate(P.searchResultsInPage, { max: n }).catch(() => []);
+        if (rows.length || last) {
+          if (k) notes.push(`risultati da ${host}`);
+          break;
+        }
+        notes.push(`${host}: nessun risultato leggibile, uso il motore successivo`);
       }
-      if (last) {
-        const g = await this.humanGate(page);
-        page = g.page;
-        if (g.note) notes.push(g.note);
-      }
-      rows = await page.evaluate(P.searchResultsInPage, { max: n }).catch(() => []);
-      if (rows.length || last) {
-        if (k) notes.push(`risultati da ${host}`);
-        break;
-      }
-      notes.push(`${host}: nessun risultato leggibile, uso il motore successivo`);
+      if (!rows.length) keep = true;
+    } finally {
+      if (keep && !page.isClosed()) {
+        // niente risultati leggibili o verifica da completare: la pagina diventa quella attiva, da guardare con browse_view
+        this.inUse.delete(page);
+        this.bgDone();
+        this.page = page;
+        this.last = null;
+        await within(page.bringToFront(), 3000).catch(() => {});
+      } else await this.bgClose(page);
     }
-    this.remember(await this.collect());
     this.stats.observations++;
     const short = (s) => s.replace(/^https:\/\//, '');
-    const head = (notes.length ? notes.join('; ') + '\n' : '') + `ricerca "${q}": ${rows.length} risultati`;
+    const head = (notes.length ? notes.join('; ') + '\n' : '') + `ricerca "${full}": ${rows.length} risultati`;
     if (!rows.length) return head + ' (pagina aperta: browse_view per vederla)';
     return head + '\n' + rows.map((r, i) => `${i + 1}. ${r.title} | ${short(r.url)}${r.snip ? ' | ' + r.snip : ''}`).join('\n');
   }
 
-  checkUrl(url) {
+  checkUrl(url, { strip = false } = {}) {
     let u;
     try {
       u = new URL(/^[a-z][a-z0-9+.-]*:/i.test(url) ? url : 'https://' + url);
@@ -620,6 +946,25 @@ export class Session {
     }
     if (!/^https?:$/.test(u.protocol)) throw new Error(`schema ${u.protocol} non consentito (solo http/https)`);
     if (!this.allowedUrl(u.href)) throw new Error(`${u.hostname} non e' tra i domini consentiti (${this.cfg.allowed.join(', ')})`);
+    if (strip && this.cfg.stripTracking && u.search) {
+      const gone = [];
+      const keep = u.search
+        .slice(1)
+        .split('&')
+        .filter((kv) => {
+          let k = kv.split('=')[0];
+          try {
+            k = decodeURIComponent(k);
+          } catch {}
+          if (!TRACK_PARAM.test(k)) return true;
+          if (!gone.includes(k)) gone.push(k);
+          return false;
+        });
+      if (gone.length) {
+        u.search = keep.length ? '?' + keep.join('&') : '';
+        this.events.push(`tolti i parametri di tracciamento: ${gone.join(', ')}`);
+      }
+    }
     return u.href;
   }
 
@@ -677,6 +1022,15 @@ export class Session {
     const inline = el !== undefined;
     let ch = await this.challenge(page);
     if (!ch || ch.err) return { page, note: '' };
+    if (ch.hard) {
+      if (inline) return { page, note: '' };
+      // un blocco non si supera aspettando: si dice subito cosa fare
+      const how =
+        this.cfg.mode === 'launch'
+          ? "riprova in modalita' Chrome reale (CB_MODE=cdp: il tuo Chrome normale, non segnato come automatizzato)"
+          : 'il blocco riguarda la connessione o il profilo: usa un\'altra fonte (browse_search) o riprova piu\' tardi';
+      return { page, stuck: true, note: `il sito ${hostOf(page.url())} ha bloccato il browser (non e' una verifica da risolvere): ${how}` };
+    }
     if (inline) {
       if (ch.block || ch.solved) return { page, note: '' };
       const inForm = await (el ? el.evaluate(P.captchaFormInPage) : page.mainFrame().evaluate(P.captchaFormInPage, null)).catch(() => false);
@@ -835,6 +1189,10 @@ export class Session {
         this.stats.actions++;
       } catch (e) {
         stop = `${tag} (${act}): errore: ${firstLine(e)}`;
+        if (BROKEN.test(String((e && e.message) || e))) {
+          await this.recover().catch(() => {});
+          stop += ' (scheda bloccata: riaperta sulla stessa pagina, ripeti il passo)';
+        }
         break;
       }
       if (this.newPages.length) for (const n of await this.adoptNewPages()) notes.push(`${tag}: ${n}`);
@@ -874,7 +1232,7 @@ export class Session {
 
     let body = '';
     if (view !== 'none') {
-      const navigated = page.url() !== startUrl || this.last.page !== page;
+      const navigated = page.url() !== startUrl || !this.last || this.last.page !== page;
       const modalChanged = after.modal !== startModal;
       const cover = view === 'diff' ? readCover(readText) : null;
       if (view === 'diff' && !navigated && !modalChanged) {
@@ -1179,8 +1537,8 @@ export class Session {
         return;
       }
       case 'goto': {
-        const u = this.checkUrl(String(st.goto));
-        await page.goto(u, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        const u = this.checkUrl(String(st.goto), { strip: true });
+        ({ page } = await this.nav(page, u));
         await after(8000, 300);
         const ck = await this.dismissCookies(page);
         if (ck) return { note: `cookie rifiutati (${ck})` };
@@ -1191,19 +1549,26 @@ export class Session {
         await after(4000, 200);
         return;
       case 'tab': {
-        const pages = this.ctx.pages().filter((p) => !p.isClosed());
+        const pages = this.ctx.pages().filter((p) => !p.isClosed() && !this.inUse.has(p));
         if (st.tab === 'close') {
           if (pages.length < 2) throw new Error("e' l'unica scheda aperta");
-          await page.close();
-          this.page = this.ctx.pages().filter((p) => !p.isClosed()).pop();
+          await within(page.close(), 5000).catch(() => {});
+          this.page = this.ctx.pages().filter((p) => !p.isClosed() && !this.inUse.has(p)).pop();
         } else if (st.tab === 'list') {
-          return { note: 'schede: ' + pages.map((p, k) => `${k + 1}${p === page ? '*' : ''} ${p.url()}`).join(' | ') };
+          const url = (p) => {
+            try {
+              return p.url();
+            } catch {
+              return '?';
+            }
+          };
+          return { note: 'schede: ' + pages.map((p, k) => `${k + 1}${p === page ? '*' : ''} ${url(p)}`).join(' | ') };
         } else {
           const p = pages[Number(st.tab) - 1];
           if (!p) throw new Error(`scheda ${st.tab} inesistente (aperte: ${pages.length})`);
           this.page = p;
         }
-        await this.page.bringToFront().catch(() => {});
+        await within(this.page.bringToFront(), 3000).catch(() => {});
         return;
       }
       case 'upload': {
@@ -1253,10 +1618,10 @@ export class Session {
       }
       case 'read': {
         const ref = typeof st.target === 'string' ? st.target : undefined;
-        const mode = ['table', 'cards'].includes(st.read) ? st.read : 'text';
-        const t = await this.read({ mode, ref, max: st.max, links: st.links });
+        const mode = ['table', 'cards', 'fields'].includes(st.read) ? st.read : 'text';
+        const t = await this.read({ mode, ref, max: st.max, links: st.links, query: st.query, sort: st.sort, filter: st.filter, maxPrice: st.maxPrice });
         this.stats.observations--;
-        return { note: `${{ table: 'tabella', cards: 'schede', text: 'testo' }[mode]}:\n${t}` };
+        return { note: `${{ table: 'tabella', cards: 'schede', text: 'testo', fields: 'campi' }[mode]}:\n${t}` };
       }
       case 'dialog': {
         if (st.dialog === 'accept') {
@@ -1313,7 +1678,9 @@ export class Session {
   }
 
   // ---------- tool: read ----------
-  async read({ mode = 'text', ref, selector, query, offset = 0, max, links }) {
+  async read(o = {}) {
+    const { mode = 'text', ref, selector, query, offset = 0, max, links, sort, filter, maxPrice, url } = o;
+    if (url && mode !== 'pdf') return this.readUrl(o);
     const page = await this.ensure();
     this.stats.observations++;
     let frame = page.mainFrame();
@@ -1341,10 +1708,31 @@ export class Session {
     }
     if (mode === 'cards') {
       if (!ref) await this.collect();
-      const r = await frame.evaluate(P.readCardsInPage, { ref, selector, offset, max: max || 20, links: !!links });
+      const once = async () => {
+        await evalIn(frame, P.priceHelperInPage, undefined, 3000).catch(() => {});
+        return evalIn(frame, P.readCardsInPage, { ref, selector, links: !!links }, 15000);
+      };
+      let r = await once();
+      if (r.err && !selector) {
+        // elenchi caricati dopo (pagine di categoria che si ricaricano o completano la griglia): si riprova una volta
+        await this.settle(page, 5000, 300);
+        if (!ref) await this.collect();
+        r = await once();
+        if (r.err) {
+          const ch = await this.challenge(page);
+          if (ch && ch.block) throw new Error(`${r.err} (la pagina mostra ${ch.hard ? 'un blocco del sito' : 'una verifica ' + ch.kind}: browse_view)`);
+        }
+      }
       if (r.err) throw new Error(r.err);
-      const more = r.total - offset - r.rows.length;
-      return `schede ${offset + 1}-${offset + r.rows.length} di ${r.total} (${r.sel})\n` + (r.common && r.common.length ? `in tutte: ${r.common.join(' · ')}\n` : '') + r.rows.join('\n') + (more > 0 ? `\n… altre ${more} (offset:${offset + r.rows.length})` : '');
+      return cardsOut(r, { offset, max: max || 20, sort, filter, maxPrice });
+    }
+    if (mode === 'fields') {
+      if (!query) throw new Error('serve "query": chiavi separate da virgola (es. "classe energetica, dimensioni, colore, prezzo")');
+      await evalIn(frame, P.priceHelperInPage, undefined, 3000).catch(() => {});
+      const d = await evalIn(frame, P.specPairsInPage, undefined, 10000);
+      const u = page.url();
+      this.cacheSet(u, 'spec', d);
+      return this.fieldsOut(d, query, u);
     }
     if (mode === 'find') {
       if (!query) throw new Error('serve "query"');
@@ -1382,6 +1770,131 @@ export class Session {
     const more = r.total - offset - r.text.length;
     const cut = r.cut > 200 && !offset ? `[solo contenuto principale: esclusi ${r.cut} caratteri di menu e link; selector:"body" per tutto]\n` : '';
     return cut + r.text + (more > 0 ? `\n… altri ${more} caratteri (offset:${offset + r.text.length})` : '');
+  }
+
+  cacheSet(url, kind, v) {
+    const k = String(url).replace(/#.*$/, '');
+    const e = this.cache.get(k) || {};
+    e[kind] = { at: Date.now(), v };
+    this.cache.delete(k);
+    this.cache.set(k, e);
+    while (this.cache.size > 30) this.cache.delete(this.cache.keys().next().value);
+  }
+
+  cacheGet(url, kind, ttl = 600000) {
+    const e = this.cache.get(String(url).replace(/#.*$/, ''));
+    const x = e && e[kind];
+    return x && Date.now() - x.at < ttl ? x.v : null;
+  }
+
+  /** Lo stesso modello letto su siti diversi con valori diversi: avviso, l'utente decide quale fonte vale. */
+  fact(title, url, key, v) {
+    const toks = modelTokens(title);
+    const fk = fold(key).trim();
+    if (!toks.length || PRICE_KEY.test(fk)) return '';
+    const fv = fold(v).replace(/\s+/g, '');
+    const host = hostOf(url);
+    let w = '';
+    for (const f of this.facts) {
+      if (w || f.host === host || f.key !== fk || f.v === fv || !f.toks.some((t) => toks.includes(t))) continue;
+      w = `⚠ ${key}: "${v}" qui, "${f.raw}" su ${f.host} (stesso modello): verifica la fonte`;
+    }
+    this.facts = this.facts.filter((f) => !(f.url === url && f.key === fk));
+    this.facts.push({ url, host, key: fk, v: fv, raw: v, toks });
+    if (this.facts.length > 300) this.facts.shift();
+    return w;
+  }
+
+  fieldsOut(d, query, url) {
+    const keys = String(query).split(/[,;|]/).map((s) => s.trim()).filter(Boolean).slice(0, 20);
+    const out = [];
+    const warn = [];
+    for (const key of keys) {
+      const v = fieldOf(d, key);
+      out.push(`${key}: ${v === null ? 'non trovato' : v}`);
+      if (v !== null) {
+        const w = this.fact(d.title, url, key, v);
+        if (w) warn.push(w);
+      }
+    }
+    const miss = out.filter((l) => l.endsWith(': non trovato')).length;
+    return (
+      (d.title ? d.title + '\n' : '') +
+      out.join('\n') +
+      (warn.length ? '\n' + warn.join('\n') : '') +
+      (miss && miss === keys.length ? `\n(nessuna chiave trovata tra ${d.pairs.length} coppie: prova mode "find" con una parola)` : '')
+    );
+  }
+
+  /**
+   * Lettura di un altro URL in una scheda di sfondo (o dalla cache se letto da meno di 10 minuti):
+   * la pagina attiva non cambia e piu' letture possono andare insieme.
+   */
+  async readUrl({ url, mode = 'text', query, offset = 0, max, sort, filter, maxPrice, fresh }) {
+    const u = this.checkUrl(String(url), { strip: true });
+    if (!['text', 'find', 'fields', 'cards', 'table'].includes(mode)) throw new Error('con "url": mode text, find, fields, cards o table');
+    if (mode === 'fields' && !query) throw new Error('serve "query": chiavi separate da virgola');
+    if (mode === 'find' && !query) throw new Error('serve "query"');
+    const kind = { fields: 'spec', cards: 'cards', table: 'table' }[mode] || 'text';
+    let c = fresh ? null : this.cacheGet(u, kind);
+    const cached = !!c;
+    if (!c) {
+      let page = await this.bgPage();
+      try {
+        let resp;
+        ({ page, resp } = await this.nav(page, u));
+        await this.settle(page, 6000, 200, 200);
+        const ch = await this.challenge(page);
+        if (ch && ch.block)
+          throw new Error(ch.hard ? `il sito ${hostOf(u)} ha bloccato il browser: usa un'altra fonte` : `${hostOf(u)} chiede una verifica (${ch.kind}): aprila con browse_open per risolverla`);
+        const st = resp ? resp.status() : 0;
+        if (st >= 400) throw new Error(`HTTP ${st}: pagina inesistente o non accessibile (${u})`);
+        const f = page.mainFrame();
+        await evalIn(f, P.priceHelperInPage, undefined, 3000).catch(() => {});
+        if (kind === 'spec') c = await evalIn(f, P.specPairsInPage, undefined, 10000);
+        else if (kind === 'cards') {
+          c = await evalIn(f, P.readCardsInPage, { links: true }, 15000);
+          if (c.err) {
+            await this.settle(page, 5000, 300);
+            await evalIn(f, P.priceHelperInPage, undefined, 3000).catch(() => {});
+            c = await evalIn(f, P.readCardsInPage, { links: true }, 15000);
+          }
+          if (c.err) throw new Error(c.err);
+          c.items = c.items.map((it) => ({ ...it, row: noRefs(it.row) }));
+        } else if (kind === 'table') {
+          c = await evalIn(f, P.readTableInPage, { offset: 0, maxRows: 400 }, 10000);
+          if (c.err) throw new Error(c.err);
+        } else c = await evalIn(f, P.readTextInPage, { offset: 0, maxChars: 80000 }, 10000);
+        this.cacheSet(u, kind, c);
+      } finally {
+        await this.bgClose(page);
+      }
+    }
+    this.stats.observations++;
+    const head = `${u.replace(/^https?:\/\/(www\.)?/, '')}${cached ? ' (dalla cache)' : ''}\n`;
+    if (kind === 'spec') return head + this.fieldsOut(c, query, u);
+    if (kind === 'cards') return head + cardsOut(c, { offset, max: max || 20, sort, filter, maxPrice });
+    if (kind === 'table') {
+      const lim = max || 40;
+      const rows = c.rows.slice(offset, offset + lim);
+      const more = c.rows.length - offset - rows.length;
+      return head + `righe ${offset + 1}-${offset + rows.length} di ${c.rows.length}\n` + rows.join('\n') + (more > 0 ? `\n… altre ${more} (offset:${offset + rows.length})` : '');
+    }
+    if (mode === 'find') {
+      const q = fold(query).trim();
+      const n = max || 20;
+      const hits = c.text
+        .split('\n')
+        .map((l) => l.trim())
+        .filter((l) => l && fold(l).includes(q))
+        .slice(0, n)
+        .map((l) => (l.length > 200 ? l.slice(0, 199) + '…' : l));
+      return head + (hits.length ? hits.join('\n') : `nessuna riga contiene "${query}"`);
+    }
+    const lim = max || 3000;
+    const t = c.text.slice(offset, offset + lim);
+    const more = c.text.length - offset - t.length;
+    return head + t + (more > 0 ? `\n… altri ${more} caratteri (offset:${offset + t.length})` : '');
   }
 
   // ---------- tool: screenshot ----------

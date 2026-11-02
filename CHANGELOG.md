@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.5.9
+
+Shopping and comparison sites (Trovaprezzi, idealo, Unieuro, Amazon) and robustness after long sessions. Live check in real-Chrome mode: idealo category with 36 cards, sorted by total price in 0.6 s; `filter:"samsung"` + `maxPrice:500` gives 4 cards in 87 ms; a product page's fields are read in a background tab in 6.7 s and then come from the cache in 2 ms.
+
+**Reliability**
+- **Browser that hangs**: every tool has a timeout (45–180 s, longer when a human verification is pending), so a call no longer stays stuck for minutes. On `No frame with given id`, `Target closed`, a crashed renderer or a timeout, Colibri reopens the tab on the same URL. Reads, opens and searches are retried once by themselves; actions return "tab restored: repeat the step".
+- **Cards on category pages**: when no group of similar siblings is found, cards fall back to repeated elements with a link spread over different containers, and grid rows that hold several products are split into single products.
+- **Wrong URLs flagged**: `browse_open` reports HTTP 404/400/410 ("the URL doesn't exist: use `search`"). `browse_open {url, search:"..."}` opens the site and uses its own search box; when the result URL has the query in a parameter, it is saved as the site's search template for next time. Pages that reload themselves right after loading no longer give errors.
+- **Hard blocks** (Access Denied, 403 pages of anti-bot services) are reported at once, with the suggestion to use real-Chrome mode, instead of waiting for a verification that will never appear. Nothing is bypassed.
+
+**Fewer tokens on listings**
+- **Total price**: cards show `tot 388,99€ (sped 19,99€)` when shipping is paid. Reference prices go to a separate field `rif 599€ consigliato -25%`, with `⚠ sconto non plausibile` above 50% and "(not a sale price)" for list/recommended prices. Conditional discounts ("10% extra in cart", coupons, with subscription) go to `cond:"…" non confermato` and are not applied to the price. Savings amounts ("Risparmi 9,87 € (-17%)") are not taken for prices.
+- **Sort and filter while reading**: `read:"cards"` accepts `sort:"price"|"-price"` (total price), `filter:"nero -ricondizionato"` (words, `-` excludes) and `maxPrice`. Only matching cards are returned.
+- **Only the fields you ask for**: `browse_read {mode:"fields", query:"prezzo, classe energetica, dimensioni"}` returns one line per key from spec tables, `dt/dd` and "Label: value" lines; `dimensioni` is composed from width/height/depth.
+- **Cache**: pages read in the last 10 minutes are served from memory ("(dalla cache)"); `fresh:true` reloads.
+- **Parallel reads**: `browse_read {url}` and `browse_search` run in separate background tabs (up to 3) without touching the active tab, so several of them can run together. `browse_search` also accepts `site`.
+- **Coherence warnings**: when the same model shows a different value for the same field on another site, the line adds `⚠ … su altro-sito (stesso modello): verifica la fonte`.
+
+**Privacy**
+- `utm_*`, `gclid`, `gbraid`, `wbraid`, `fbclid`, `msclkid` and similar are removed from URLs opened by Colibri (`CB_STRIP_TRACKING=false` or the "Togli i parametri di tracciamento" option to keep them).
+
+Tests: `test/v059.mjs` (39) and full suite green.
+
+**IT** — Siti di confronto prezzi e robustezza nelle sessioni lunghe.
+- Ogni strumento ha un timeout. Se il frame si perde o la scheda va in crash, Colibri la riapre sulla stessa pagina e ripete da solo letture, aperture e ricerche.
+- `read:"cards"` funziona anche sulle pagine di categoria (griglie di prodotti, liste senza gruppi di fratelli).
+- Gli URL che danno 404 o 400 vengono segnalati. `browse_open {search}` usa la ricerca del sito e ne ricorda il modello.
+- Le schede mostrano il prezzo totale con la spedizione, il prezzo di riferimento separato (con avviso se lo sconto non è plausibile) e gli sconti condizionati come "non confermato".
+- `read:"cards"` accetta `sort`, `filter` e `maxPrice`.
+- `read:"fields"` estrae solo i campi chiesti.
+- Le pagine viste negli ultimi 10 minuti arrivano dalla cache.
+- Letture con `url` e ricerche girano in schede in background, in parallelo.
+- Avviso quando due siti danno valori diversi per lo stesso modello.
+- Vengono tolti i parametri di tracciamento (utm, gclid, gbraid...).
+
 ## 0.5.8
 
 Fewer calls and tokens on real sites (Vinted, Amazon, Wikipedia, hotel calendars, checkout pages). On the same scenarios reproduced locally (`npm run bench:pages`), 0.5.7 needed 17 calls and ~2500 tokens, 0.5.8 needs 8 calls and ~690 tokens (-72%).

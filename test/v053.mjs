@@ -49,7 +49,7 @@ ok(r.text.length < 520, `search: risposta compatta (${r.text.length} caratteri p
 r = await c.call('browse_search', { query: 'treni', max: 1 });
 ok(r.text.split('\n').length === 2, 'search: max limita i risultati', r.text);
 r = await c.call('browse_view', {});
-ok(has(r.text, 'Search'), 'search: la pagina dei risultati resta aperta per browse_do / browse_view', r.text.slice(0, 300));
+ok(!has(r.text, 'Search'), 'search: la ricerca gira in una scheda di sfondo, la pagina attiva non cambia', r.text.slice(0, 300));
 await c.close();
 
 const cb = await connect({ CB_PROFILE_DIR: prof('prof-v053b'), CB_HUMAN_WAIT: '0', CB_SEARCH_URL: base + '/search-bing.html?q=' });
