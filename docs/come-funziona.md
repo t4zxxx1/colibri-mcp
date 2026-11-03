@@ -41,7 +41,7 @@ Tutto gira sul tuo PC: Node.js (già incluso in Claude Desktop) comanda Chrome t
 |---|---|
 | `browse_open` | Apre un URL, rifiuta i cookie non necessari e restituisce la tabella degli elementi. |
 | `browse_view` | Tabella della pagina attuale. `filter` per cercare un testo, `scope: "all"` per includere menu, intestazioni e piè di pagina, `offset` per la pagina successiva. |
-| `browse_do` | Esegue **fino a 40 passi in una chiamata** e restituisce solo le variazioni. È il tool principale. |
+| `browse_do` | Esegue **fino a 40 passi in una chiamata** e restituisce solo le variazioni. È il tool principale. Con `script` esegue in locale un corpo JS dopo i passi (vedi sotto). |
 | `browse_read` | Legge senza agire: `text` (paginato), `table`, `find` (righe che contengono un testo), `describe` (dettaglio e posizione di un elemento). |
 | `browse_task` | Compito guidato: Claude passa i dati con le etichette dell'utente e il motore locale decide campi, menu, autocompletamenti e date. |
 | `browse_screenshot` | Immagine ridotta (~900 token) solo quando il testo non basta (grafici, canvas, layout). `labels: true` disegna i riferimenti sopra gli elementi. |
@@ -90,7 +90,7 @@ Un passo = un verbo. I bersagli sono riferimenti (`e12`), testi del nome, oppure
 
 ### Come aspetta la pagina
 
-Dopo ogni azione il server aspetta che la pagina sia **stabile**: documento caricato, DOM fermo da un breve intervallo, nessuna richiesta di rete in corso (escluse quelle aperte da oltre 4 secondi) e un tempo minimo per intercettare le navigazioni ritardate. I tempi sono limitati: i campi di autocompletamento aspettano al massimo qualche secondo, le altre azioni meno. Così Claude non deve aggiungere attese a mano.
+Dopo ogni azione il server aspetta che la pagina sia **stabile**: documento caricato, DOM fermo da un breve intervallo, nessuna richiesta di rete in corso (escluse quelle aperte da oltre 8 secondi e quelle di analytics), **60 ms di quiete dopo l'ultima richiesta avviata o conclusa durante l'attesa** (nelle SPA la risposta arriva e il DOM si aggiorna un attimo dopo) e un tempo minimo per intercettare le navigazioni ritardate. I tempi sono limitati: i campi di autocompletamento aspettano al massimo qualche secondo, le altre azioni meno. Così Claude non deve aggiungere attese a mano.
 
 ### Come risponde
 
@@ -103,6 +103,23 @@ Dopo i passi il server non rilegge la pagina intera, ma riporta:
 - le note di `find`/`read` richieste in coda.
 
 Se la pagina cambia (navigazione o finestra), restituisce la vista completa nuova.
+
+### Script locale (`script` e `CB_CODE_MODE`)
+
+`browse_do` accetta `script`: il corpo di una funzione asincrona che gira **dopo i passi** in `extension/server/codemode.js`. Lo script vede solo l'oggetto `colibri`:
+
+| API | Cosa fa |
+|---|---|
+| `colibri.open/search/view/read/do/task(args)` | stesse funzioni e stessi controlli dei tool `browse_*` (validazione zod compresa); risultato in righe di testo |
+| `colibri.rows` | righe della pagina dopo i passi (o della vista attuale se `steps` è vuoto) |
+| `colibri.text(a)`, `colibri.tables(a)` | testo principale e tabelle come `string[][]` |
+| `colibri.stats()` | consumo della sessione |
+
+Al modello torna solo l'esito dei passi (prima riga e note) e il valore restituito dallo script, troncato a ~6.000 token con `--- TRUNCATED ---`.
+
+Isolamento: contesto `node:vm` con prototipo nullo e `codeGeneration: { strings: false, wasm: false }`, dentro un `worker_thread` con memoria limitata, chiuso allo scadere dei 60 s (anche con cicli infiniti o promesse appese); al massimo 60 chiamate. Nessun oggetto dell'host entra nel contesto: l'API è costruita dentro la sandbox e parla con il server solo con stringhe JSON, quindi `this.constructor.constructor`, gli errori e le promesse non portano a `process`. Il `confirm` scritto dallo script viene tolto: vale solo quello della chiamata MCP.
+
+Con `CB_CODE_MODE=1` il server espone un solo tool, `browse_code {code, confirm?}`, con le firme compatte degli altri nella descrizione: le definizioni passano da circa 1.800 a circa 380 token per turno.
 
 ## 6. Compiti guidati (`browse_task`)
 
@@ -143,6 +160,7 @@ Dopo una domanda sugli autocompletamenti il popup viene chiuso, così gli altri 
 - **Radio**: sceglie l'opzione dal valore.
 - **Più lingue**: riconosce invio, conferme, consensi, password, carte e banner dei cookie in italiano, inglese, francese, spagnolo, tedesco, portoghese.
 - **Memoria per sito**: le risposte date restano in `site-memory.json` accanto al profilo.
+- **Sezioni**: ogni campo porta il contesto della sezione (`<legend>` del fieldset, gruppo con `aria-labelledby`/`aria-label`, oppure il titolo h1-h4 che lo precede se la pagina ha più sezioni), anche risalendo fuori dallo Shadow DOM. Tra campi omonimi ("Indirizzo" sotto "Sede legale" e sotto "Sede operativa") le parole della sezione che solo un campo ha decidono: `"indirizzo sede operativa"` va al secondo. Se la richiesta non nomina la sezione il motore chiede e mostra la sezione accanto ai candidati: `e14 "Indirizzo" [Sede legale] 39% · e16 "Indirizzo" [Sede operativa / Spedizione] 17%`.
 
 ## 7. Sicurezza
 

@@ -98,6 +98,26 @@ Risultati completi: [calibration-results.json](calibration-results.json).
 - **Vocabolario**: concetti generici in 6 lingue per orari, luoghi, docenti, argomenti, motivi, importi, uffici, partenza e rientro, distanze, giustificativi, conferme; "cognome e nome" come nome completo; "orario" = "ora".
 - **Cache** delle somiglianze e dei concetti; le note "abbinato al 9x%" compaiono solo per abbinamenti non ovvi.
 
+### Trigrammi e contesto di sezione (dopo la 0.5.11)
+
+- **Trigrammi di caratteri** (`trigramDice` in `engine.js`, Dice sui 3-grammi delle parole con bordo, ~25 righe, < 0,5 ms a confronto): affiancano bigrammi, parole e concetti per refusi e abbreviazioni fuori dal dizionario. Sono prudenti: si calcolano solo se possono alzare il punteggio, contano solo sopra 0,5 e, senza parole in comune, da soli non superano 0,5 di somiglianza: un refuso porta il candidato giusto in testa alla domanda invece di farlo compilare alla cieca. Peso e soglia (0,5 / 0,5) scelti con `VERIFY5=1 npm run calibrate` provando 4 combinazioni; una variante più aggressiva (trigrammi uniti ai bigrammi) dava ECE complessivo 5,3% ma AUROC 0,94 e Test 1 peggiore, ed è stata scartata.
+- **Contesto di sezione**: legend del fieldset, gruppo `aria-labelledby`/`aria-label`, oppure titolo h1-h4 precedente (solo con più sezioni), anche fuori dallo Shadow DOM. Tra campi **omonimi** le parole della sezione che solo uno di loro ha valgono fino a +4 di logit, ma solo se la richiesta le nomina; sugli insiemi di calibrazione (nessun campo omonimo in sezioni diverse) non cambia nulla, il caso è coperto da `test/local-opt.mjs`.
+- **Domande**: se due candidati hanno lo stesso nome compare la sezione: `e14 "Indirizzo" [Sede legale] 39% · e16 "Indirizzo" [Sede operativa / Spedizione] 17%`.
+
+Misure (`npm run calibrate` e `VERIFY5=1 npm run calibrate`, prima → dopo, stessa macchina):
+
+| Insieme | Accuratezza | ECE | Azioni autonome sbagliate |
+|---|---|---|---|
+| Addestramento | 100% → 100% | 0,052 → 0,051 | 0 → 0 |
+| Test 1 | 100% → 100% | 0,077 → 0,077 | 0 → 0 |
+| Test 2 | 97,6% → 97,6% | 0,071 → 0,071 | 0 → 0 |
+| Test 3 | 100% → 100% | 0,052 → 0,051 | 0 → 0 |
+| Test 4 | 97,1% → 97,1% | 0,056 → 0,044 | 0 → 0 |
+| Test 5 | 87,9% → 87,9% | 0,046 → 0,042 | 0 → 0 |
+| Tutti (419) | 98,6% → 98,6% | 5,9% → 5,8% | AUROC 0,95 → 0,95 |
+
+Latenza per parametro a cache vuota: p50 2,43 → 2,09 ms, p95 11,25 → 11,48 ms (419 casi; tra un'esecuzione e l'altra p50 varia tra 2,1 e 2,6 ms). Senza Test 5 (386 casi): ECE 6,2% → 6,1%, AUROC 0,94 → 0,94. Compito intero: compilati da solo e sbagliati invariati su tutti gli insiemi (0 sbagliati, 0 parametri "senza campo" compilati).
+
 ### Come leggere questi numeri
 
 - **I miglioramenti su Test 3 e Test 4 non sono indipendenti**: il vocabolario nuovo e l'esclusività sono nati guardando i loro errori. Il numero onesto è il **Test 5**, scritto dopo le modifiche al motore e prima di guardare i suoi errori: 75,8% → 87,9%. I 4 errori rimasti sono tutti "nessuno" (es. "referente" per "Persona da contattare", "data appuntamento" per "Giorno preferito"), cioè domande per Claude, non azioni sbagliate.
