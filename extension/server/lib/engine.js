@@ -113,6 +113,7 @@ export function concepts(s) {
 }
 /** Svuota le cache (le misure di latenza partono "a freddo"). */
 export function resetCaches() {
+  TG.clear();
   CC.clear();
   SC.clear();
 }
@@ -138,6 +139,40 @@ function dice(a, b) {
   for (const [g, c] of A) inter += Math.min(c, B.get(g) || 0);
   return (2 * inter) / (na + nb);
 }
+
+/** Dice sui trigrammi di caratteri (parole con bordo): refusi, abbreviazioni e varianti non nel dizionario. */
+const TG = new Map();
+function trigrams(s) {
+  let m = TG.get(s);
+  if (m) return m;
+  m = new Map();
+  let n = 0;
+  for (const w of s.split(' ')) {
+    if (!w || STOP.has(w)) continue;
+    const t = ` ${w} `;
+    for (let i = 0; i < t.length - 2; i++) {
+      const g = t.slice(i, i + 3);
+      m.set(g, (m.get(g) || 0) + 1);
+      n++;
+    }
+  }
+  m.n = n;
+  if (TG.size > 5000) TG.clear();
+  TG.set(s, m);
+  return m;
+}
+export function trigramDice(a, b) {
+  const A = trigrams(a);
+  const B = trigrams(b);
+  if (!A.n || !B.n) return 0;
+  let inter = 0;
+  for (const [g, c] of A) inter += Math.min(c, B.get(g) || 0);
+  return (2 * inter) / (A.n + B.n);
+}
+// peso e soglia scelti con npm run calibrate (VERIFY5=1): ECE uguale o migliore su tutti gli insiemi, AUROC invariata,
+// 0 azioni sbagliate. Prudente: senza parole in comune i trigrammi da soli non superano 0,5 (un refuso diventa una
+// domanda con il candidato giusto in testa, non un'azione). Combinarli con i bigrammi abbassava l'AUROC a 0,94.
+export const TRI = { w: 0.5, min: 0.5 };
 
 /** Somiglianza 0..1 tra due etichette (uguaglianza, sinonimi, parole, refusi). */
 const SC = new Map();
@@ -184,6 +219,11 @@ function similarityRaw(a, b) {
   const contain = ta.length && ta.every((t) => tokScore(t) === 1) && ta.some((t) => !GENERIC.has(t)) ? 0.86 : 0;
   const d = dice(fa, fb);
   let s = Math.max(contain, 0.55 * jac + 0.45 * d * (jac > 0 ? 1 : 0.6), conceptScore);
+  // trigrammi solo se possono alzare il punteggio (al massimo TRI.w + (1 - TRI.w) * jac) e i bigrammi sono vicini
+  if (s < TRI.w + (1 - TRI.w) * jac && d >= TRI.min * 0.8) {
+    const tri = trigramDice(fa, fb);
+    if (tri >= TRI.min) s = Math.max(s, TRI.w * tri + (1 - TRI.w) * jac);
+  }
   if (conflict) s *= 0.45;
   return Math.min(1, s);
 }
@@ -278,6 +318,20 @@ export function fieldsFrom(items, regions) {
     out.push({ kind: 'field', id: it.id, role: it.role, name: it.name, item: it, reg: it.reg, low: !!(r && r.low), leg: gx.leg || '', texts: [gx.full || it.name, gx.near, gx.ph, gx.nm].filter(Boolean) });
     // un radio puo' essere indicato anche da solo (es. "Legale rappresentante": true)
     if (it.role === 'rad') out[out.length - 1].texts = [gx.full || it.name];
+  }
+  // campi omonimi in sezioni diverse ("Indirizzo" sotto "Sede legale" e sotto "Sede operativa"):
+  // l'etichetta con la sezione li distingue ("indirizzo sede operativa")
+  // il dizionario unisce "indirizzo", "via" e "sede legale": a distinguerli sono le parole della sezione che i
+  // gemelli non hanno (secTok), usate in paramLogits solo se la richiesta le nomina
+  const twins = new Map();
+  for (const f of out) if (f.kind === 'field' && f.leg) twins.set(fold(f.name), [...(twins.get(fold(f.name)) || []), f]);
+  for (const g of twins.values()) {
+    if (g.length < 2) continue;
+    const toks = g.map((f) => new Set(tokens(f.leg).map(stem)));
+    g.forEach((f, k) => {
+      const own = [...toks[k]].filter((t) => !toks.some((o, j) => j !== k && o.has(t)) && !GENERIC.has(t));
+      if (own.length) f.secTok = own;
+    });
   }
   return addDateGroups(items, regions, out);
 }
@@ -454,6 +508,14 @@ export function groundParam(param, fields, memory = {}) {
   return choice(paramLogits(param, fields, memory));
 }
 
+// sezione nominata nella richiesta ("indirizzo sede operativa") tra campi omonimi in sezioni diverse
+const SEC = 4;
+function secBonus(query, own) {
+  const q = new Set(query.flatMap((x) => tokens(x).map(stem)));
+  const hit = own.filter((t) => q.has(t)).length;
+  return hit ? SEC * (0.6 + 0.4 * (hit / own.length)) : 0;
+}
+
 /** Logit grezzi per ogni campo candidato (usati anche dalla calibrazione). */
 export function paramLogits(param, fields, memory = {}) {
   const query = [param.key, param.about].filter(Boolean);
@@ -465,7 +527,8 @@ export function paramLogits(param, fields, memory = {}) {
     const req = f.item && f.item.flags.includes('req') ? 0.15 : 0;
     const low = f.low ? -1 : 0;
     const leg = f.leg ? 0.8 * Math.max(...query.map((q) => similarity(q, f.leg))) : 0;
-    return { key: f.id, logit: 7 * name + 2 * fit + 9 * remembered + req + low + leg, data: { f, name, fit, remembered } };
+    const sec = f.secTok ? secBonus(query, f.secTok) : 0;
+    return { key: f.id, logit: 7 * name + 2 * fit + 9 * remembered + req + low + leg + sec, data: { f, name, fit, remembered } };
   });
   // esclusivita': un valore di forma inconfondibile (orario, file, data, email, si/no) con un solo campo adatto
   // va quasi certamente li', anche se l'etichetta usa parole diverse ("foglio firme" -> "Allegato registro presenze")
