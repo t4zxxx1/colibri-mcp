@@ -336,6 +336,7 @@ ok 22/22
 | `CB_HUMAN_WAIT` | `50` | secondi di attesa mentre risolvi un CAPTCHA / una verifica (`0` = non aspettare) |
 | `CB_TOOLS` | `all` | profilo dei tool: `all`, `lite` (search, open, do, read: ~1060 token per turno invece di ~1715), `read` (search, open, read: ~550), oppure un elenco come `search,open,read` |
 | `CB_STRIP_TRACKING` | `true` | toglie `utm_*`, `gclid`, `gbraid`, `fbclid`... dagli URL aperti da Colibri |
+| `CB_CLOSE_POPUPS` | `true` | chiude i popup promozionali (newsletter, sconto di benvenuto) con il loro pulsante Chiudi/×; mai finestre di login, pagamento o con piu' campi |
 | `CB_HUMAN_SHOW` | `true` | se il browser è invisibile e la verifica non si supera da sola, riapre Chrome visibile sulla stessa pagina |
 | `CB_MODE` / `CB_CDP_URL` | `launch` | `cdp` = **modalità Chrome reale**: si collega a un Chrome normale su `--remote-debugging-port=9222` (vedi FAQ) |
 | `CB_AUTO_CHROME` | `true` | in modalità `cdp`, avvia da solo il Chrome reale se sulla porta non risponde nessuno |

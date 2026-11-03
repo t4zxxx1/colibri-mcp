@@ -336,6 +336,7 @@ ok 22/22
 | `CB_HUMAN_WAIT` | `50` | seconds Colibri waits for you to solve a CAPTCHA / human check (`0` = don't wait) |
 | `CB_TOOLS` | `all` | tool profile: `all`, `lite` (search, open, do, read: ~1060 tokens per turn instead of ~1715), `read` (search, open, read: ~550), or a list like `search,open,read` |
 | `CB_STRIP_TRACKING` | `true` | remove `utm_*`, `gclid`, `gbraid`, `fbclid`... from URLs Colibri opens |
+| `CB_CLOSE_POPUPS` | `true` | close promotional popups (newsletter, welcome discount) with their own Close/× button; never login, payment or multi-field windows |
 | `CB_HUMAN_SHOW` | `true` | when headless and a check doesn't clear on its own, reopen Chrome visibly on the same page |
 | `CB_MODE` / `CB_CDP_URL` | `launch` | `cdp` = **real Chrome mode**: attaches to a normal Chrome on `--remote-debugging-port=9222` (see FAQ) |
 | `CB_AUTO_CHROME` | `true` | in `cdp` mode, start the real Chrome by itself if nothing is listening on the port |

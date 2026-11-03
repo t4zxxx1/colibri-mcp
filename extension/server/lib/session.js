@@ -3,7 +3,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import { chromium } from 'playwright-core';
 import * as P from './page-script.js';
-import { renderView, renderDiff, snapKeys, lineOf, estTokens, readCover } from './render.js';
+import { renderView, renderDiff, snapKeys, lineOf, estTokens, readCover, filterAlts, matchesFilter } from './render.js';
 import { fold, similarity, choice, decide, PRESETS } from './engine.js';
 import { runTask } from './task.js';
 import { cdpAlive, launchRealChrome } from './realchrome.js';
@@ -53,12 +53,14 @@ export function cardsOut(r, { offset = 0, max = 20, sort, filter, maxPrice } = {
   let items = r.items;
   const how = [];
   if (filter) {
-    const words = String(filter).split(/\s+/).filter(Boolean);
-    const inc = words.filter((w) => !w.startsWith('-')).map((w) => fold(w).trim()).filter(Boolean);
-    const exc = words.filter((w) => w.startsWith('-') && w.length > 1).map((w) => fold(w.slice(1)).trim()).filter(Boolean);
+    const words = String(filter).replace(/\s*\|\s*/g, '|').split(/\s+/).filter(Boolean);
+    // "a|b" dentro una parola: basta una delle alternative
+    const alts = (w) => w.split('|').map((x) => fold(x).trim()).filter(Boolean);
+    const inc = words.filter((w) => !w.startsWith('-')).map(alts).filter((a) => a.length);
+    const exc = words.filter((w) => w.startsWith('-') && w.length > 1).flatMap((w) => alts(w.slice(1)));
     items = items.filter((it) => {
       const f = fold(it.row);
-      return inc.every((w) => f.includes(w)) && !exc.some((w) => f.includes(w));
+      return inc.every((a) => a.some((w) => f.includes(w))) && !exc.some((w) => f.includes(w));
     });
     how.push(`filtro "${filter}"`);
   }
@@ -159,6 +161,7 @@ export function loadConfig(env = process.env) {
     confirmSensitive: yes(env.CB_CONFIRM_SENSITIVE, true),
     allowScreenshot: yes(env.CB_ALLOW_SCREENSHOT, true),
     rejectCookies: yes(env.CB_REJECT_COOKIES, true),
+    closePopups: yes(env.CB_CLOSE_POPUPS, true),
     stripTracking: yes(env.CB_STRIP_TRACKING, true),
     maxItems: Math.max(20, parseInt(clean(env.CB_MAX_ITEMS) || '120', 10) || 120),
     extraArgs: clean(env.CB_EXTRA_ARGS) ? clean(env.CB_EXTRA_ARGS).split(/\s+/) : [],
@@ -191,6 +194,7 @@ export class Session {
     this.frameN = 0;
     this.idN = 0;
     this.newPages = [];
+    this.bornAt = new WeakMap();
     this.owned = new Set();
     this.refInfo = new Map();
     this.acting = false;
@@ -310,6 +314,7 @@ export class Session {
     this.ctx.on('page', (p) => {
       this.hook(p);
       this.newPages.push(p);
+      this.bornAt.set(p, Date.now());
       // schede aperte mentre Colibri agisce (popup, target=_blank): sono sue
       if (this.acting) this.owned.add(p);
     });
@@ -413,30 +418,45 @@ export class Session {
     if (next) next();
   }
 
-  // schede aperte da un clic: la prima utile diventa attiva; quelle rimaste vuote o su domini di
-  // pubblicita'/affiliazione si chiudono (solo se aperte da Colibri)
-  async adoptNewPages() {
+  // schede aperte da un clic: la prima utile diventa attiva, ma solo se l'ha aperta un clic (o tasto) del passo
+  // in corso dalla scheda attiva. Le altre (pubblicita' durante un goto, popup di sfondo) restano in sfondo o,
+  // se vuote o pubblicitarie e aperte da Colibri, si chiudono.
+  async adoptNewPages(act = 'click', from = this.page, since = 0) {
     const list = this.newPages.filter((p) => !p.isClosed() && !this.internal.has(p));
     this.newPages = [];
     const notes = [];
     let keep = null;
+    const userAct = /^(click|press|pick)$/.test(act);
+    const opener = async (p) => within(p.opener(), 1500).catch(() => null);
+    const cands = [];
     for (const p of list) {
-      await p.waitForLoadState('domcontentloaded', { timeout: 10000 }).catch(() => {});
+      if (!userAct || (this.bornAt.get(p) || 0) < since) continue;
+      const o = await opener(p);
+      // target=_blank e' noopener per default: opener nullo vale come aperta dalla scheda attiva
+      if (o === from || o === null) cands.push(p);
+    }
+    for (const p of cands) {
+      await p.waitForLoadState('domcontentloaded', { timeout: 8000 }).catch(() => {});
       // redirect di affiliazione o popup che parte vuoto: si lascia il tempo di arrivare alla pagina vera
       if (isJunkUrl(p.url())) await p.waitForURL((u) => !isJunkUrl(String(u)), { timeout: 4000, waitUntil: 'commit' }).catch(() => {});
     }
+    let bg = 0;
     for (const p of list) {
       if (p.isClosed()) continue;
-      if (isJunkUrl(p.url()) && this.owned.has(p)) {
-        notes.push(`chiusa scheda inutile (${hostOf(p.url()) || 'vuota'})`);
-        await p.close().catch(() => {});
-      } else keep = p;
+      const junk = isJunkUrl(p.url()) && this.owned.has(p);
+      if (cands.includes(p)) {
+        if (junk) {
+          notes.push(`chiusa scheda inutile (${hostOf(p.url()) || 'vuota'})`);
+          await p.close().catch(() => {});
+        } else keep = p;
+      } else if (junk) await p.close().catch(() => {});
+      else bg++;
     }
     if (keep) {
       this.page = keep;
       await keep.bringToFront().catch(() => {});
       notes.push(`aperta nuova scheda, ora attiva (${keep.url()})`);
-    }
+    } else if (bg) notes.push(`${bg} scheda aperta dalla pagina in sfondo, non attiva (tab:"list" per vederla)`);
     return notes;
   }
 
@@ -691,6 +711,19 @@ export class Session {
     return '';
   }
 
+  /** Popup promozionali che coprono la pagina appena aperta: chiusi con il loro pulsante (CB_CLOSE_POPUPS). */
+  async dismissPopup(page) {
+    if (!this.cfg.closePopups) return '';
+    const closed = [];
+    for (let k = 0; k < 2; k++) {
+      const r = await evalIn(page.mainFrame(), P.dismissPopupInPage, null, 2500).catch(() => '');
+      if (!r) break;
+      closed.push(r);
+      await this.settle(page, 1500, 150);
+    }
+    return closed.length ? `chiuso popup ${closed.map((x) => '"' + x + '"').join(', ')}` : '';
+  }
+
   // ---------- modelli URL per sito: i filtri impostati a mano diventano un URL riusabile ----------
   filtersFile() {
     return path.join(path.dirname(this.cfg.profileDir), 'site-filters.json');
@@ -763,6 +796,7 @@ export class Session {
     const g = await this.humanGate(page);
     page = g.page;
     const ck = await this.dismissCookies(page);
+    const pop = g.stuck ? '' : await this.dismissPopup(page);
     let sr = null;
     if (search && !g.stuck) {
       sr = await this.siteSearch(page, String(search));
@@ -777,10 +811,12 @@ export class Session {
     this.remember(snap);
     this.stats.observations++;
     let txt = renderView(snap, { url: page.url(), tabs: this.tabs(), max: this.cfg.maxItems, rows, filter });
+    if (filter && rows !== false) txt += await this.filterText(page, snap, filter);
     if (sr) txt = (sr.err || sr.note) + '\n' + txt;
     const status = !sr && resp ? resp.status() : 0;
     if (status >= 400) txt = this.badStatus(status, page.url(), snap) + '\n' + txt;
     if (ck) txt = `cookie: rifiutati i non necessari (${ck})\n` + txt;
+    if (pop) txt = pop + '\n' + txt;
     if (g.note) txt = g.note + '\n' + txt;
     const ev = this.events.splice(0);
     if (ev.length) txt = ev.join('\n') + '\n' + txt;
@@ -974,7 +1010,13 @@ export class Session {
     const g = await this.humanGate(page);
     page = g.page;
     const areas = opts.scope === 'areas';
-    const snap = await this.collect({ areas });
+    let snap = await this.collect({ areas });
+    // popup promozionale comparso dopo l'apertura (newsletter dopo qualche secondo): chiuso, poi si rilegge
+    let pop = '';
+    if (snap.modal && !areas) {
+      pop = await this.dismissPopup(page);
+      if (pop) snap = await this.collect({ areas });
+    }
     this.stats.observations++;
     if (areas) {
       const list = snap.items.filter((i) => i.role === 'area' || i.hid);
@@ -983,8 +1025,25 @@ export class Session {
       return [g.note, head, ...list.map((i) => lineOf(i, true)), list.length ? 'usa il ref con click/hover/upload' : 'nessuna: prova browse_screenshot'].filter(Boolean).join('\n');
     }
     if (!opts.filter && !opts.offset) this.remember(snap);
-    const txt = renderView(snap, { url: page.url(), tabs: this.tabs(), max: this.cfg.maxItems, ...opts });
+    let txt = renderView(snap, { url: page.url(), tabs: this.tabs(), max: this.cfg.maxItems, ...opts });
+    if (opts.filter) txt += await this.filterText(page, snap, opts.filter);
+    if (pop) txt = pop + '\n' + txt;
     return g.note ? g.note + '\n' + txt : txt;
+  }
+
+  /** Il filtro non trova elementi interattivi: le stesse parole nel testo della pagina (celle di tabella, etichette). */
+  async filterText(page, snap, filter) {
+    const alts = filterAlts(filter);
+    if (!alts.length || snap.items.some((i) => matchesFilter(`${i.name} ${i.role} ${i.value || ''} ${i.ctx || ''}`, alts))) return '';
+    const hits = [];
+    for (const f of page.frames()) {
+      try {
+        const r = await evalIn(f, P.findTextInPage, { query: alts.join('|'), max: 15 }, 4000);
+        hits.push(...r.hits);
+      } catch {}
+      if (hits.length >= 15) break;
+    }
+    return hits.length ? `\ntesto della pagina con "${filter}" (non interattivo):\n` + hits.slice(0, 15).join('\n') : '';
   }
 
   // ---------- CAPTCHA e verifiche anti-bot ----------
@@ -1108,6 +1167,7 @@ export class Session {
       const old = this.refInfo.get(id);
       if (old) {
         let same = snap.items.filter((i) => i.role === old.role && i.name === old.name);
+        if (!same.length) same = snap.items.filter((i) => i.role === old.role && fold(i.name) === fold(old.name));
         if (same.length > 1 && old.ctx) same = same.filter((i) => i.ctx === old.ctx);
         if (same.length === 1) return { it: same[0], note: `${id} scaduto → ${same[0].id} "${same[0].name}"` };
       }
@@ -1173,6 +1233,8 @@ export class Session {
     let page = await this.ensure();
     const notes = [];
     let done = 0;
+    let warns = 0;
+    let t0s = 0;
     let stop = '';
     const g0 = await this.humanGate(page);
     page = g0.page;
@@ -1200,12 +1262,16 @@ export class Session {
         break;
       }
       try {
+        const nx = steps[i + 1];
+        this.nextAct = nx ? ACTIONS.find((a) => nx[a] !== undefined) || '' : '';
+        t0s = Date.now();
         const r = await this.step(act, st, snap, page);
         if (r && r.block) {
           stop = `${tag}: BLOCCATO ${r.block}`;
           break;
         }
         if (r && r.note) notes.push(`${tag}: ${r.note}`);
+        if (r && r.warn) warns++;
         if (r && r.note && (act === 'read' || act === 'find')) readText += '\n' + r.note;
         if (r && r.id && (act === 'fill' || act === 'check')) touched.set(r.id, act);
         if (act === 'select' && this.trail.length && st.option !== undefined) this.trail[this.trail.length - 1] += '=' + [].concat(st.option).join('/');
@@ -1220,7 +1286,7 @@ export class Session {
         }
         break;
       }
-      if (this.newPages.length) for (const n of await this.adoptNewPages()) notes.push(`${tag}: ${n}`);
+      if (this.newPages.length) for (const n of await this.adoptNewPages(act, page, t0s)) notes.push(`${tag}: ${n}`);
       page = this.page;
       if (i < steps.length - 1) {
         if (/^(click|press|goto|back|tab|waitFor)$/.test(act)) {
@@ -1236,6 +1302,7 @@ export class Session {
       }
     }
 
+    this.nextAct = '';
     if (this.pending.size) await Promise.race([Promise.all([...this.pending]), new Promise((r) => setTimeout(r, 15000))]);
 
     page = this.page;
@@ -1252,7 +1319,7 @@ export class Session {
     }
     const after = await this.collect();
     this.stats.observations++;
-    const head = [`ok ${done}/${steps.length}` + (stop ? ' · ' + stop : '')];
+    const head = [`ok ${done}/${steps.length}` + (warns ? ` · ⚠ ${warns} ${warns > 1 ? 'valori non accettati' : 'valore non accettato'}` : '') + (stop ? ' · ' + stop : '')];
     head.push(...notes, ...this.events.splice(0));
 
     let body = '';
@@ -1345,12 +1412,49 @@ export class Session {
         if (g.stuck) return { block: g.note };
         if (st.force) await el.evaluate((e) => e.click());
         else {
+          const sig = () => page.evaluate(() => location.href + '|' + document.querySelectorAll('*').length + '|' + (document.body ? document.body.innerText.length : 0)).catch(() => '');
+          const before = await sig();
           try {
             await el.click({ timeout: 5000 });
           } catch (e) {
+            const coverOf = () =>
+              el
+                .evaluate((x) => {
+                  const r = x.getBoundingClientRect();
+                  const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+                  if (!top || top === x || x.contains(top) || top.contains(x)) return r.width && r.height ? '' : 'invisibile';
+                  let d = top.closest('dialog,[role=dialog],[role=alertdialog],[aria-modal=true],[class*=modal i],[class*=popup i],[class*=overlay i],[class*=backdrop i]');
+                  // velo senza classi riconoscibili: antenato fisso che copre buona parte della finestra
+                  if (!d)
+                    for (let a = top, k = 0; a && a !== document.body && k < 8; a = a.parentElement, k++) {
+                      const s = getComputedStyle(a);
+                      const q = a.getBoundingClientRect();
+                      if ((s.position === 'fixed' || s.position === 'absolute') && q.width * q.height > 0.25 * innerWidth * innerHeight) {
+                        d = a;
+                        break;
+                      }
+                    }
+                  const lab = (n) => (n.getAttribute('aria-label') || (n.querySelector('h1,h2,h3,[class*=title i]') || {}).innerText || n.id || n.className || n.tagName).toString().replace(/\s+/g, ' ').trim().slice(0, 50);
+                  return d ? 'modale "' + lab(d) + '"' : '<' + top.tagName.toLowerCase() + (top.id ? '#' + top.id : '') + '>';
+                })
+                .catch(() => '');
             const m = String(e && e.message).match(/(<[^>\n]{1,90}>)[^\n]*intercepts pointer events/);
-            if (m) throw new Error(`${it.id} coperto da ${m[1]}: chiudi l'elemento sovrapposto oppure ripeti con "force": true`);
-            throw e;
+            if (m) {
+              const cv = await coverOf();
+              throw new Error(`${it.id} coperto da ${cv && cv !== 'invisibile' ? cv : m[1]}: chiudilo (Chiudi/×/Esc) oppure ripeti con "force": true`);
+            }
+            if (!/timeout|exceeded/i.test(String(e && e.message))) throw e;
+            // il clic puo' essere arrivato (pagina lenta a rispondere): se la pagina e' cambiata e' riuscito
+            await after(4000, 300);
+            const now = await sig();
+            if (now && before && now !== before) {
+              if (!(await after(10000, 300))) return { note: `${it.id} clic in ritardo: pagina cambiata, ancora in caricamento` };
+              return { note: [g.note, `${it.id} clic lento ma riuscito (la pagina e' cambiata)`].filter(Boolean).join('; ') };
+            }
+            const cover = await coverOf();
+            if (cover === 'invisibile') throw new Error(`${it.id} "${it.name}" non e' visibile ora (dimensione zero): apri prima la sezione che lo contiene`);
+            if (cover) throw new Error(`${it.id} coperto da ${cover}: chiudilo (Chiudi/×/Esc) oppure ripeti con "force": true`);
+            throw new Error(`${it.id} "${it.name}" non risponde al clic entro 5 s e la pagina non e' cambiata: ripeti con "force": true o usa browse_view`);
           }
         }
         if (!(await after(10000, 300))) return { note: [g.note, 'pagina ancora in caricamento dopo 10 s (usa waitFor o browse_view)'].filter(Boolean).join('; ') };
@@ -1363,6 +1467,7 @@ export class Session {
         if (it.role === 'sel') throw new Error(`${it.id} e' un menu: usa "select"`);
         if (/^(chk|rad|sw)$/.test(it.role)) throw new Error(`${it.id} e' una casella: usa "check"`);
         const text = String(st.text ?? '');
+        const ev0 = this.events.length;
         let viaScript = false;
         if (act === 'fill') {
           try {
@@ -1424,8 +1529,23 @@ export class Session {
           }
         }
         await after(act === 'type' ? 2500 : 1500);
+        // il portale valida all'uscita dal campo (change/blur): si esce come farebbe l'utente, poi si rilegge
+        if (act === 'fill' && it.role !== 'combo' && !viaScript && !/^(pick|press|type|hover|wait|waitFor)$/.test(this.nextAct || '')) {
+          await el
+            .evaluate((e) => {
+              // campi con suggerimenti: uscire chiuderebbe l'elenco da scegliere
+              if (e !== document.activeElement || e.getAttribute('aria-autocomplete') || e.getAttribute('list') || e.hasAttribute('aria-controls') || e.hasAttribute('aria-expanded') || e.type === 'search') return;
+              e.blur();
+            })
+            .catch(() => {});
+          await after(1200);
+        }
         const v = await el.evaluate((e) => ('value' in e ? e.value : e.innerText || '')).catch(() => null);
-        if (v !== null && act === 'fill' && v.trim() !== text.trim()) return { id: it.id, note: `${it.id} valore ora "${String(v).slice(0, 60)}" (richiesto "${text.slice(0, 40)}")` };
+        const box = this.events.slice(ev0).filter((x) => /^finestra (alert|confirm|prompt)/.test(x));
+        const said = box.length ? ` · il sito ha risposto ${box.map((x) => x.replace(/^finestra \w+ /, '').replace(/ -> .*$/, '')).join(' ')}` : '';
+        if (v !== null && act === 'fill' && v.trim() !== text.trim())
+          return { id: it.id, warn: true, note: `⚠ ${it.id} "${it.name}" valore ora "${String(v).slice(0, 60)}" (richiesto "${text.slice(0, 40)}"): il campo non l'ha accettato${said}` };
+        if (said) return { id: it.id, warn: true, note: `⚠ ${it.id} "${it.name}"${said}` };
         if (viaScript) return { id: it.id, note: `${it.id} e' in sola lettura: valore impostato via script, verifica che il portale lo accetti` };
         return { id: it.id };
       }
@@ -1525,7 +1645,12 @@ export class Session {
       }
       case 'scroll': {
         const s = st.scroll;
-        if (s === 'down' || s === 'up') await page.mouse.wheel(0, (s === 'down' ? 1 : -1) * Math.round(this.stats.vh * 0.85));
+        if (typeof s === 'number' || (s && typeof s === 'object' && s.name === undefined && (typeof s.y === 'number' || typeof s.x === 'number') && (Math.abs(s.y || 0) > 1 || Math.abs(s.x || 0) > 1))) {
+          // pixel: scroll:300 (giu'), scroll:-300 (su), scroll:{x,y}
+          const dx = typeof s === 'number' ? 0 : Number(s.x) || 0;
+          const dy = typeof s === 'number' ? s : Number(s.y) || 0;
+          await page.mouse.wheel(dx, dy);
+        } else if (s === 'down' || s === 'up') await page.mouse.wheel(0, (s === 'down' ? 1 : -1) * Math.round(this.stats.vh * 0.85));
         else if (s === 'top' || s === 'bottom') await page.evaluate((b) => window.scrollTo(0, b ? document.documentElement.scrollHeight : 0), s === 'bottom');
         else {
           const { el } = await target(s);
@@ -1566,7 +1691,9 @@ export class Session {
         ({ page } = await this.nav(page, u));
         await after(8000, 300);
         const ck = await this.dismissCookies(page);
-        if (ck) return { note: `cookie rifiutati (${ck})` };
+        const pop = await this.dismissPopup(page);
+        const nn = [ck && `cookie rifiutati (${ck})`, pop].filter(Boolean).join('; ');
+        if (nn) return { note: nn };
         return;
       }
       case 'back':
@@ -1643,6 +1770,12 @@ export class Session {
       }
       case 'read': {
         const ref = typeof st.target === 'string' ? st.target : undefined;
+        if (st.read === 'describe') {
+          if (!ref) throw new Error('read:"describe" vuole "target": ref dell\'elemento');
+          const t = await this.read({ mode: 'describe', ref });
+          this.stats.observations--;
+          return { note: `${ref}:\n${t}` };
+        }
         const mode = ['table', 'cards', 'fields'].includes(st.read) ? st.read : 'text';
         const t = await this.read({ mode, ref, max: st.max, links: st.links, query: st.query, sort: st.sort, filter: st.filter, maxPrice: st.maxPrice });
         this.stats.observations--;

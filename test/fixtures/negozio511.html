@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><title>Negozio Moda</title>
+<style>
+  .newsletter-popup { position: fixed; top: 10%; left: 20%; width: 60%; height: 50%; background: #fff; border: 1px solid #333; z-index: 99; }
+</style></head>
+<body>
+<main>
+<h1>Giacche uomo</h1>
+<a href="/negozio511.html?p=2">Pagina 2</a>
+<a href="/promo511.html" target="_blank">Guida taglie</a>
+<button type="button" id="filtri">Filtri</button>
+<p>Giacca in lana blu 129,00 €</p>
+</main>
+<div class="newsletter-popup" role="dialog" aria-modal="true" id="nl" hidden>
+  <h2>Iscriviti alla newsletter e ottieni il 10% di sconto</h2>
+  <input type="email" placeholder="La tua email">
+  <button type="button">Iscriviti</button>
+  <button type="button" aria-label="Chiudi" onclick="document.getElementById('nl').remove()">×</button>
+</div>
+<div role="dialog" aria-modal="true" id="fd" hidden style="position:fixed;inset:0;background:#fff">
+  <h2>Filtri</h2>
+  <label><input type="checkbox"> Taglia M</label>
+  <label><input type="checkbox"> Taglia L</label>
+  <label>Colore <select><option>Tutti</option><option>Nero</option></select></label>
+  <button type="button" onclick="document.getElementById('fd').hidden=true">Chiudi</button>
+</div>
+<script>
+  setTimeout(() => { document.getElementById('nl').hidden = false; }, 300);
+  document.getElementById('filtri').addEventListener('click', () => { document.getElementById('fd').hidden = false; });
+  // pubblicita' che apre una scheda da sola durante il caricamento
+  if (location.search.includes('ad=1')) setTimeout(() => window.open('/promo511.html?ad=1', '_blank'), 200);
+</script>
+</body></html>

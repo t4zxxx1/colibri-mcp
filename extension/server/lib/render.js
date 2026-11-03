@@ -97,6 +97,19 @@ function captchaLine(snap) {
   return c.solved ? `CAPTCHA ${c.kind}: risolto` : `CAPTCHA ${c.kind}: all'invio Colibri aspetta che l'utente lo risolva`;
 }
 
+/** Filtro "a|b|c": alternative (non un'espressione regolare), confronto senza maiuscole. */
+export function filterAlts(filter) {
+  return String(filter || '')
+    .toLowerCase()
+    .split('|')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+export function matchesFilter(text, alts) {
+  const t = String(text || '').toLowerCase();
+  return alts.some((a) => t.includes(a));
+}
+
 /** Vista completa (o filtrata/paginata) della pagina. */
 export function renderView(snap, { url, tabs = 1, scope = 'main', filter = '', offset = 0, max = 120, maxChars = 5000, rows = true } = {}) {
   const out = headerLines(snap, url, tabs);
@@ -112,8 +125,9 @@ export function renderView(snap, { url, tabs = 1, scope = 'main', filter = '', o
     out.push(`${items.length} elementi (${Object.entries(n).filter(([, v]) => v).map(([k, v]) => `${v} ${k}`).join(', ') || 'nessuno'}): righe con browse_view`);
     return out.join('\n');
   }
-  const f = (filter || '').toLowerCase().trim();
-  if (f) items = items.filter((i) => `${i.name} ${i.role} ${i.value || ''} ${i.ctx || ''}`.toLowerCase().includes(f));
+  const alts = filterAlts(filter);
+  const f = alts.join('|');
+  if (f) items = items.filter((i) => matchesFilter(`${i.name} ${i.role} ${i.value || ''} ${i.ctx || ''}`, alts));
 
   // menu, header, footer e aside compressi quando la pagina e' grande
   const hidden = new Map();

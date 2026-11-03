@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><title>Portale piani formativi</title>
+<style>
+  body { font-family: sans-serif; }
+  .mat-icon { font-family: monospace; }
+  tr.riga { cursor: pointer; }
+  #velo { position: fixed; inset: 0; background: rgba(0,0,0,.3); display: none; z-index: 50; }
+  #velo .box { background: #fff; margin: 80px auto; width: 300px; padding: 10px; }
+</style></head>
+<body>
+<main>
+<h1>Ricerca attività</h1>
+<span><b>Attenzione!</b> La data di pagamento non puo' precedere la data della fattura.</span>
+<ul class="actionErrors"><li>Il piano 4410 non e' in stato modificabile</li></ul>
+<div role="status">From €34,00</div>
+<div aria-live="polite">Prezzo Di Vendita Da €102,00</div>
+<span aria-live="polite">*</span>
+<div role="status">Confronta 2 prodotti</div>
+
+<form id="ricerca" onsubmit="return false">
+<table class="form">
+  <tr><td>Id Piano</td><td><input type="text" name="ricercaAttivitaViewComponent.idPiano"></td></tr>
+  <tr><td>Spesa Totale</td><td><input type="text" id="spesa" name="rendiconto.spesaTotale"></td></tr>
+  <tr><td></td><td><input type="text" name="rendiconto.codiceCup"></td></tr>
+</table>
+</form>
+
+<table class="mat-table" id="piani">
+  <thead><tr><th>Piano</th><th>Titolo</th><th>Stato</th><th></th></tr></thead>
+  <tbody>
+    <tr class="riga mat-row" data-id="123"><td>123</td><td>Percorso sicurezza cantieri</td><td>Approvato</td><td><mat-icon class="mat-icon material-icons">expand_more</mat-icon></td></tr>
+    <tr class="det" id="det123" hidden><td colspan="4">Dettaglio piano 123: 4 attivita' rendicontate</td></tr>
+    <tr class="riga mat-row" data-id="456"><td>456</td><td>Guida rendicontazione</td><td>In bozza</td><td><mat-icon class="mat-icon material-icons">expand_more</mat-icon></td></tr>
+    <tr class="det" id="det456" hidden><td colspan="4">Dettaglio piano 456: 2 attivita'</td></tr>
+  </tbody>
+</table>
+<p>Percorsi formativi disponibili: 2 (ultimo aggiornamento ieri)</p>
+<div>
+  <button type="button" id="del"><mat-icon class="mat-icon material-icons">delete</mat-icon></button>
+  <button type="button" mattooltip="Scarica PDF del piano"><mat-icon class="mat-icon material-icons">file_download</mat-icon></button>
+  <button type="button" id="carica">Carica dati</button>
+  <button type="button" id="lento">Stato</button>
+</div>
+<p id="esito"></p>
+</main>
+<div id="velo"><div class="box"><h2>Elaborazione in corso</h2></div></div>
+<script>
+  document.querySelectorAll('tr.riga').forEach((tr) => tr.addEventListener('click', () => { const d = document.getElementById('det' + tr.dataset.id); d.hidden = !d.hidden; }));
+  document.getElementById('spesa').addEventListener('change', (e) => {
+    if (e.target.value.includes(',')) { alert('Formato non valido: usa il PUNTO come separatore decimale'); e.target.value = ''; }
+  });
+  document.getElementById('carica').addEventListener('click', () => { document.getElementById('velo').style.display = 'block'; });
+  // il pulsante "Stato" risponde in ritardo e blocca i clic successivi (come un portale lento)
+  document.getElementById('lento').addEventListener('click', () => {
+    const t = Date.now(); while (Date.now() - t < 6500) {}
+    document.getElementById('esito').textContent = 'Stato aggiornato: piano 123 approvato';
+  });
+</script>
+</body></html>

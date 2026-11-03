@@ -402,13 +402,14 @@ export async function runTask(S, a) {
         break;
       }
       try {
+        const t0c = Date.now();
         const r = await S.step('click', { click: it.id, confirm: true }, snap, page);
         if (r && r.block) {
           blocked = `invio non eseguito: ${r.block}`;
           break;
         }
         if (r && r.note) notes.push(r.note);
-        if (S.newPages.length) for (const n of await S.adoptNewPages()) notes.push(n);
+        if (S.newPages.length) for (const n of await S.adoptNewPages('click', page, t0c)) notes.push(n);
         page = S.page;
       } catch (e) {
         blocked = `invio ${it.id}: ${firstLine(e)}`;

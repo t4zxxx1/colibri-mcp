@@ -112,8 +112,20 @@ export function collectInPage(opts) {
     }
     if (!norm(n)) n = el.getAttribute('title') || el.getAttribute('placeholder') || el.getAttribute('alt') || '';
     if (!norm(n) && el.querySelector) n = txt(el.querySelector('svg title')) || '';
+    if (!norm(n) && !/^(input|select|textarea)$/.test(tag)) n = el.getAttribute('mattooltip') || el.getAttribute('ng-reflect-message') || el.getAttribute('data-tooltip') || el.getAttribute('data-original-title') || '';
     if (!norm(n) && !/^(input|select|textarea)$/.test(tag)) n = iconName(el);
-    if (!norm(n)) n = el.getAttribute('name') || el.getAttribute('id') || '';
+    else if (norm(n) && !/^(input|select|textarea)$/.test(tag)) {
+      // pulsante con sola icona Material: il testo e' la legatura ("expand_more", "delete")
+      const lig = ligName(el, n);
+      const tip = lig && lig[0] === '~' && (el.getAttribute('mattooltip') || el.getAttribute('ng-reflect-message') || el.getAttribute('title'));
+      if (tip) n = tip;
+      else if (lig) n = lig;
+    }
+    if (!norm(n) || (/^(input|select|textarea)$/.test(tag) && /^[\w$-]+(\.[\w$\[\]-]+)+$/.test(norm(n)))) {
+      const c = cellLabel(el);
+      if (c) n = c;
+    }
+    if (!norm(n)) n = humanBinding(el.getAttribute('name') || el.getAttribute('id') || '');
     return cut(norm(n).replace(/^[\s*:]+|[\s*:]+$/g, ''), 60).replace(/"/g, "'");
   }
   // etichetta completa (non troncata) per l'abbinamento dei parametri
@@ -131,9 +143,57 @@ export function collectInPage(opts) {
     ['chevron-right', 'avanti'], ['paper-plane', 'invia'], ['send', 'invia'], ['refresh', 'aggiorna'], ['sync', 'aggiorna'], ['filter', 'filtra'],
     ['calendar', 'calendario'], ['copy', 'copia'], ['share', 'condividi'], ['logout', 'esci'], ['sign-out', 'esci'], ['check', 'conferma']];
   function iconName(el) {
-    const parts = [el, ...(el.querySelectorAll ? el.querySelectorAll('svg,i,span,use,img') : [])].slice(0, 6);
-    const cls = parts.map((e) => [e.getAttribute('class'), e.getAttribute('href'), e.getAttribute('xlink:href'), e.getAttribute('data-icon'), e.getAttribute('src')].join(' ')).join(' ').toLowerCase();
+    const parts = [el, ...(el.querySelectorAll ? el.querySelectorAll('svg,i,span,use,img,mat-icon') : [])].slice(0, 6);
+    const cls = parts.map((e) => [e.getAttribute('class'), e.getAttribute('href'), e.getAttribute('xlink:href'), e.getAttribute('data-icon'), e.getAttribute('src'), e.getAttribute('svgicon'), e.getAttribute('data-mat-icon-name'), e.getAttribute('fonticon')].join(' ')).join(' ').toLowerCase();
     for (const [k, v] of ICONS) if (new RegExp('(^|[^a-z])' + k).test(cls)) return '~' + v;
+    return '';
+  }
+  // legature Material Icons / Symbols: testo dell'icona tradotto in un nome leggibile
+  const LIG = { expand_more: 'espandi', expand_less: 'comprimi', keyboard_arrow_down: 'espandi', keyboard_arrow_up: 'comprimi', keyboard_arrow_right: 'espandi',
+    chevron_right: 'avanti', chevron_left: 'indietro', arrow_drop_down: 'apri', more_vert: 'altre azioni', more_horiz: 'altre azioni', delete: 'elimina',
+    delete_outline: 'elimina', edit: 'modifica', create: 'modifica', visibility: 'visualizza', remove_red_eye: 'visualizza', search: 'cerca', close: 'chiudi',
+    clear: 'chiudi', add: 'aggiungi', add_circle: 'aggiungi', remove: 'rimuovi', file_download: 'scarica', download: 'scarica', get_app: 'scarica',
+    file_upload: 'carica', upload: 'carica', attach_file: 'allega', print: 'stampa', info: 'info', help: 'aiuto', save: 'salva', send: 'invia',
+    refresh: 'aggiorna', filter_list: 'filtra', content_copy: 'copia', menu: 'menu', home: 'home', settings: 'impostazioni', logout: 'esci',
+    check: 'conferma', done: 'conferma', open_in_new: 'apri in nuova scheda', description: 'documento', picture_as_pdf: 'pdf', list: 'elenco', history: 'storico' };
+  function ligName(el, n) {
+    const t = norm(n);
+    if (!/^[a-z][a-z0-9]*(_[a-z0-9]+)*( [a-z][a-z0-9]*(_[a-z0-9]+)*)?$/.test(t) || !el.querySelector) return '';
+    const ic = el.querySelector('mat-icon,.mat-icon,.material-icons,.material-icons-outlined,.material-symbols-outlined,.material-symbols-rounded');
+    if (!ic) return '';
+    const rest = norm(txt(el).replace(norm(txt(ic)), ''));
+    if (rest) return rest;
+    const k = norm(txt(ic));
+    return LIG[k] ? '~' + LIG[k] : '~' + k.replace(/_/g, ' ');
+  }
+  // binding Angular/JSF come nome ("ricercaAttivitaViewComponent.idPiano"): ultima parte resa leggibile
+  function humanBinding(s) {
+    s = norm(s);
+    if (!/^[\w$-]+([.:][\w$\[\]-]+)+$/.test(s)) return s;
+    const last = s.split(/[.:]/).pop().replace(/\[\d*\]/g, '');
+    return last.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').toLowerCase().replace(/^\w/, (c) => c.toUpperCase());
+  }
+  // campo in una tabella senza <label>: testo della cella a sinistra o dell'intestazione della stessa colonna
+  function cellLabel(el) {
+    const td = el.closest && el.closest('td,th,[role=gridcell],[role=cell],mat-cell');
+    if (!td) return '';
+    for (let s = td.previousElementSibling, k = 0; s && k < 2; s = s.previousElementSibling, k++) {
+      if (s.querySelector('input,select,textarea,button')) break;
+      const t = norm(txt(s));
+      if (t) return cut(t.replace(/[\s*:]+$/, ''), 40);
+    }
+    const own = [...td.childNodes].filter((c) => c.nodeType === 3).map((c) => norm(c.textContent)).join(' ');
+    if (norm(own)) return cut(norm(own).replace(/[\s*:]+$/, ''), 40);
+    const tr = td.parentElement;
+    const tb = tr && tr.closest('table');
+    if (tb && td.cellIndex >= 0) {
+      const head = tb.querySelector('thead tr') || (tr.previousElementSibling && tr.previousElementSibling.tagName === 'TR' ? tr.previousElementSibling : null);
+      const h = head && head !== tr && head.cells[td.cellIndex];
+      if (h && !h.querySelector('input,select,textarea')) {
+        const t = norm(txt(h));
+        if (t) return cut(t.replace(/[\s*:]+$/, ''), 40);
+      }
+    }
     return '';
   }
 
@@ -199,6 +259,62 @@ export function collectInPage(opts) {
   })(document);
   const inc = new Set(all);
 
+  // righe e celle cliccabili senza ruolo (tabelle Angular Material/PrimeNG: si clicca la riga per espanderla)
+  const rowsC = new Set();
+  {
+    const ROWISH = /^(TR|MAT-ROW|TD|MAT-CELL|MAT-ICON|MAT-EXPANSION-PANEL-HEADER)$/;
+    const cand = document.querySelectorAll('tr,[role=row],mat-row,.mat-row,.mat-mdc-row,td,[role=gridcell],mat-cell,mat-icon,.mat-icon,.material-icons,mat-expansion-panel-header,[aria-expanded]');
+    const lim = Math.min(cand.length, 1500);
+    const found = [];
+    for (let i = 0; i < lim; i++) {
+      const e = cand[i];
+      if (inc.has(e) || (e.parentElement && e.parentElement.closest(STRICT))) continue;
+      const exp = e.hasAttribute('aria-expanded');
+      let ptr = false;
+      if (!exp) {
+        const cs = getComputedStyle(e);
+        ptr = cs.cursor === 'pointer' && !(e.parentElement && getComputedStyle(e.parentElement).cursor === 'pointer');
+        if (!ptr) continue;
+      }
+      if (!ROWISH.test(e.tagName) && !/row|cell|icon/i.test(e.getAttribute('role') || e.getAttribute('class') || '') && !exp) continue;
+      if (exp && !ROWISH.test(e.tagName) && e.querySelector(STRICT)) continue;
+      if (!isVisible(e)) continue;
+      found.push(e);
+    }
+    // piu' celle cliccabili nella stessa riga: un solo ref per la riga
+    const byTr = new Map();
+    for (const e of found) if (e.tagName === 'TD' || e.tagName === 'MAT-CELL') {
+      const tr = e.parentElement;
+      if (tr) byTr.set(tr, (byTr.get(tr) || 0) + 1);
+    }
+    for (const [tr, n] of byTr) if (n >= 2 && !inc.has(tr)) {
+      for (let i = found.length - 1; i >= 0; i--) if (found[i].parentElement === tr && /^(TD|MAT-CELL)$/.test(found[i].tagName)) found.splice(i, 1);
+      found.push(tr);
+    }
+    for (const e of found) if (!found.some((o) => o !== e && o.contains(e))) {
+      rowsC.add(e);
+      seen.add(e);
+      all.push(e);
+      inc.add(e);
+    }
+  }
+  function rowName(el) {
+    if (el.tagName === 'TR' || el.tagName === 'MAT-ROW' || el.getAttribute('role') === 'row' || /(^|\s)mat(-mdc)?-row/.test(el.getAttribute('class') || '')) {
+      const cells = [...el.querySelectorAll('td,th,[role=cell],[role=gridcell],mat-cell')].filter((c) => !c.querySelector('input,select,textarea,button'));
+      const parts = cells.map((c) => {
+        const t = norm(txt(c));
+        const ic = c.querySelector('mat-icon,.mat-icon,.material-icons');
+        return ic && norm(txt(ic)) === t ? '' : t;
+      }).filter(Boolean);
+      if (parts.length) return cut(parts.slice(0, 4).join(' · '), 60).replace(/"/g, "'");
+    }
+    const ic = el.matches('mat-icon,.mat-icon,.material-icons') ? el : null;
+    if (ic) {
+      const k = norm(txt(ic));
+      return ic.getAttribute('aria-label') || ic.getAttribute('mattooltip') || (LIG[k] ? '~' + LIG[k] : k ? '~' + k.replace(/_/g, ' ') : '') || iconName(ic);
+    }
+    return nameOf(el);
+  }
   // modale: se presente, mostriamo solo i suoi elementi
   let modalEl = null;
   let modalLabel = '';
@@ -432,10 +548,11 @@ export function collectInPage(opts) {
       const p = el.parentElement && el.parentElement.closest(CONTAINER);
       if (p && p !== el && inc.has(p)) continue;
     }
-    if (role === 'clk' && el.querySelector && el.querySelector(STRICT)) continue;
-    let name = isArea ? areaName(el) : nameOf(el);
+    const isRow = rowsC.has(el);
+    if (role === 'clk' && !isRow && el.querySelector && el.querySelector(STRICT)) continue;
+    let name = isArea ? areaName(el) : isRow ? rowName(el) : nameOf(el);
     if (dz && !el.getAttribute('aria-label') && !(el.labels && el.labels.length)) name = cut(txt(dz), 60).replace(/"/g, "'") || name || 'area di caricamento';
-    if (role === 'clk' && (!name || (name.length > 50 && el.children.length > 3))) continue;
+    if (role === 'clk' && (!name || (!isRow && name.length > 50 && el.children.length > 3))) continue;
 
     const flags = [];
     if (el.disabled || el.getAttribute('aria-disabled') === 'true') flags.push('off');
@@ -487,7 +604,7 @@ export function collectInPage(opts) {
       if (role === 'pwd' || CRED_AC.test(fold(ac)) || CRED_ID.test(idn)) s = 'x';
       else if (PII_ID.test(idn)) s = 'p';
     }
-    if (/^(btn|link|clk|menu|area)$/.test(role)) {
+    if (/^(btn|link|clk|menu|area)$/.test(role) && !isRow) {
       const isSubmit = (tag === 'button' || tag === 'input') && el.type === 'submit' && !!el.form;
       if ((STRONG.test(fname) && !LOGIN.test(fname)) || ACC.test(fname)) s = 'c';
       else if (isSubmit && !NAVW.test(fname) && !isSearchForm(el.form)) s = 'c';
@@ -566,14 +683,26 @@ export function collectInPage(opts) {
       alerts.push(t);
     }
   };
-  document
-    .querySelectorAll(
-      '[role=alert],[role=status],[aria-live=assertive],[aria-live=polite],.alert,.alert-danger,.alert-error,.alert-success,.invalid-feedback,.valid-feedback,.field-error,.form-error,.error-message,.success-message,.text-danger,.text-success,.has-error .help-block,.msg-error,.msg-success,.errorlist li,.toast,.notification'
-    )
-    .forEach((e) => {
-      if (!isVisible(e) || (e.parentElement && e.parentElement.closest('[role=alert],[role=status],[aria-live],.alert,.toast'))) return;
-      addA(cut(txt(e), 140));
-    });
+  // regioni "status"/"polite" dei negozi annunciano prezzi e contatori: si tengono solo i messaggi di esito
+  const OUTCOME = /errore|error|attenzion|avvis|warning|salvat|saved|success|inviat|sent|aggiunt|added|complet|fallit|failed|impossibil|non (e' |è )?valid|invalid|obbligatori|required|confermat|confirmed|caricat|uploaded|scadut|expired|negat|denied|rifiutat|grazie|thank/i;
+  const NOISE = (t) => t.length < 3 || !/\p{L}{3}/u.test(t) || /^[^\p{L}]*(da|from|prezzo|price|a partire da)?[^\p{L}]*[\d.,]+\s*(€|eur|\$|£)?[^\p{L}]*$/iu.test(t) || /^(prezzo|price)\b[^.]{0,40}[€$£]\s?[\d.,]+$/i.test(t);
+  const ASEL = '[role=alert],[aria-live=assertive],.alert,.alert-danger,.alert-error,.alert-success,.invalid-feedback,.valid-feedback,.field-error,.form-error,.error-message,.success-message,.text-danger,.text-success,.has-error .help-block,.msg-error,.msg-success,.errorlist li,.toast,.notification,.errorMessage,.errormessage,.actionError,.actionErrors,.actionMessage,.actionMessages,.fieldError,.warningMessage,.messaggioErrore,.messaggio-errore,.box-errore,.avviso,.warning';
+  document.querySelectorAll(ASEL + ',[role=status],[aria-live=polite]').forEach((e) => {
+    if (!isVisible(e) || (e.parentElement && e.parentElement.closest('[role=alert],[role=status],[aria-live],.alert,.toast,.errorMessage,.actionError,.actionErrors,.actionMessage,.fieldError'))) return;
+    const t = cut(txt(e), 140);
+    if (NOISE(t)) return;
+    if (!e.matches(ASEL) && !OUTCOME.test(t)) return;
+    addA(t);
+  });
+  // avvisi senza classi riconoscibili (pagine Struts/JSP): testo che inizia con "Attenzione"/"Errore"
+  if (alerts.length < 6)
+    for (const e of document.querySelectorAll('b,strong,span,p,div,font,td,li,h2,h3,h4,label')) {
+      const own = [...e.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join(' ').trim();
+      if (!/^(attenzione|errore|avviso|warning|error)\b\s*[!:.\-]/i.test(own || '') || !isVisible(e)) continue;
+      const t = cut(txt(e.tagName === 'B' || e.tagName === 'STRONG' || e.tagName === 'FONT' ? e.parentElement || e : e), 140);
+      if (t.length > 3) addA(t);
+      if (alerts.length >= 6) break;
+    }
   // avanzamento (caricamenti, code, conversioni): percentuale o testo, senza screenshot
   document.querySelectorAll('progress,[role=progressbar],[role=meter]').forEach((p) => {
     if (!isVisible(p)) return;
@@ -611,6 +740,47 @@ export function collectInPage(opts) {
   };
   // JSON e' molto piu' veloce da trasferire del serializzatore di Playwright su liste grandi
   return opts && opts.json ? JSON.stringify(res) : res;
+}
+
+/**
+ * Popup promozionali (newsletter, sconto di benvenuto, "esperienza personalizzata") che coprono la pagina:
+ * si chiudono con il loro pulsante Chiudi/×/No grazie. Mai finestre con login, pagamento, conferme o piu' campi.
+ */
+export function dismissPopupInPage() {
+  const vis = (e) => {
+    const r = e.getBoundingClientRect();
+    const s = getComputedStyle(e);
+    return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && +s.opacity !== 0;
+  };
+  const W = innerWidth * innerHeight;
+  const boxes = [...document.querySelectorAll('dialog[open],[role=dialog],[role=alertdialog],[aria-modal=true],[class*=modal i],[class*=popup i],[id*=popup i],[class*=newsletter i],[id*=newsletter i],[class*=lightbox i]')].filter((d) => {
+    if (!vis(d) || (d.parentElement && d.parentElement.closest('dialog[open],[role=dialog],[aria-modal=true],[class*=modal i],[class*=popup i]'))) return false;
+    const r = d.getBoundingClientRect();
+    const fixed = (() => {
+      for (let a = d; a && a !== document.body; a = a.parentElement) if (/fixed|sticky/.test(getComputedStyle(a).position)) return true;
+      return false;
+    })();
+    return (d.matches('dialog[open],[aria-modal=true]') || fixed) && r.width * r.height > 0.08 * W;
+  });
+  for (const d of boxes) {
+    const text = (d.innerText || '').replace(/\s+/g, ' ').trim();
+    if (/cookie|consenso|consent/i.test(text) && d.querySelectorAll('button').length >= 2) continue; // gestito dai cookie
+    if (/accedi|login|log in|sign in|password|pagamento|payment|checkout|carrello|cart|conferm|elimina|delete|verifica|captcha|et[aà]\b|age\b|18 anni|maggiorenne/i.test(text)) continue;
+    const fields = [...d.querySelectorAll('input,select,textarea')].filter((i) => vis(i) && !/^(hidden|submit|button|checkbox|radio)$/i.test(i.type));
+    if (fields.length > 1 || fields.some((i) => i.type === 'password')) continue;
+    // solo finestre promozionali: una finestra aperta apposta (filtri, dettagli, varianti) resta
+    if (!/newsletter|iscri|subscri|sconto|discount|coupon|codice promo|offert|promo|benvenut|welcome|personalizzat|personali[sz]ed|regal|gift|notific|scarica l'app|download the app|non perdere|don'?t miss|\d+\s?%|esclusiv|exclusive|vip|club|unisciti|join us|sign up|registrati/i.test(text)) continue;
+    const cands = [...d.querySelectorAll('button,[role=button],a,[class*=close i],[aria-label]')].filter(vis);
+    const lab = (b) => ((b.getAttribute('aria-label') || '') + ' ' + (b.title || '') + ' ' + (b.innerText || '') + ' ' + (typeof b.className === 'string' ? b.className : '')).replace(/\s+/g, ' ').trim();
+    const close =
+      cands.find((b) => /^(×|✕|✖|x|chiudi|close|no,? grazie|no thanks|non ora|not now|più tardi|later|continua senza|continue without|salta|skip)\b/i.test((b.innerText || '').trim()) || /^(chiudi|close|dismiss|annulla)\b/i.test(b.getAttribute('aria-label') || '')) ||
+      cands.find((b) => /\b(close|chiudi|dismiss)\b|btn-close|modal-close|popup-close/i.test(lab(b)) && (b.innerText || '').trim().length < 20);
+    if (!close) continue;
+    const name = (d.getAttribute('aria-label') || (d.querySelector('h1,h2,h3,[class*=title i]') || {}).innerText || text).replace(/\s+/g, ' ').trim().slice(0, 50);
+    close.click();
+    return name || 'popup';
+  }
+  return '';
 }
 
 /** Rifiuta i cookie non essenziali (opzione piu' protettiva della privacy). */
@@ -756,11 +926,13 @@ export function readTableInPage(a) {
 
 export function findTextInPage(a) {
   const t = (document.body.innerText || '').split('\n');
-  const q = a.query.toLowerCase();
+  // "a|b|c": basta una delle alternative
+  const qs = String(a.query).toLowerCase().split('|').map((s) => s.trim()).filter(Boolean);
   const hits = [];
   for (const line of t) {
     const l = line.replace(/\s+/g, ' ').trim();
-    if (l && l.toLowerCase().includes(q)) {
+    const low = l.toLowerCase();
+    if (l && qs.some((q) => low.includes(q))) {
       hits.push(l.length > 160 ? l.slice(0, 159) + '…' : l);
       if (hits.length >= a.max) break;
     }

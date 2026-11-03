@@ -121,7 +121,7 @@ const Target = z.union([
   z.string(),
   z.object({ name: z.string().optional(), role: z.string().optional(), row: z.string().optional(), n: z.number().int().optional(), x: z.number().optional(), y: z.number().optional() }),
 ]);
-const Step = z.object({
+const StepBase = z.object({
   click: Target.optional(),
   force: z.boolean().optional(),
   fill: Target.optional(),
@@ -135,7 +135,7 @@ const Step = z.object({
   target: Target.optional(),
   pick: z.string().optional(),
   hover: Target.optional(),
-  scroll: z.union([z.enum(['down', 'up', 'top', 'bottom']), z.string()]).optional(),
+  scroll: z.union([z.enum(['down', 'up', 'top', 'bottom']), z.string(), z.number(), z.object({ x: z.number().optional(), y: z.number().optional() })]).optional(),
   wait: z.union([z.number(), z.literal('idle')]).optional(),
   waitFor: z.string().optional(),
   timeout: z.number().int().optional(),
@@ -146,7 +146,7 @@ const Step = z.object({
   file: z.union([z.string(), z.array(z.string())]).optional(),
   dialog: z.enum(['accept', 'dismiss']).optional(),
   find: z.string().optional(),
-  read: z.enum(['text', 'table', 'cards', 'fields']).optional(),
+  read: z.enum(['text', 'table', 'cards', 'fields', 'describe']).optional(),
   query: z.string().optional(),
   sort: z.enum(['price', '-price']).optional(),
   filter: z.string().optional(),
@@ -155,6 +155,19 @@ const Step = z.object({
   links: z.boolean().optional(),
   confirm: z.boolean().optional(),
 });
+// forme che i modelli usano spesso: si accettano invece di rifiutare il passo
+const Step = z.preprocess((s) => {
+  if (!s || typeof s !== 'object' || Array.isArray(s)) return s;
+  const o = { ...s };
+  if (o.ref !== undefined && o.target === undefined) o.target = o.ref;
+  if (o.read === 'find') {
+    o.find = String(o.query ?? o.text ?? o.filter ?? '');
+    delete o.read;
+  }
+  if (typeof o.scroll === 'string' && /^-?\d+$/.test(o.scroll.trim())) o.scroll = Number(o.scroll);
+  if (o.read === 'describe' && o.target === undefined && typeof o.describe === 'string') o.target = o.describe;
+  return o;
+}, StepBase);
 const Scalar = z.union([z.string(), z.number(), z.boolean()]);
 
 // ---------- definizioni mostrate al modello (JSON Schema scritto a mano, minimo) ----------
@@ -167,9 +180,9 @@ const STEPS_DOC =
   'One verb per step. T = ref "e12" | name text | {name,role,row,n} | {x,y} 0-1 for canvas/maps. ' +
   'click:T (force:true = JS click if covered) · fill:T+text (native date: YYYY-MM-DD) · type:T+text (keystrokes, autocomplete) · ' +
   'select:T+option (native <select>; label, value or part) · check:T (on:false unchecks) · press:key (+target:T) · ' +
-  'pick:"text" (visible suggestion/option) · hover:T · scroll:down|up|top|bottom|T · wait:ms (max 10000)|"idle" (network+spinners done) · ' +
+  'pick:"text" (visible suggestion/option) · hover:T · scroll:down|up|top|bottom|T|px · wait:ms (max 10000)|"idle" (network+spinners done) · ' +
   'waitFor:"visible text" (+timeout ms) · goto:url · back:true · tab:n|"list"|"close" · upload:T+file (path or list; T may be a "drag here" area) · ' +
-  'dialog:accept|dismiss (next alert/confirm) · find:"text" (matching lines) · read:text|table|cards|fields (+target, max, links; cards: sort:"price"|"-price", filter:"words -excluded", maxPrice; fields: query:"key, key") · ' +
+  'dialog:accept|dismiss (next alert/confirm) · find:"text" (matching lines) · read:text|table|cards|fields|describe (+target, max, links; cards: sort:"price"|"-price", filter:"words -excluded", maxPrice; fields: query:"key, key") · ' +
   'confirm:true only after the user OKs a !c step.';
 
 const TOOLS = [
@@ -192,7 +205,7 @@ const TOOLS = [
   {
     name: 'browse_view',
     title: 'Vista pagina',
-    description: 'Current page rows. filter: matching only; scope all: +header/nav/footer, areas: refs for unlabeled clickable/drop areas (icons, canvas, "drag here"); offset: next rows.',
+    description: 'Current page rows. filter: matching only ("a|b" = either; falls back to page text); scope all: +header/nav/footer, areas: refs for unlabeled clickable/drop areas (icons, canvas, "drag here"); offset: next rows.',
     schema: obj({ filter: str(), scope: en(['main', 'all', 'areas']), offset: int() }),
     input: { filter: z.string().optional(), scope: z.enum(['main', 'all', 'areas']).optional(), offset: z.number().int().optional() },
     annotations: { readOnlyHint: true },
@@ -335,7 +348,7 @@ const INSTRUCTIONS = [
   .filter(Boolean)
   .join('\n');
 
-const server = new McpServer({ name: 'colibri', version: '0.5.10' }, { instructions: INSTRUCTIONS });
+const server = new McpServer({ name: 'colibri', version: '0.5.11' }, { instructions: INSTRUCTIONS });
 
 for (const t of ACTIVE) {
   server.registerTool(t.name, { title: t.title, description: t.description, inputSchema: t.input, annotations: t.annotations }, wrap(t.run, t.name));

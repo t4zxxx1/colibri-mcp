@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.5.11
+
+Fixes from an analysis of 221 real calls on 0.5.10 (ministry portal, Fondimpresa, online shops).
+
+**Filters and page alerts**
+- `filter` with `|` now means "any of these" (`"percors|piano|ID"`) in `browse_view`, `browse_open` and cards (per word). Before, it was a literal substring and always returned nothing, which pushed the model to screenshots. When no interactive item matches, the matching lines of the page text are shown (data in Angular tables lives in cells).
+- Page alerts: Struts/JSP classes (`errorMessage`, `actionError(s)`, `actionMessage(s)`, `fieldError`…) and texts starting with "Attenzione!/Errore:" are reported. `role=status` / `aria-live=polite` regions are kept only when they hold an outcome (error, saved, added…), so shop prices ("From €34,00"), counters ("Confronta 2 prodotti") and lone asterisks no longer appear as alerts.
+
+**Actions that tell the truth**
+- `fill`: after typing, the field is blurred so the site's validation runs, and the value is read back. If the site cleared or changed it, the step says `⚠ … il campo non l'ha accettato` with the text of any alert (`il sito ha risposto "usa il PUNTO…"`), and the header shows `⚠ 1 valore non accettato` instead of a plain "ok".
+- `click` timeout: if the page changed anyway, the click counts as done ("clic lento ma riuscito"). Otherwise the error names what covers the element (`coperto da modale "Filtri": chiudilo … oppure "force": true`), also for fixed veils without classes, or says that it is not visible.
+
+**Tabs and popups**
+- New tabs become active only when a click/press/pick of the current step opened them from the active page. Tabs opened by ads during a `goto` stay in the background (`1 scheda aperta dalla pagina in sfondo`); blank or ad tabs that Colibri owns are closed.
+- Promotional popups (newsletter, welcome discount, "personalised experience") are closed with their own Close/×/No thanks button when a page is opened, after a `goto`, and when a view finds them. Never windows with login, payment, confirmations, verification or more than one field. Disable with `CB_CLOSE_POPUPS=false`.
+
+**Step aliases** (forms models often use, no longer rejected)
+- `{read:"find", query}` is the `find` step; `{read:"describe", target}` returns the element description; `scroll:300`, `scroll:"-200"` and `scroll:{x,y}` scroll by pixels; `ref` is accepted as `target`.
+- Stale refs are also matched by name without accents/case.
+
+**Angular Material and old-style tables**
+- Rows and cells with `cursor:pointer`, `aria-expanded` or an expand icon get a ref (`clk "123 · Percorso sicurezza · Approvato"`), without the `!c` confirmation meant for submit buttons.
+- Icon-only buttons are named from `mattooltip`/`title` or the Material ligature (`delete` → `~elimina`, `expand_more` → `~espandi`).
+- Fields whose only name is a binding (`ricercaAttivitaViewComponent.idPiano`) take the label of the neighbouring cell or column header (`Id Piano`), or a readable form of the binding.
+
+Tests: new `test/v0511.mjs` (25 checks), all previous suites green, live 9/9.
+
+**IT** — Correzioni dall'analisi di 221 chiamate reali: `filter` con `|` accetta alternative e ripiega sul testo della pagina; avvisi Struts e "Attenzione!" riconosciuti, niente falsi avvisi da prezzi e contatori; il `fill` riletto dopo la validazione del sito avvisa se il valore non è stato accettato (con il testo dell'alert); clic lenti considerati riusciti se la pagina è cambiata, altrimenti l'errore nomina il modale che copre; le schede aperte dalle pubblicità restano in sfondo; i popup promozionali si chiudono da soli (`CB_CLOSE_POPUPS`); alias `read:"find"`/`"describe"` e `scroll` numerico nei passi; righe Angular cliccabili, pulsanti con sola icona e campi in tabella con un nome leggibile.
 ## 0.5.10
 
 **Hang limits that are really short** (fix of the 0.5.9 timeouts, which still allowed up to 180 s).
