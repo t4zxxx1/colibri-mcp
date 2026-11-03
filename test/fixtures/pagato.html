@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="it">
+<head><meta charset="utf-8"><title>Pagamento</title></head>
+<body>
+<h1>Carrello</h1>
+<form onsubmit="document.getElementById('esito').textContent='ORDINE INVIATO'; return false">
+  <label>Numero carta <input id="cc" autocomplete="cc-number"></label>
+  <label>Password <input type="password" id="pw"></label>
+  <button type="submit">Paga ora</button>
+</form>
+<p id="esito"></p>
+</body>
+</html>

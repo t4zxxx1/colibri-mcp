@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="it">
+<head><meta charset="utf-8"><title>Domanda in piu' passi</title></head>
+<body>
+<h1>Domanda</h1>
+<div id="app">
+  <label>Tipo richiesta <select id="tipo"><option value="">Scegli</option><option>Contributo</option><option>Rimborso</option></select></label>
+  <button type="button" id="avanti">Continua</button>
+</div>
+<script>
+  // come una SPA: la risposta arriva dalla rete e il DOM si aggiorna un attimo dopo (setState)
+  document.getElementById('avanti').onclick = () => {
+    fetch('/slow?ms=350').then((r) => r.text()).then(() => setTimeout(() => {
+      const d = document.createElement('div');
+      d.innerHTML = '<h2>Passo 2: dati del richiedente</h2><label>Codice pratica <input id="cp"></label>';
+      document.getElementById('app').appendChild(d);
+    }, 40));
+  };
+  document.getElementById('tipo').onchange = () => {
+    fetch('/slow?ms=300').then(() => setTimeout(() => {
+      const p = document.createElement('p');
+      p.innerHTML = '<label>Importo richiesto <input id="imp"></label>';
+      document.getElementById('app').appendChild(p);
+    }, 30));
+  };
+</script>
+</body>
+</html>
