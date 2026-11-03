@@ -33,7 +33,8 @@
         "CB_ALLOW_SCREENSHOT": "${user_config.allow_screenshot}",
         "CB_HUMAN_WAIT": "${user_config.human_wait}",
         "CB_TOOLS": "${user_config.tools}",
-        "CB_STRIP_TRACKING": "${user_config.strip_tracking}"
+        "CB_STRIP_TRACKING": "${user_config.strip_tracking}",
+        "CB_CODE_MODE": "${user_config.code_mode}"
       }
     }
   },
@@ -141,6 +142,13 @@
       "description": "Rimuove utm_*, gclid, gbraid, fbclid e simili dagli URL aperti da Colibri.",
       "required": false,
       "default": true
+    },
+    "code_mode": {
+      "type": "boolean",
+      "title": "Modalita' script (un solo tool)",
+      "description": "Mostra a Claude un solo tool, browse_code, con le firme compatte degli altri: Claude scrive un piccolo script che gira in una sandbox locale. Circa l'80% di token in meno a ogni turno. Stessi controlli di sicurezza.",
+      "required": false,
+      "default": false
     }
   },
   "compatibility": {
