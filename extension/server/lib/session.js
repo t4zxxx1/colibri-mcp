@@ -174,6 +174,8 @@ export function loadConfig(env = process.env) {
   };
 }
 
+// quiete minima dopo l'ultima richiesta di rete (ms)
+const NET_QUIET = 60;
 const ACTIONS = ['click', 'fill', 'type', 'select', 'check', 'press', 'pick', 'hover', 'scroll', 'wait', 'waitFor', 'goto', 'back', 'tab', 'upload', 'dialog', 'find', 'read'];
 const PICK_SEL = [
   '[role=option]', '[role=listbox] li', '.ui-menu-item', '.autocomplete-suggestion', '.tt-suggestion', '.pac-item',
@@ -490,11 +492,16 @@ export class Session {
     this.net.set(p, net);
     const SKIP = /^(websocket|eventsource|ping|media|manifest|other)$/;
     const TRACK = /google-analytics|googletagmanager|doubleclick|matomo|piwik|hotjar|clarity\.ms|facebook\.net|connect\.facebook|analytics|\/collect\?|newrelic|nr-data|sentry|bugsnag|datadog|cookiebot|iubenda|onetrust|recaptcha|gstatic/i;
+    // net.last: ultimo inizio/fine di una richiesta rilevante (per la finestra di quiete dopo la risposta)
+    net.last = 0;
+    const end = (r) => {
+      if (net.delete(r)) net.last = Date.now();
+    };
     p.on('request', (r) => {
-      if (!SKIP.test(r.resourceType()) && !TRACK.test(r.url())) net.set(r, Date.now());
+      if (!SKIP.test(r.resourceType()) && !TRACK.test(r.url())) net.set(r, (net.last = Date.now()));
     });
-    p.on('requestfinished', (r) => net.delete(r));
-    p.on('requestfailed', (r) => net.delete(r));
+    p.on('requestfinished', end);
+    p.on('requestfailed', end);
     p.on('framenavigated', (f) => {
       if (f === p.mainFrame()) {
         net.clear();
@@ -691,7 +698,10 @@ export class Session {
       const spinning = st.s && now - t0 < 6000;
       // pagine che si ricaricano da sole subito dopo il caricamento (controlli anti-bot, redirect JS): si aspetta il documento nuovo
       const justNav = now - (this.navAt.get(page) || 0) < 350;
-      if (now - t0 >= minMs && st.r !== 'loading' && st.m >= quietMs && busy === 0 && !spinning && !justNav) return true;
+      // SPA: la risposta arriva e il DOM si aggiorna un attimo dopo (setState, rAF): dopo una richiesta innescata
+      // durante l'attesa si aspetta una breve quiete di rete (NET_QUIET), oltre a quella del DOM
+      const netQuiet = !net || !net.last || net.last < t0 - NET_QUIET || now - net.last >= NET_QUIET;
+      if (now - t0 >= minMs && st.r !== 'loading' && st.m >= quietMs && busy === 0 && netQuiet && !spinning && !justNav) return true;
       await new Promise((r) => setTimeout(r, 40));
     }
     return false;
@@ -1916,6 +1926,34 @@ export class Session {
       if (r.href) o.push('href: ' + r.href);
       if (r.box) o.push(`box (0-1): left ${r.box.l} top ${r.box.t} right ${r.box.r} bottom ${r.box.b}${r.box.in ? '' : ' (fuori dalla vista)'}`);
       return o.join('\n');
+    }
+    // filtro locale (prima del modello): solo le righe pertinenti, l'intestazione della tabella resta
+    const alts = mode === 'table' || mode === 'text' ? filterAlts(filter) : [];
+    if (mode === 'table' && alts.length) {
+      const r = await frame.evaluate(P.readTableInPage, { ref, selector, offset: 0, maxRows: 5000 });
+      if (r.err) throw new Error(r.err);
+      const hits = r.rows.slice(1).filter((l) => matchesFilter(l, alts));
+      const shown = hits.slice(offset, offset + (max || 40));
+      const more = hits.length - offset - shown.length;
+      if (!hits.length) return `nessuna riga della tabella (${r.total}) contiene "${filter}"`;
+      return `righe con "${filter}": ${shown.length} di ${hits.length} (tabella: ${r.total})\n` + [r.rows[0], ...shown].join('\n') + (more > 0 ? `\n… altre ${more} (offset:${offset + shown.length})` : '');
+    }
+    if (mode === 'text' && alts.length) {
+      const r = await frame.evaluate(P.readTextInPage, { ref, selector, offset: 0, maxChars: 400000 });
+      if (r.err) throw new Error(r.err);
+      const lines = r.text.split(/\n+/).map((l) => l.trim()).filter(Boolean);
+      const hits = lines.filter((l) => matchesFilter(l, alts));
+      if (!hits.length) return `nessuna riga del testo contiene "${filter}"`;
+      const cap = max || 3000;
+      const out = [];
+      let n = 0;
+      let k = offset;
+      for (; k < hits.length && n + hits[k].length <= cap; k++) {
+        out.push(hits[k]);
+        n += hits[k].length + 1;
+      }
+      if (!out.length && k < hits.length) out.push(hits[k++].slice(0, cap));
+      return `righe con "${filter}": ${out.length} di ${hits.length}\n` + out.join('\n') + (k < hits.length ? `\n… altre ${hits.length - k} (offset:${k})` : '');
     }
     if (mode === 'table') {
       const r = await frame.evaluate(P.readTableInPage, { ref, selector, offset, maxRows: max || 40 });

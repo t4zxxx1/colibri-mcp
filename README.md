@@ -241,9 +241,22 @@ Same pages, same tasks, eight methods. Every method completed every task. **"Tot
 | **T2** list → detail table | 34,630 · 13 s | 73,333 · 15 s | 167,751 · 18 s | 37,480 · 12 s | **20,700 · 10 s** |
 | **T3** navigate a heavy home | 23,809 · 10 s | 69,739 · 15 s | 148,169 · 17 s | 36,480 · 12 s | **12,849 · 8 s** |
 | Reading one form page | 1,366 (image) | 5,354 | 4,464 | 5,283 | **628** |
-| Tool definitions, every turn | — | 4,536 | — | — | **1,347** |
+| Tool definitions, every turn | — | 4,536 | — | — | **1,799** (code mode: **377**) |
 
 Full tables, assumptions and caveats (the test pages were built alongside this tool, so it plays at home): [docs/benchmark.md](docs/benchmark.md).
+
+### Check on live sites
+
+Real shops and a real CV builder, driven by the same script every round: 5 rounds, state reset before each run, median. Every task succeeded 5/5 with no errors and no screenshots. Colibri only: the other methods were not re-run on these tasks, so compare with the table above only as an order of magnitude.
+
+| Task (live site) | Calls | Time | Tokens |
+|---|---|---|---|
+| Shop: product into the cart, then price and delivery cost for a postcode | 8 | 13.8 s | 1,927 |
+| Shop: black fridges under €400, filtered text read | 3 | 4.3 s | **437** |
+| CV builder: full CV, 9 sections | 26 | 45.9 s | 3,144 |
+| Tool definitions + instructions, every turn | — | — | **1,838** |
+
+A text read with `filter` returns only the matching lines, which is where most of the saving is (437 tokens against 1,037 for the whole page). Section-aware field matching, card titles on repeated "Read more" links and typo tolerance are not stressed by these sites; they are covered by the local fixtures (`test/local-opt.mjs`).
 
 <div align="right"><a href="#top">↑ back to top</a></div>
 
@@ -300,10 +313,10 @@ ok 22/22
 |---|---|
 | `browse_open` | Open a URL (auto-starts Chrome), reject non-essential cookies, return the rows. `rows:false` = header and counts only (~150 chars), `filter` = matching rows only. Shows the filter URLs you already used on that site as templates. `search:"..."` uses the site's own search box (and remembers its URL template); 404/400 pages are flagged instead of looking valid. `utm_*`, `gclid`, `gbraid`... are stripped |
 | `browse_search` | Web search without Google CAPTCHAs: one row per result `n. title \| url \| snippet`, real links, no ads. DuckDuckGo first, Bing as automatic fallback if a check appears. Runs in a background tab (several in parallel); `site:"idealo.it"` limits to one site |
-| `browse_view` | Rows of the current page, with `filter`, `scope:"all"` and paging. `scope:"areas"` gives refs to clickable areas with no label (icons, canvases, "drag here" zones) |
-| `browse_do` | Up to 40 steps in order; returns only the diff |
-| `browse_read` | Read without acting: `text` (main content only: no menus, header, footer, cookie banners or stray JavaScript; `selector:"body"` for everything), `table`, `find`, `describe`, `cards` (one row per result card with button refs: `21:39 \| 23:01 \| 2 h 25 \| direct \| € 9,90 \| [e54]`, shared texts in one line; finds results inside components and big portals, adds screen-reader summaries only when they carry hidden times or prices; `links:true` adds each result's clean URL; prices split into `tot` with shipping, `rif` reference price with an implausible-discount warning and `cond:` conditional discounts marked unconfirmed; `sort:"price"`, `filter:"nero -ricondizionato"`, `maxPrice`), `fields` (only the keys you ask: `query:"prezzo, classe energetica, dimensioni"`, warns when another site gives a different value for the same model), `pdf` (text of a downloaded or open PDF, paged). Waits for pending requests first: no `wait` needed after a search. With `url` it reads another page in a background tab without leaving the current one (parallel, cached 10 min, `fresh:true` to reload) |
-| `browse_task` | Jev-style guided task: params by human labels, `answers`, `submit`, `expect`, typed `extract` (text, number, money, date, url, table). Dates split into day / month / year (+ hour / minutes) fields are filled from one value: `"departure": "12/06/2026 10:30"`. A whole search in 1 call: `{url, params:{from, to, date, time}, submit:"Search", read:"cards"}` → ~176 tokens |
+| `browse_view` | Rows of the current page, with `filter` (alias `match`), `scope:"all"` and paging. `scope:"areas"` gives refs to clickable areas with no label (icons, canvases, "drag here" zones). Generic links repeated in cards ("Read more", "Details") get the card title as context: `@"Card title": e12 link "Read more"` |
+| `browse_do` | Up to 40 steps in order; returns only the diff. Waits for the DOM and for requests started by each step to go quiet (no manual `wait` on SPA forms). Optional `script`: an async JS body that runs **locally** after the steps in a `node:vm` sandbox and returns only its result — loops (pagination), `.filter()/.map()`, exact sums: `{"steps":[], "script":"const t = await colibri.tables(); return t.slice(1).filter(r => +r[2] > 1000).length"}`. See [Local script](#local-script-sandbox) |
+| `browse_read` | Read without acting: `text` (main content only: no menus, header, footer, cookie banners or stray JavaScript; `selector:"body"` for everything), `table`, `find`, `describe`, `cards` (one row per result card with button refs: `21:39 \| 23:01 \| 2 h 25 \| direct \| € 9,90 \| [e54]`, shared texts in one line; finds results inside components and big portals, adds screen-reader summaries only when they carry hidden times or prices; `links:true` adds each result's clean URL; prices split into `tot` with shipping, `rif` reference price with an implausible-discount warning and `cond:` conditional discounts marked unconfirmed; `sort:"price"`, `filter:"nero -ricondizionato"`, `maxPrice`), `fields` (only the keys you ask: `query:"prezzo, classe energetica, dimensioni"`, warns when another site gives a different value for the same model), `pdf` (text of a downloaded or open PDF, paged). `filter` (alias `match`) on `text`/`table` keeps only matching lines or rows, table header included. Waits for pending requests first: no `wait` needed after a search. With `url` it reads another page in a background tab without leaving the current one (parallel, cached 10 min, `fresh:true` to reload) |
+| `browse_task` | Jev-style guided task: params by human labels (same-name fields in different sections are told apart: `"address registered office"` vs `"address shipping"`, also inside Shadow DOM), `answers`, `submit`, `expect`, typed `extract` (text, number, money, date, url, table). Dates split into day / month / year (+ hour / minutes) fields are filled from one value: `"departure": "12/06/2026 10:30"`. A whole search in 1 call: `{url, params:{from, to, date, time}, submit:"Search", read:"cards"}` → ~176 tokens |
 | `browse_screenshot` | Small JPEG (~900 tokens) of the window, an element or a region — only when text is not enough |
 | `browse_stats` | Tokens used this session vs screenshots |
 
@@ -317,6 +330,14 @@ ok 22/22
 - **`!x` secrets** — passwords, card numbers, CVV, OTP, IBAN: the AI can never type them, not even with confirmation. You type them in the window.
 - **Guided tasks** act alone only above the confidence threshold; submit never fires with open questions, errors or empty required fields.
 - **Allowed domains**, no `file://` / `javascript:`, page text treated as untrusted data (prompt-injection resistant), refs unique per session.
+
+### Local script sandbox
+
+`browse_do.script` and `browse_code` (`CB_CODE_MODE=1`) run the agent's JavaScript in a `node:vm` context **inside a separate worker thread** with a memory cap and a hard timeout (60 s, at most 60 Colibri calls, result capped at ~6,000 tokens with `--- TRUNCATED ---`).
+
+- No `process`, `require`, `import()`, `fetch`, `fs`, `child_process`, timers or host `globalThis`; `eval`/`new Function` are disabled (`codeGeneration: { strings: false, wasm: false }`). The only API is the `colibri` object, built inside the sandbox and talking to the server with plain JSON strings.
+- Every `colibri.*` call goes through the same handlers and checks as the tools: `!x` fields stay blocked, `!c` actions stay blocked. A `confirm:true` written **inside** the script is dropped: it only counts when it is on the MCP call itself (`browse_do {..., "confirm": true}` / `browse_code {..., "confirm": true}`), i.e. after the user's OK.
+- `node:vm` alone is not a security boundary (Node says so); here it is combined with the worker (killed on timeout) and with no host object reachable from the script.
 
 <div align="right"><a href="#top">↑ back to top</a></div>
 
@@ -334,7 +355,7 @@ ok 22/22
 | `CB_CHROME_PATH` | auto | only if Chrome/Edge is not found |
 | `CB_ALLOW_SCREENSHOT` | `true` | |
 | `CB_HUMAN_WAIT` | `50` | seconds Colibri waits for you to solve a CAPTCHA / human check (`0` = don't wait) |
-| `CB_TOOLS` | `all` | tool profile: `all`, `lite` (search, open, do, read: ~1060 tokens per turn instead of ~1715), `read` (search, open, read: ~550), or a list like `search,open,read` |
+| `CB_TOOLS` | `all` | tool profile: `all`, `lite` (search, open, do, read: ~1,240 tokens per turn instead of ~1,800), `read` (search, open, read: ~640), or a list like `search,open,read` |
 | `CB_STRIP_TRACKING` | `true` | remove `utm_*`, `gclid`, `gbraid`, `fbclid`... from URLs Colibri opens |
 | `CB_CLOSE_POPUPS` | `true` | close promotional popups (newsletter, welcome discount) with their own Close/× button; never login, payment or multi-field windows |
 | `CB_HUMAN_SHOW` | `true` | when headless and a check doesn't clear on its own, reopen Chrome visibly on the same page |
@@ -342,6 +363,7 @@ ok 22/22
 | `CB_AUTO_CHROME` | `true` | in `cdp` mode, start the real Chrome by itself if nothing is listening on the port |
 | `CB_REAL_PROFILE_DIR` | `~/.colibri/real-chrome` | profile used by the real Chrome that Colibri starts |
 | `CB_SEARCH_URL` | DuckDuckGo, then Bing | search page(s) for `browse_search`, `{q}` = query; several separated by spaces are tried in order |
+| `CB_CODE_MODE` | `0` | `1` = **code mode**: one tool, `browse_code {code, confirm?}`, with compact TypeScript-like signatures of the others (`colibri.open/search/view/do/read/task/text/tables/stats`). ~80% fewer definition tokens per turn; no screenshots in this mode |
 
 <div align="right"><a href="#top">↑ back to top</a></div>
 
@@ -350,6 +372,7 @@ ok 22/22
 ## Limits
 
 - Charts, canvas and maps have no text: the agent falls back to the small screenshot (with refs drawn on it) and relative-coordinate clicks.
+- Local scripts (`script`, `browse_code`) have no network, files or timers and stop after 60 s; `CB_CODE_MODE=1` has no screenshot tool.
 - The `browse_task` engine is a calibrated vocabulary, not a trained model: with unknown jargon it asks more often (never acts wrongly). Answers are remembered per site.
 - CAPTCHAs and logins are done by you, in the window: Colibri never bypasses them, it pauses and resumes on its own (see FAQ).
 - Tested on pages modelled on public-administration portals: please report sites that don't work in [Issues](https://github.com/t4zxxx1/colibri-mcp/issues).
@@ -414,6 +437,12 @@ In this mode Colibri **never closes your Chrome**: on reconnect (`/mcp`) it only
 No. Side effects (`!c`) need your explicit OK, secrets (`!x`) can never be typed by the AI. See [Safety](#safety).
 </details>
 
+<details>
+<summary><b>What is code mode and when should I use it?</b></summary>
+
+With `CB_CODE_MODE=1` the model sees a single tool, `browse_code`, and writes a short async script (`await colibri.open({url}); const t = await colibri.tables({filter:"2026"}); return t.length`). Tool definitions drop from about 1,800 to about 380 tokens per turn and loops/filters/sums happen locally, so only the final result enters the chat. It is opt-in: the default 8 tools are unchanged, and `browse_do` accepts the same scripts through `script`. Everything stays on your PC.
+</details>
+
 <div align="right"><a href="#top">↑ back to top</a></div>
 
 ---
@@ -425,7 +454,7 @@ No. Side effects (`!c`) need your explicit OK, secrets (`!x`) can never be typed
 
 ```bash
 npm ci            # dev + runtime deps
-npm test          # 180+ end-to-end tests over the real MCP protocol (needs Chrome or Edge)
+npm test          # 360+ end-to-end tests over the real MCP protocol (needs Chrome or Edge)
 npm run test:live # optional checks on real sites: search, PDF, httpbin form, Wikipedia, upload area (network)
 npm run bench     # vs screenshots, Playwright MCP, agent-browser, Fast Playwright MCP
 npm run bench:task # repeated train search: calls, tokens, seconds (add paths to older index.js to compare)

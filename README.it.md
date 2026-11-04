@@ -241,9 +241,22 @@ Stesse pagine, stessi compiti, otto metodi. Tutti hanno completato tutti i compi
 | **T2** elenco → tabella di dettaglio | 34.630 · 13 s | 73.333 · 15 s | 167.751 · 18 s | 37.480 · 12 s | **20.700 · 10 s** |
 | **T3** navigazione da una home pesante | 23.809 · 10 s | 69.739 · 15 s | 148.169 · 17 s | 36.480 · 12 s | **12.849 · 8 s** |
 | Lettura di una pagina di modulo | 1.366 (immagine) | 5.354 | 4.464 | 5.283 | **628** |
-| Definizioni dei tool, a ogni turno | — | 4.536 | — | — | **1.347** |
+| Definizioni dei tool, a ogni turno | — | 4.536 | — | — | **1.799** (modalità script: **377**) |
 
 Tabelle complete, ipotesi e limiti (le pagine di prova sono nate insieme a questo strumento, che quindi gioca in casa): [docs/benchmark.md](docs/benchmark.md).
+
+### Verifica su siti reali
+
+Negozi veri e un vero generatore di CV, pilotati dallo stesso script a ogni giro: 5 giri, stato azzerato prima di ogni prova, mediana. Tutti i compiti sono riusciti 5/5, senza errori e senza screenshot. Solo Colibri: gli altri metodi non sono stati rieseguiti su questi compiti, quindi il confronto con la tabella qui sopra vale solo come ordine di grandezza.
+
+| Compito (sito reale) | Chiamate | Tempo | Token |
+|---|---|---|---|
+| Negozio: prodotto nel carrello, poi prezzo e costo di consegna per un CAP | 8 | 13,8 s | 1.927 |
+| Negozio: frigoriferi neri sotto 400 €, lettura filtrata del testo | 3 | 4,3 s | **437** |
+| Generatore di CV: CV completo, 9 sezioni | 26 | 45,9 s | 3.144 |
+| Definizioni dei tool + istruzioni, a ogni turno | — | — | **1.838** |
+
+Una lettura di testo con `filter` restituisce solo le righe pertinenti, ed è qui che sta il risparmio maggiore (437 token contro 1.037 per la pagina intera). L'abbinamento dei campi per sezione, i titoli delle card sui link ripetuti "Leggi tutto" e la tolleranza ai refusi non vengono messi alla prova da questi siti: sono coperti dalle pagine locali (`test/local-opt.mjs`).
 
 <div align="right"><a href="#top">↑ torna su</a></div>
 
@@ -300,10 +313,10 @@ ok 22/22
 |---|---|
 | `browse_open` | Apre un URL (avvia Chrome da solo), rifiuta i cookie non essenziali, restituisce le righe. `rows:false` = solo intestazione e conteggi (~150 caratteri), `filter` = solo le righe che corrispondono. Mostra come modelli gli URL dei filtri gia' usati su quel sito. `search:"..."` usa la casella di ricerca del sito (e ne ricorda il modello di URL); le pagine 404/400 vengono segnalate invece di sembrare valide. Toglie `utm_*`, `gclid`, `gbraid`... |
 | `browse_search` | Ricerca web senza i CAPTCHA di Google: una riga per risultato `n. titolo \| url \| estratto`, link reali, niente annunci. Prima DuckDuckGo, Bing di riserva in automatico se compare una verifica. Gira in una scheda in background (più ricerche in parallelo); `site:"idealo.it"` limita a un sito |
-| `browse_view` | Righe della pagina corrente, con `filter`, `scope:"all"` e paginazione. `scope:"areas"` dà un ref alle aree cliccabili senza etichetta (icone, canvas, zone "trascina qui") |
-| `browse_do` | Fino a 40 passi in ordine; restituisce solo le differenze |
-| `browse_read` | Legge senza agire: `text` (solo il contenuto principale: niente menu, intestazioni, piè di pagina, banner dei cookie o righe di JavaScript; `selector:"body"` per tutto), `table`, `find`, `describe`, `cards` (una riga per risultato con i ref dei pulsanti: `21:39 \| 23:01 \| 2 h 25 \| diretto \| € 9,90 \| [e54]`, testi comuni in una riga; trova i risultati anche dentro componenti e portali grandi, aggiunge il riassunto per i lettori di schermo solo se porta orari o prezzi nascosti; `links:true` aggiunge l'URL pulito di ogni risultato; prezzi separati in `tot` con spedizione, `rif` prezzo di riferimento con avviso se lo sconto non è plausibile e `cond:` sconti condizionati segnati come non confermati; `sort:"price"`, `filter:"nero -ricondizionato"`, `maxPrice`), `fields` (solo le chiavi chieste: `query:"prezzo, classe energetica, dimensioni"`, avvisa se un altro sito dà un valore diverso per lo stesso modello), `pdf` (testo di un PDF scaricato o aperto, a pagine). Prima aspetta le richieste in corso: dopo una ricerca non serve `wait`. Con `url` legge un'altra pagina in una scheda in background senza lasciare quella attuale (in parallelo, cache di 10 minuti, `fresh:true` per ricaricare) |
-| `browse_task` | Compito guidato in stile Jev: dati per etichetta, `answers`, `submit`, `expect`, `extract` tipizzato (testo, numero, importo, data, url, tabella). Le date divise in giorno / mese / anno (+ ore / minuti) si compilano da un solo valore: `"partenza": "12/06/2026 10:30"`. Una ricerca intera in 1 chiamata: `{url, params:{da, a, data, ora}, submit:"Cerca", read:"cards"}` → ~176 token |
+| `browse_view` | Righe della pagina corrente, con `filter` (alias `match`), `scope:"all"` e paginazione. `scope:"areas"` dà un ref alle aree cliccabili senza etichetta (icone, canvas, zone "trascina qui"). I link generici ripetuti nelle card ("Leggi tutto", "Dettagli") ricevono il titolo della card come contesto: `@"Titolo della card": e12 link "Leggi tutto"` |
+| `browse_do` | Fino a 40 passi in ordine; restituisce solo le differenze. Dopo ogni passo aspetta che il DOM e le richieste avviate dal passo si fermino (niente `wait` a mano nei moduli delle SPA). `script` facoltativo: un corpo JS asincrono che gira **in locale** dopo i passi in una sandbox `node:vm` e restituisce solo il risultato — cicli (paginazione), `.filter()/.map()`, somme esatte: `{"steps":[], "script":"const t = await colibri.tables(); return t.slice(1).filter(r => +r[2] > 1000).length"}`. Vedi [Script locale](#script-locale-sandbox) |
+| `browse_read` | Legge senza agire: `text` (solo il contenuto principale: niente menu, intestazioni, piè di pagina, banner dei cookie o righe di JavaScript; `selector:"body"` per tutto), `table`, `find`, `describe`, `cards` (una riga per risultato con i ref dei pulsanti: `21:39 \| 23:01 \| 2 h 25 \| diretto \| € 9,90 \| [e54]`, testi comuni in una riga; trova i risultati anche dentro componenti e portali grandi, aggiunge il riassunto per i lettori di schermo solo se porta orari o prezzi nascosti; `links:true` aggiunge l'URL pulito di ogni risultato; prezzi separati in `tot` con spedizione, `rif` prezzo di riferimento con avviso se lo sconto non è plausibile e `cond:` sconti condizionati segnati come non confermati; `sort:"price"`, `filter:"nero -ricondizionato"`, `maxPrice`), `fields` (solo le chiavi chieste: `query:"prezzo, classe energetica, dimensioni"`, avvisa se un altro sito dà un valore diverso per lo stesso modello), `pdf` (testo di un PDF scaricato o aperto, a pagine). `filter` (alias `match`) su `text`/`table` tiene solo le righe che corrispondono, intestazione della tabella compresa. Prima aspetta le richieste in corso: dopo una ricerca non serve `wait`. Con `url` legge un'altra pagina in una scheda in background senza lasciare quella attuale (in parallelo, cache di 10 minuti, `fresh:true` per ricaricare) |
+| `browse_task` | Compito guidato in stile Jev: dati per etichetta (i campi omonimi in sezioni diverse si distinguono: `"indirizzo sede legale"` e `"indirizzo spedizione"`, anche dentro lo Shadow DOM), `answers`, `submit`, `expect`, `extract` tipizzato (testo, numero, importo, data, url, tabella). Le date divise in giorno / mese / anno (+ ore / minuti) si compilano da un solo valore: `"partenza": "12/06/2026 10:30"`. Una ricerca intera in 1 chiamata: `{url, params:{da, a, data, ora}, submit:"Cerca", read:"cards"}` → ~176 token |
 | `browse_screenshot` | JPEG ridotto (~900 token) della finestra, di un elemento o di una regione — solo quando il testo non basta |
 | `browse_stats` | Token usati nella sessione rispetto agli screenshot |
 
@@ -317,6 +330,14 @@ ok 22/22
 - **`!x` dati riservati** — password, numeri di carta, CVV, OTP, IBAN: l'AI non può mai scriverli, nemmeno con conferma. Li inserisci tu nella finestra.
 - **Compiti guidati**: il motore agisce da solo solo sopra la soglia di confidenza; l'invio non parte con domande aperte, errori o campi obbligatori vuoti.
 - **Domini consentiti**, niente `file://` / `javascript:`, testo delle pagine trattato come dato non fidato (resistente alla prompt injection), riferimenti unici per sessione.
+
+### Script locale (sandbox)
+
+`browse_do.script` e `browse_code` (`CB_CODE_MODE=1`) eseguono il JavaScript dell'agente in un contesto `node:vm` **dentro un worker thread separato**, con memoria limitata e un tempo massimo rigido (60 s, al massimo 60 chiamate a Colibri, risultato limitato a ~6.000 token con `--- TRUNCATED ---`).
+
+- Niente `process`, `require`, `import()`, `fetch`, `fs`, `child_process`, timer o `globalThis` dell'host; `eval`/`new Function` disattivati (`codeGeneration: { strings: false, wasm: false }`). L'unica API è l'oggetto `colibri`, costruito dentro la sandbox, che parla col server solo con stringhe JSON.
+- Ogni chiamata `colibri.*` passa dagli stessi handler e controlli dei tool: i campi `!x` restano bloccati, le azioni `!c` restano bloccate. Un `confirm:true` scritto **dentro** lo script viene tolto: vale solo se è sulla chiamata MCP (`browse_do {..., "confirm": true}` / `browse_code {..., "confirm": true}`), cioè dopo l'ok dell'utente.
+- `node:vm` da solo non è un confine di sicurezza (lo dice Node): qui è unito al worker (chiuso allo scadere del tempo) e a nessun oggetto dell'host raggiungibile dallo script.
 
 <div align="right"><a href="#top">↑ torna su</a></div>
 
@@ -334,7 +355,7 @@ ok 22/22
 | `CB_CHROME_PATH` | automatico | solo se Chrome/Edge non viene trovato |
 | `CB_ALLOW_SCREENSHOT` | `true` | |
 | `CB_HUMAN_WAIT` | `50` | secondi di attesa mentre risolvi un CAPTCHA / una verifica (`0` = non aspettare) |
-| `CB_TOOLS` | `all` | profilo dei tool: `all`, `lite` (search, open, do, read: ~1060 token per turno invece di ~1715), `read` (search, open, read: ~550), oppure un elenco come `search,open,read` |
+| `CB_TOOLS` | `all` | profilo dei tool: `all`, `lite` (search, open, do, read: ~1.240 token per turno invece di ~1.800), `read` (search, open, read: ~640), oppure un elenco come `search,open,read` |
 | `CB_STRIP_TRACKING` | `true` | toglie `utm_*`, `gclid`, `gbraid`, `fbclid`... dagli URL aperti da Colibri |
 | `CB_CLOSE_POPUPS` | `true` | chiude i popup promozionali (newsletter, sconto di benvenuto) con il loro pulsante Chiudi/×; mai finestre di login, pagamento o con piu' campi |
 | `CB_HUMAN_SHOW` | `true` | se il browser è invisibile e la verifica non si supera da sola, riapre Chrome visibile sulla stessa pagina |
@@ -342,6 +363,7 @@ ok 22/22
 | `CB_AUTO_CHROME` | `true` | in modalità `cdp`, avvia da solo il Chrome reale se sulla porta non risponde nessuno |
 | `CB_REAL_PROFILE_DIR` | `~/.colibri/real-chrome` | profilo del Chrome reale avviato da Colibri |
 | `CB_SEARCH_URL` | DuckDuckGo, poi Bing | pagina/e di ricerca per `browse_search`, `{q}` = testo cercato; più indirizzi separati da spazi vengono provati in ordine |
+| `CB_CODE_MODE` | `0` | `1` = **modalità script**: un solo tool, `browse_code {code, confirm?}`, con le firme compatte (stile TypeScript) degli altri (`colibri.open/search/view/do/read/task/text/tables/stats`). Circa l'80% di token di definizioni in meno a ogni turno; in questa modalità niente screenshot |
 
 <div align="right"><a href="#top">↑ torna su</a></div>
 
@@ -350,6 +372,7 @@ ok 22/22
 ## Limiti
 
 - Grafici, canvas e mappe non hanno testo: l'agente usa lo screenshot ridotto (con i riferimenti disegnati sopra) e il clic a coordinate relative.
+- Gli script locali (`script`, `browse_code`) non hanno rete, file né timer e si fermano dopo 60 s; con `CB_CODE_MODE=1` non c'è il tool screenshot.
 - Il motore di `browse_task` è un vocabolario calibrato, non un modello addestrato: con termini di settore che non conosce chiede più spesso (senza mai agire in modo sbagliato). Le risposte vengono ricordate per sito.
 - CAPTCHA e accessi li fai tu, nella finestra: Colibri non li aggira mai, si mette in pausa e riprende da solo (vedi FAQ).
 - Testato su pagine costruite sul modello dei portali della pubblica amministrazione: segnala nelle [Issues](https://github.com/t4zxxx1/colibri-mcp/issues) i siti che non funzionano.
@@ -414,6 +437,12 @@ In questa modalità Colibri **non chiude mai il tuo Chrome**: alla riconnessione
 No. Le azioni con effetti (`!c`) richiedono il tuo ok esplicito, i dati segreti (`!x`) non possono mai essere scritti dall'AI. Vedi [Sicurezza](#sicurezza).
 </details>
 
+<details>
+<summary><b>Cos'è la modalità script e quando conviene?</b></summary>
+
+Con `CB_CODE_MODE=1` il modello vede un solo tool, `browse_code`, e scrive un breve script asincrono (`await colibri.open({url}); const t = await colibri.tables({filter:"2026"}); return t.length`). Le definizioni dei tool scendono da circa 1.800 a circa 380 token per turno, e cicli, filtri e somme avvengono in locale: in chat entra solo il risultato finale. È facoltativa: gli 8 tool predefiniti non cambiano e `browse_do` accetta gli stessi script con `script`. Tutto resta sul tuo PC.
+</details>
+
 <div align="right"><a href="#top">↑ torna su</a></div>
 
 ---
@@ -425,7 +454,7 @@ No. Le azioni con effetti (`!c`) richiedono il tuo ok esplicito, i dati segreti 
 
 ```bash
 npm ci            # dipendenze di sviluppo e di esecuzione
-npm test          # oltre 180 test end-to-end via protocollo MCP (serve Chrome o Edge)
+npm test          # oltre 360 test end-to-end via protocollo MCP (serve Chrome o Edge)
 npm run test:live # prove facoltative su siti reali: ricerca, PDF, modulo httpbin, Wikipedia, area di caricamento (serve la rete)
 npm run bench     # confronto con screenshot, Playwright MCP, agent-browser, Fast Playwright MCP
 npm run bench:task # ricerca treni ripetuta: chiamate, token, secondi (aggiungi i percorsi di index.js vecchi per confrontare)

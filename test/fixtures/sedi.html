@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="it">
+<head><meta charset="utf-8"><title>Anagrafica azienda</title></head>
+<body>
+<h1>Anagrafica azienda</h1>
+<form id="f" onsubmit="return false">
+  <label>Ragione sociale <input name="rs"></label>
+  <h2>Sede legale</h2>
+  <div><label>Indirizzo <input id="ind1" name="a1"></label></div>
+  <div><label>Via <input id="via1" name="v1"></label></div>
+  <section role="group" aria-labelledby="h-op">
+    <h3 id="h-op">Sede operativa / Spedizione</h3>
+    <label>Indirizzo <input id="ind2" name="a2"></label>
+  </section>
+  <div id="host"></div>
+  <label>N. Telef. <input id="tel" name="t"></label>
+  <label>Partita IVA <input id="piva" name="pi"></label>
+  <button type="button">Salva bozza</button>
+</form>
+<script>
+  // sezione dentro lo Shadow DOM: il contesto viene dal gruppo del componente
+  const root = document.getElementById('host').attachShadow({ mode: 'open' });
+  root.innerHTML = '<fieldset><legend>Sede amministrativa</legend><label>Via <input id="via3" name="v3"></label></fieldset>';
+</script>
+</body>
+</html>

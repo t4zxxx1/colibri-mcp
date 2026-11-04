@@ -349,8 +349,64 @@ export function collectInPage(opts) {
   const grpMap = new Map();
   const groups = [];
   const GROUP_STOP = /^(FORM|FIELDSET|MAIN|BODY|HTML|NAV|HEADER|FOOTER|TABLE|TBODY|UL|OL)$/;
-  function groupOf(el) {
+  // link/pulsanti generici ripetuti nelle card ("Leggi tutto", "Dettagli"): il titolo della card li distingue
+  const GENERIC_ACT = /^(leggi( tutto| di piu| l'articolo| altro)?|continua( a leggere)?|dettagli|dettaglio|vedi( tutto| dettagli| di piu| offerta)?|scopri( di piu)?|visualizza|apri|modifica|mostra|more|read more|details?|view( details| more)?|see more|learn more|edit|open|show|mehr( lesen)?|details anzeigen|en savoir plus|lire la suite|voir|ver mas|leer mas|saiba mais|ver detalhes)$/;
+  const CARD_TITLE = 'h2,h3,h4,h5,h6,[role=heading],[class*="title" i],[class*="titolo" i],[class*="name" i],strong,b';
+  function cardOf(el) {
+    let a = el.parentElement;
+    for (let k = 0; a && k < 6 && !GROUP_STOP.test(a.tagName); k++, a = a.parentElement) {
+      const n = a.querySelectorAll(SEL).length;
+      if (n > 8) return null;
+      const h = [...a.querySelectorAll(CARD_TITLE)].find((t) => !t.contains(el) && !el.contains(t) && norm(txt(t)).length >= 3);
+      if (h) return { g: a, h };
+    }
+    return null;
+  }
+  // contesto di sezione di un campo: legend del fieldset, gruppo con aria-labelledby/aria-label, oppure il titolo
+  // h1-h4 che lo precede (solo se la pagina ha piu' sezioni). Risale anche fuori dallo Shadow DOM.
+  const upEl = (e) => e.parentElement || (e.parentNode && e.parentNode.host) || null;
+  const topOf = (e) => {
+    let r = e;
+    for (let k = 0; k < 10; k++) {
+      const root = r.getRootNode && r.getRootNode();
+      if (!root || root === document || !root.host) break;
+      r = root.host;
+    }
+    return r;
+  };
+  let HEADS = null;
+  function sectionOf(el) {
+    for (let a = upEl(el), k = 0; a && k < 15 && a !== document.body; a = upEl(a), k++) {
+      if (a.tagName === 'FIELDSET') {
+        const l = [...a.children].find((c) => c.tagName === 'LEGEND');
+        if (l && norm(txt(l))) return txt(l);
+      }
+      const r = a.getAttribute && a.getAttribute('role');
+      if (r === 'group' || r === 'region' || a.tagName === 'SECTION' || a.tagName === 'FIELDSET') {
+        const lb = a.getAttribute('aria-labelledby');
+        if (lb) {
+          const root = a.getRootNode();
+          const t = norm(lb.split(/\s+/).map((id) => { const n = root.getElementById ? root.getElementById(id) : document.getElementById(id); return n ? txt(n) : ''; }).join(' '));
+          if (t) return t;
+        }
+        const al = norm(a.getAttribute('aria-label'));
+        if (al) return al;
+      }
+    }
+    if (!HEADS) HEADS = [...document.querySelectorAll('h1,h2,h3,h4,[role=heading]')].filter((h) => norm(txt(h)));
+    if (HEADS.length < 2) return '';
+    const t = topOf(el);
+    let best = null;
+    for (const h of HEADS) {
+      if (h.contains(t)) continue;
+      if (h.compareDocumentPosition(t) & Node.DOCUMENT_POSITION_FOLLOWING) best = h;
+      else break;
+    }
+    return best ? txt(best) : '';
+  }
+  function groupOf(el, generic) {
     let g = el.closest && el.closest('tr,[role=row],li,article');
+    let head = null;
     if (!g) {
       let a = el.parentElement;
       for (let k = 0; a && k < 4 && !GROUP_STOP.test(a.tagName); k++, a = a.parentElement) {
@@ -360,6 +416,13 @@ export function collectInPage(opts) {
         }
       }
     }
+    if (!g && generic) {
+      const c = cardOf(el);
+      if (c) {
+        g = c.g;
+        head = c.h;
+      }
+    }
     if (!g || g === el) return -1;
     if (grpMap.has(g)) return grpMap.get(g);
     let label;
@@ -367,7 +430,7 @@ export function collectInPage(opts) {
       const cells = [...g.querySelectorAll('td,th,[role=cell],[role=gridcell]')].filter((c) => !c.querySelector(SEL));
       label = cells.slice(0, 4).map((c) => norm(txt(c))).filter(Boolean).join(' · ');
     } else {
-      const h = g.querySelector('h2,h3,h4,h5,h6,[role=heading]');
+      const h = head || g.querySelector('h2,h3,h4,h5,h6,[role=heading]');
       label = h ? txt(h) : txt(g);
     }
     const i = groups.length;
@@ -632,7 +695,7 @@ export function collectInPage(opts) {
         ty: (el.getAttribute('type') || tag).toLowerCase(),
         ac,
         near: cut(near, 60),
-        leg: fs ? cut(txt(fs.querySelector('legend')), 40) : '',
+        leg: cut(fs ? txt(fs.querySelector('legend')) || sectionOf(el) : sectionOf(el), 40),
         opts: tag === 'select' ? [...el.options].slice(0, 400).map((o) => cut(o.label || o.text, 60)) : undefined,
         grpName: role === 'rad' ? el.name || '' : undefined,
         glab: role === 'rad' ? radioGroupLabel(el) : undefined,
@@ -640,7 +703,7 @@ export function collectInPage(opts) {
       };
     }
 
-    const grp = groupOf(el);
+    const grp = groupOf(el, /^(btn|link|clk)$/.test(role) && name.length <= 24 && GENERIC_ACT.test(fold(name).replace(/[.:…>»→]+$/g, '').trim()));
     const ctx = grp >= 0 ? groups[grp] : '';
     const reg = regionIdx(el);
     const regLabel = reg >= 0 ? regions[reg].kind + regions[reg].name : '';

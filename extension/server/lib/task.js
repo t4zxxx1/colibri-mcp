@@ -45,9 +45,12 @@ function question(p, r, extra = '', taken = new Set()) {
   const none = probs.find((x) => x.key === null);
   const n = none && none.p >= 0.5 ? 5 : 3;
   const cands = probs.filter((x) => x.key !== null && !taken.has(x.key)).slice(0, n);
+  // candidati con lo stesso nome: la sezione li distingue senza rileggere la pagina
+  const nm = (x) => (x.data.f ? x.data.f.name : '');
+  const twin = (x) => cands.some((y) => y !== x && fold(nm(y)) === fold(nm(x)));
   const alts = [...(none && none.p >= 0.01 ? [{ none: true, p: none.p }] : []), ...cands]
     .sort((x, y) => y.p - x.p)
-    .map((x) => (x.none ? `nessuno ${pct(x.p)}` : `${x.key} "${x.data.f ? x.data.f.name : ''}" ${pct(x.p)}`))
+    .map((x) => (x.none ? `nessuno ${pct(x.p)}` : `${x.key} "${nm(x)}"${twin(x) && x.data.f.leg ? ` [${x.data.f.leg}]` : ''} ${pct(x.p)}`))
     .join(' · ');
   return `? "${p.key}": ${alts}${extra}`;
 }

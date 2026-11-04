@@ -85,7 +85,8 @@ La differenza viene da: menu, intestazione e piè di pagina compressi; opzioni d
 
 | Metodo | Token |
 |---|---|
-| Browser compatto (7 tool, `browse_task` e istruzioni del server compresi) | 1.347 (0.2: 2.914) |
+| Browser compatto (8 tool, `browse_task` e istruzioni del server compresi) | 1.799 (0.5.11: 1.910; 0.3: 1.347 con 7 tool; 0.2: 2.914) |
+| Browser compatto, `CB_CODE_MODE=1` (un solo tool `browse_code`) | 377 |
 | agent-browser CLI | ~2.295 (skill installata 795 + tool Bash, ipotesi 1.500) |
 | Fast Playwright MCP | 2.411 |
 | Playwright MCP | 4.536 |
@@ -96,7 +97,8 @@ La differenza viene da: menu, intestazione e piè di pagina compressi; opzioni d
 - **Compito lungo (T1).** Con `browse_task` bastano 3 chiamate: 645 token di risposte, 27.760 di contesto riletto, circa 19 secondi. Rispetto al concorrente migliore (agent-browser CLI senza guida) sono il 93% di token in meno nelle risposte, il 67% in meno di contesto riletto e circa 20 secondi in meno. Rispetto al browser compatto a passi espliciti: una chiamata e il 25% di contesto in meno, perché Claude non deve leggere il modulo per poi riscriverne le etichette.
 - **Elenco → dettaglio (T2).** `browse_task` non aiuta: Claude deve comunque vedere l'elenco per sapere quale collegamento aprire. Due chiamate, come i metodi a blocchi migliori; il browser compatto resta il più leggero in token (20.764 di contesto riletto contro 36.987).
 - **Navigazione (T3).** Una sola chiamata (apertura, clic e numero estratto) e 73 token di risposta: 12.849 di contesto riletto contro 26.555 del concorrente migliore, e su questo compito supera anche lo screenshot, che prima era il più veloce (8,2 s contro 10,0 s).
-- **Definizioni (0.3)**: i 7 tool e le istruzioni del server pesano 1.347 token a ogni turno (erano 2.914 nella 0.2): schemi JSON minimi e descrizioni in inglese per il modello, validazione completa sul server. Dalla 0.3 il benchmark conta anche le istruzioni del server; sono già comprese in tutti i numeri del browser compatto qui sopra.
+- **Definizioni**: gli 8 tool e le istruzioni del server pesano 1.799 token a ogni turno (0.5.11: 1.910, misurati con lo stesso script; 0.3: 1.347 con 7 tool), nonostante il nuovo parametro `script` di `browse_do`: descrizioni più asciutte, stesse istruzioni di sicurezza. Con `CB_CODE_MODE=1` resta un solo tool con le firme compatte: 377 token (-80%). Sono già comprese in tutti i numeri del browser compatto qui sopra.
+- **Misura di questa versione** (`METHODS=M3,M3t npm run bench`, prima → dopo): token delle risposte invariati in T1/T2/T3 (1.108/612, 891/835, 481/73); contesto riletto in totale T1 39.672 → 39.117 e 29.946 → 29.502 (`browse_task`), T2 22.439 → 22.106, T3 21.851 → 21.518, solo per le definizioni più corte. Le tabelle sopra restano quelle della misura completa con tutti i concorrenti.
 - In Claude Desktop, gli unici concorrenti utilizzabili senza terminale sono quelli MCP: lì agent-browser paga 17.877 token di definizioni a ogni turno e un'azione per chiamata; Fast Playwright MCP è il più vicino, ma con snapshot 8-10 volte più grandi.
 
 ## Problemi incontrati dai concorrenti (riproducibili)
