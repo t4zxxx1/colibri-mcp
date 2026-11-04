@@ -245,18 +245,18 @@ Stesse pagine, stessi compiti, otto metodi. Tutti hanno completato tutti i compi
 
 Tabelle complete, ipotesi e limiti (le pagine di prova sono nate insieme a questo strumento, che quindi gioca in casa): [docs/benchmark.md](docs/benchmark.md).
 
-### Verifica su siti reali: 0.5.11 contro questo branch
+### Verifica su siti reali
 
-Stesso Chrome e stesso profilo, una versione alla volta, ordine alternato a ogni giro, stato azzerato prima di ogni prova (carrello IKEA e dati di CreaCurriculum), passi identici eseguiti da script, 5 giri, mediana. Tutti i compiti sono riusciti 5/5 con entrambe le versioni, senza errori e senza screenshot.
+Negozi veri e un vero generatore di CV, pilotati dallo stesso script a ogni giro: 5 giri, stato azzerato prima di ogni prova, mediana. Tutti i compiti sono riusciti 5/5, senza errori e senza screenshot. Solo Colibri: gli altri metodi non sono stati rieseguiti su questi compiti, quindi il confronto con la tabella qui sopra vale solo come ordine di grandezza.
 
-| Compito (sito reale) | 0.5.11 | questo branch |
-|---|---|---|
-| IKEA: comodino nel carrello, prezzo e consegna verso un CAP (8 chiamate) | 14,0 s · 1.927 token | 13,8 s · 1.927 token |
-| Frigoriferi: neri, sotto 400 €, lettura filtrata del testo (3 chiamate) | 3,5 s · 1.037 token | 4,3 s · **437 token** |
-| CreaCurriculum: CV completo, 9 sezioni (26 chiamate) | 45,9 s · 3.144 token | 45,9 s · 3.144 token |
-| Definizioni dei tool + istruzioni | 1.975 token | **1.838 token** |
+| Compito (sito reale) | Chiamate | Tempo | Token |
+|---|---|---|---|
+| Negozio: prodotto nel carrello, poi prezzo e costo di consegna per un CAP | 8 | 13,8 s | 1.927 |
+| Negozio: frigoriferi neri sotto 400 €, lettura filtrata del testo | 3 | 4,3 s | **437** |
+| Generatore di CV: CV completo, 9 sezioni | 26 | 45,9 s | 3.144 |
+| Definizioni dei tool + istruzioni, a ogni turno | — | — | **1.838** |
 
-Cosa dicono, senza esagerare: su questi siti le due versioni sono pari per affidabilità, velocità e campi compilati. Il vantaggio sta nei token quando si usa il filtro sul testo (−58% sulla lettura dei frigoriferi: la 0.5.11 ignora `filter` nelle letture di testo e restituisce tutta la pagina) e nel 7% in meno di costo fisso delle definizioni. La differenza 3,5 contro 4,3 s segue la posizione nel giro (la prima prova è sempre più veloce), non la versione. L'abbinamento dei campi per sezione, i titoli delle card sui link ripetuti "Leggi tutto" e la tolleranza ai refusi non vengono messi alla prova da questi siti: si vedono sulle pagine locali (`test/local-opt.mjs`; su un insieme di 64 campi di moduli italiani e multilingua: 61 corretti contro 59, 1 valore sbagliato in entrambe).
+Una lettura di testo con `filter` restituisce solo le righe pertinenti, ed è qui che sta il risparmio maggiore (437 token contro 1.037 per la pagina intera). L'abbinamento dei campi per sezione, i titoli delle card sui link ripetuti "Leggi tutto" e la tolleranza ai refusi non vengono messi alla prova da questi siti: sono coperti dalle pagine locali (`test/local-opt.mjs`).
 
 <div align="right"><a href="#top">↑ torna su</a></div>
 
