@@ -10,6 +10,7 @@
 <a href="https://modelcontextprotocol.io"><img alt="MCP" src="https://img.shields.io/badge/MCP-stdio-34d399?style=for-the-badge&labelColor=0d1117"/></a>
 <img alt="Token Jev" src="https://img.shields.io/badge/token%20Jev-0-f59e0b?style=for-the-badge&labelColor=0d1117"/>
 <a href="https://github.com/t4zxxx1/colibri-mcp/stargazers"><img alt="Stelle" src="https://img.shields.io/github/stars/t4zxxx1/colibri-mcp?style=for-the-badge&color=f472b6&labelColor=0d1117"/></a>
+<a href="https://www.paypal.com/donate/?business=cavacarlo%40hotmail.it&currency_code=EUR&item_name=Colibri+MCP"><img alt="Offrimi un caffè" src="https://img.shields.io/badge/Offrimi%20un%20caff%C3%A8-PayPal-FFDD00?style=for-the-badge&logo=paypal&logoColor=black&labelColor=0d1117"/></a>
 </p>
 
 <p>
