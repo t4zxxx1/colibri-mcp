@@ -245,6 +245,19 @@ Same pages, same tasks, eight methods. Every method completed every task. **"Tot
 
 Full tables, assumptions and caveats (the test pages were built alongside this tool, so it plays at home): [docs/benchmark.md](docs/benchmark.md).
 
+### Check on real sites: 0.5.11 vs this branch
+
+Same Chrome and same profile, one version at a time, order alternated each round, state reset before every run (IKEA cart and CreaCurriculum data), identical scripted steps, 5 rounds, median. Every task succeeded 5/5 on both versions, with no errors and no screenshots.
+
+| Task (real site) | 0.5.11 | this branch |
+|---|---|---|
+| IKEA: bedside table into the cart, price and delivery to a postcode (8 calls) | 14.0 s · 1,927 tokens | 13.8 s · 1,927 tokens |
+| Fridges: black, under €400, filtered text read (3 calls) | 3.5 s · 1,037 tokens | 4.3 s · **437 tokens** |
+| CreaCurriculum: full CV, 9 sections (26 calls) | 45.9 s · 3,144 tokens | 45.9 s · 3,144 tokens |
+| Tool definitions + instructions | 1,975 tokens | **1,838 tokens** |
+
+What it shows, without overselling it: on these sites the two versions are equal in reliability, speed and fields filled. The gain is in tokens when the text filter is used (−58% on the fridge read: 0.5.11 ignores `filter` on text reads and returns the whole page) and 7% less fixed cost for tool definitions. The 3.5 vs 4.3 s difference follows the position in the round (the first run is always faster), not the version. Section-aware field matching, card titles on repeated "Read more" links and typo tolerance are not stressed by these sites; they show on the local fixtures (`test/local-opt.mjs`; on a 64-field set of Italian and multilingual forms: 61 correct against 59, 1 wrong value in both).
+
 <div align="right"><a href="#top">↑ back to top</a></div>
 
 ---
