@@ -245,19 +245,6 @@ Same pages, same tasks, eight methods. Every method completed every task. **"Tot
 
 Full tables, assumptions and caveats (the test pages were built alongside this tool, so it plays at home): [docs/benchmark.md](docs/benchmark.md).
 
-### Check on live sites
-
-Real shops and a real CV builder, driven by the same script every round: 5 rounds, state reset before each run, median. Every task succeeded 5/5 with no errors and no screenshots. Colibri only: the other methods were not re-run on these tasks, so compare with the table above only as an order of magnitude.
-
-| Task (live site) | Calls | Time | Tokens |
-|---|---|---|---|
-| Shop: product into the cart, then price and delivery cost for a postcode | 8 | 13.8 s | 1,927 |
-| Shop: black fridges under €400, filtered text read | 3 | 4.3 s | **437** |
-| CV builder: full CV, 9 sections | 26 | 45.9 s | 3,144 |
-| Tool definitions + instructions, every turn | — | — | **1,838** |
-
-A text read with `filter` returns only the matching lines, which is where most of the saving is (437 tokens against 1,037 for the whole page). Section-aware field matching, card titles on repeated "Read more" links and typo tolerance are not stressed by these sites; they are covered by the local fixtures (`test/local-opt.mjs`).
-
 <div align="right"><a href="#top">↑ back to top</a></div>
 
 ---
@@ -472,6 +459,10 @@ Release: bump `version` in `package.json`, `extension/manifest.json`, `extension
 ## Support the project
 
 If it saves you tokens, **⭐ star the repo** — it's the best way to help others find it. Ideas, bugs and sites to support: [open an issue](https://github.com/t4zxxx1/colibri-mcp/issues). Made with care in Italy by **[@t4zxxx1](https://github.com/t4zxxx1)** · Roca Software.
+
+☕ **Buy me a coffee** — if Colibri is useful to you, you can support its development with a PayPal donation:
+
+<a href="https://www.paypal.com/donate/?business=cavacarlo%40hotmail.it&currency_code=EUR&item_name=Colibri+MCP"><img alt="Buy me a coffee with PayPal" src="https://img.shields.io/badge/Buy%20me%20a%20coffee-PayPal-FFDD00?style=for-the-badge&logo=paypal&logoColor=black&labelColor=0d1117"/></a>
 
 ## License
 

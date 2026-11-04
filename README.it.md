@@ -245,19 +245,6 @@ Stesse pagine, stessi compiti, otto metodi. Tutti hanno completato tutti i compi
 
 Tabelle complete, ipotesi e limiti (le pagine di prova sono nate insieme a questo strumento, che quindi gioca in casa): [docs/benchmark.md](docs/benchmark.md).
 
-### Verifica su siti reali
-
-Negozi veri e un vero generatore di CV, pilotati dallo stesso script a ogni giro: 5 giri, stato azzerato prima di ogni prova, mediana. Tutti i compiti sono riusciti 5/5, senza errori e senza screenshot. Solo Colibri: gli altri metodi non sono stati rieseguiti su questi compiti, quindi il confronto con la tabella qui sopra vale solo come ordine di grandezza.
-
-| Compito (sito reale) | Chiamate | Tempo | Token |
-|---|---|---|---|
-| Negozio: prodotto nel carrello, poi prezzo e costo di consegna per un CAP | 8 | 13,8 s | 1.927 |
-| Negozio: frigoriferi neri sotto 400 €, lettura filtrata del testo | 3 | 4,3 s | **437** |
-| Generatore di CV: CV completo, 9 sezioni | 26 | 45,9 s | 3.144 |
-| Definizioni dei tool + istruzioni, a ogni turno | — | — | **1.838** |
-
-Una lettura di testo con `filter` restituisce solo le righe pertinenti, ed è qui che sta il risparmio maggiore (437 token contro 1.037 per la pagina intera). L'abbinamento dei campi per sezione, i titoli delle card sui link ripetuti "Leggi tutto" e la tolleranza ai refusi non vengono messi alla prova da questi siti: sono coperti dalle pagine locali (`test/local-opt.mjs`).
-
 <div align="right"><a href="#top">↑ torna su</a></div>
 
 ---
@@ -472,6 +459,10 @@ Nuova versione: aggiorna `version` in `package.json`, `extension/manifest.json`,
 ## Sostieni il progetto
 
 Se ti fa risparmiare token, **⭐ lascia una stella** — è il modo migliore per farlo conoscere. Idee, bug e siti da supportare: [apri una issue](https://github.com/t4zxxx1/colibri-mcp/issues). Fatto con cura in Italia da **[@t4zxxx1](https://github.com/t4zxxx1)** · Roca Software.
+
+☕ **Offrimi un caffè** — se Colibri ti è utile, puoi sostenerne lo sviluppo con una donazione PayPal:
+
+<a href="https://www.paypal.com/donate/?business=cavacarlo%40hotmail.it&currency_code=EUR&item_name=Colibri+MCP"><img alt="Offrimi un caffè con PayPal" src="https://img.shields.io/badge/Offrimi%20un%20caff%C3%A8-PayPal-FFDD00?style=for-the-badge&logo=paypal&logoColor=black&labelColor=0d1117"/></a>
 
 ## Licenza
 
