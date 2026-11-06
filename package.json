@@ -37,7 +37,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node test/functional.mjs && node test/resilience.mjs && node test/v2.mjs && node test/realsite.mjs && node test/captcha.mjs && node test/v052.mjs && node test/v053.mjs && node test/v054.mjs && node test/v055.mjs && node test/v056.mjs && node test/v057.mjs && node test/v058.mjs && node test/v059.mjs && node test/v0511.mjs && node test/local-opt.mjs",
+    "test": "node test/functional.mjs && node test/resilience.mjs && node test/v2.mjs && node test/realsite.mjs && node test/captcha.mjs && node test/v052.mjs && node test/v053.mjs && node test/v054.mjs && node test/v055.mjs && node test/v056.mjs && node test/v057.mjs && node test/v058.mjs && node test/v059.mjs && node test/v0511.mjs && node test/v0512.mjs && node test/local-opt.mjs",
     "test:live": "node test/live.mjs",
     "calibrate": "node test/calibrate.mjs",
     "bench": "node test/bench.mjs",

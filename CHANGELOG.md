@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+Fixes from a real session driving phpMyAdmin (code editor, tables, script API).
+
+**Code editors (CodeMirror, Monaco, Ace)**
+- `fill` on an editor whose real input is a 1px textarea covered by the rendered text no longer times out: the element is focused by script and the text is inserted from the keyboard. The step says `editor coperto: testo inserito da tastiera, non verificabile dal campo` instead of a false `il campo non l'ha accettato` (editors keep the text in their own model and clear the textarea).
+- `type` falls back to focusing the element when the click is blocked by an overlay. `click` with `force:true` now focuses the element too.
+- `type` without a ref: `{"type":"focus","text":…}` writes into the element that already has focus, and `{"type":{"x":0.4,"y":0.3},"text":…}` clicks that point first. Password fields are refused.
+
+**Safer writes**
+- `fill`/`type` by name no longer pick a field "by similarity" below 97% confidence (before, `sql_query` filled the bookmark label "Aggiungi ai preferiti questa query SQL" at 71%). They now fail and list the closest candidates. Clicks keep the old behaviour.
+
+**Tables and scripts**
+- `read:"table"` without a target picks the visible table with the most rows instead of the first `<table>` of the DOM (often a hidden settings panel).
+- Script docs: `colibri.text()` and `colibri.tables()` (there are no bare `text()`/`tables()` globals).
+
 ## 0.5.11
 
 Fixes from an analysis of 221 real calls on 0.5.10 (ministry portal, Fondimpresa, online shops).

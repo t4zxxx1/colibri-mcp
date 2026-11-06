@@ -976,7 +976,28 @@ export function readTextInPage(a) {
 
 export function readTableInPage(a) {
   const reg = window.__cb;
-  let el = a.ref ? reg && reg.byId.get(a.ref) : a.selector ? document.querySelector(a.selector) : document.querySelector('table,[role=grid],[role=table]');
+  // senza ref ne' selector: la tabella VISIBILE con piu' righe (non la prima del DOM, che spesso e' un pannello nascosto:
+  // impostazioni di phpMyAdmin, menu a comparsa, template)
+  const shown = (e) => {
+    const s = getComputedStyle(e);
+    if (s.display === 'none' || s.visibility === 'hidden') return false;
+    const r = e.getBoundingClientRect();
+    return r.width >= 1 && r.height >= 1 && !(e.closest && e.closest('[aria-hidden="true"],[inert],template'));
+  };
+  const biggest = () => {
+    let best = null;
+    let bn = -1;
+    for (const t of document.querySelectorAll('table,[role=grid],[role=table]')) {
+      if (!shown(t)) continue;
+      const n = t.querySelectorAll('tr,[role=row]').length;
+      if (n > bn) {
+        best = t;
+        bn = n;
+      }
+    }
+    return best || document.querySelector('table,[role=grid],[role=table]');
+  };
+  let el = a.ref ? reg && reg.byId.get(a.ref) : a.selector ? document.querySelector(a.selector) : biggest();
   if (!el) return { err: 'tabella non trovata' };
   if (!/^(table)$/i.test(el.tagName) && !/^(grid|table)$/.test(el.getAttribute('role') || '')) el = el.querySelector('table,[role=grid],[role=table]') || el;
   const cut = (s) => {

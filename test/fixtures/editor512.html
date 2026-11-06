@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Editor SQL (finto CodeMirror)</title>
+<style>
+  /* come CodeMirror 5: la textarea che riceve i tasti e' di 1px e il testo renderizzato (<pre>) le sta sopra */
+  .cm { position: relative; width: 480px; height: 90px; border: 1px solid #888; font-family: monospace; }
+  .cm textarea { position: absolute; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; padding: 0; border: 0; }
+  .cm pre { position: absolute; inset: 0; margin: 0; background: #fff; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<h1>Query SQL</h1>
+<div class="cm CodeMirror" id="cm">
+  <textarea id="cmin" aria-label="cm-input"></textarea>
+  <pre id="cmview"></pre>
+</div>
+<!-- l'editor tiene il testo nel proprio modello e lo mostra nel <pre>; la textarea viene svuotata a ogni input -->
+<script>
+  window.model = '';
+  const ta = document.getElementById('cmin');
+  const view = document.getElementById('cmview');
+  ta.addEventListener('input', () => { window.model += ta.value; ta.value = ''; view.textContent = window.model; });
+  document.addEventListener('keydown', (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') { window.model = ''; } });
+</script>
+
+<h2>Preferiti</h2>
+<label>Aggiungi ai preferiti questa query SQL <input type="text" id="bm" value=""></label>
+<button id="run" onclick="document.getElementById('out').textContent = 'eseguita: ' + window.model">Esegui</button>
+<div id="out"></div>
+</body>
+</html>

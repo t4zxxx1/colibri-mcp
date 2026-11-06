@@ -1168,7 +1168,7 @@ export class Session {
   }
 
   // ---------- tool: do ----------
-  resolve(snap, target) {
+  resolve(snap, target, opts = {}) {
     if (typeof target === 'string' && /^(f\d+)?e\d+$/.test(target.trim())) {
       const id = target.trim();
       const it = snap.items.find((i) => i.id === id);
@@ -1204,7 +1204,10 @@ export class Session {
     if (!m.length && cands.length) {
       // ultima possibilita': somiglianza (refusi, sinonimi, altre lingue) con confidenza, come una domanda "choice"
       const r = choice(cands.map((i) => ({ key: i.id, logit: 7 * similarity(qy.name, i.name) - (isLow(i) ? 0.8 : 0), data: i })));
-      if (decide(r, PRESETS.balanced) === 'act') return { it: r.data, note: `"${qy.name}" → ${r.data.id} "${r.data.name}" per somiglianza (${Math.round(r.confidence * 100)}%)` };
+      // azioni che scrivono (fill/type): una corrispondenza per somiglianza non basta, si rischia di compilare un campo diverso
+      // (es. "sql_query" -> "Aggiungi ai preferiti questa query SQL"). Si agisce solo con confidenza molto alta.
+      const strictOk = !opts.write || r.confidence >= 0.97;
+      if (strictOk && decide(r, PRESETS.balanced) === 'act') return { it: r.data, note: `"${qy.name}" → ${r.data.id} "${r.data.name}" per somiglianza (${Math.round(r.confidence * 100)}%)` };
       const alt = r.probs.filter((x) => x.key).slice(0, 3).map((x) => `${x.key} "${x.data.name}" ${Math.round(x.p * 100)}%`).join(' · ');
       return { err: `nessun elemento "${qy.name}"${row ? ' nella riga "' + qy.row + '"' : ''}; piu' simili: ${alt}` };
     }
@@ -1362,13 +1365,13 @@ export class Session {
 
   async step(act, st, snap, page) {
     const noteOut = [];
-    const target = async (t) => {
-      let r = this.resolve(snap, t);
+    const target = async (t, o = {}) => {
+      let r = this.resolve(snap, t, o);
       let el = !r.err && (await this.handle(r.it));
       // ref non trovato o elemento sparito nel frattempo: si rilegge la pagina e si riprova (anche per nome)
       if (r.err || !el) {
         snap = await this.collect();
-        const r2 = this.resolve(snap, t);
+        const r2 = this.resolve(snap, t, o);
         if (!r2.err) {
           r = r2;
           el = await this.handle(r.it);
@@ -1420,7 +1423,7 @@ export class Session {
         if (it.flags.includes('off')) throw new Error(`${it.id} "${it.name}" e' disattivato`);
         const g = await this.humanGate(page, el);
         if (g.stuck) return { block: g.note };
-        if (st.force) await el.evaluate((e) => e.click());
+        if (st.force) await el.evaluate((e) => { if (typeof e.focus === 'function') e.focus(); e.click(); });
         else {
           const sig = () => page.evaluate(() => location.href + '|' + document.querySelectorAll('*').length + '|' + (document.body ? document.body.innerText.length : 0)).catch(() => '');
           const before = await sig();
@@ -1472,20 +1475,45 @@ export class Session {
       }
       case 'fill':
       case 'type': {
-        const { it, el } = await target(st[act]);
+        // type senza ref: scrive nell'elemento che ha gia' il focus ("type": true) oppure dopo un clic a coordinate ({x,y})
+        if (act === 'type' && (st.type === true || st.type === 'focus' || pt(st.type))) {
+          if (pt(st.type)) {
+            const r = await this.pointTarget(st.type, snap, page, st);
+            if (r.block) return r;
+            await page.mouse.click(r.x, r.y);
+          }
+          const pw = await page.evaluate(() => {
+            const a = document.activeElement;
+            return !!a && a.tagName === 'INPUT' && /^(password)$/i.test(a.type || '');
+          });
+          if (pw) return { block: '!x campo riservato (password): lo compila l\'utente nella finestra del browser' };
+          await page.keyboard.type(String(st.text ?? ''), { delay: 12 });
+          await after(2500);
+          return { note: 'testo digitato nell\'elemento attivo' };
+        }
+        const { it, el } = await target(st[act], { write: true });
         if (it.s === 'x') return { block: `!x ${it.id} "${it.name}": campo riservato (password, carta, OTP, IBAN), lo compila l'utente nella finestra del browser` };
         if (it.role === 'sel') throw new Error(`${it.id} e' un menu: usa "select"`);
         if (/^(chk|rad|sw)$/.test(it.role)) throw new Error(`${it.id} e' una casella: usa "check"`);
         const text = String(st.text ?? '');
         const ev0 = this.events.length;
         let viaScript = false;
+        let viaKeys = false;
         if (act === 'fill') {
           try {
             if (it.flags.includes('ro')) throw new Error('readonly');
             await el.fill(text, { timeout: 5000 });
           } catch (e) {
             if (it.role === 'date') throw new Error(`data non accettata: per i campi data nativi usa il formato AAAA-MM-GG (${firstLine(e)})`);
-            if (!/readonly|not editable|editable/i.test(String(e && e.message))) throw e;
+            // editor di codice (CodeMirror, Monaco, Ace: phpMyAdmin, Adminer...): l'input vero e' una textarea di 1px coperta dal
+            // testo renderizzato, quindi non "visibile" per Playwright. Si da' il focus via script e si inserisce da tastiera.
+            if (/not visible|timeout|intercepts pointer|outside of the viewport/i.test(String(e && e.message)) && /^(area|edit|text)$/.test(it.role)) {
+              await el.evaluate((x) => x.focus());
+              await page.keyboard.press(process.platform === 'darwin' ? 'Meta+A' : 'Control+A');
+              await page.keyboard.insertText(text);
+              viaKeys = true;
+            } else if (!/readonly|not editable|editable/i.test(String(e && e.message))) throw e;
+            else {
             // campi in sola lettura gestiti da widget (es. datepicker): valore impostato via script con eventi
             await el.evaluate((x, v) => {
               const set = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(x), 'value');
@@ -1496,9 +1524,16 @@ export class Session {
               x.dispatchEvent(new Event('blur', { bubbles: true }));
             }, text);
             viaScript = true;
+            }
           }
         } else {
-          await el.click({ timeout: 5000 });
+          // elemento coperto da un overlay (es. editor di codice): il clic fallisce, si da' il focus via script
+          try {
+            await el.click({ timeout: 5000 });
+          } catch (e) {
+            if (!/timeout|intercepts pointer|not visible|outside of the viewport/i.test(String(e && e.message))) throw e;
+            await el.evaluate((x) => x.focus());
+          }
           // campi che aprono una finestra (motori di ricerca voli, selettori di luogo): il focus passa a un altro campo
           // dopo un attimo e i tasti premuti subito andrebbero persi. Si attende che il cursore sia in un campo
           // modificabile (subito, per un campo normale) e si scrive li'.
@@ -1553,6 +1588,9 @@ export class Session {
         const v = await el.evaluate((e) => ('value' in e ? e.value : e.innerText || '')).catch(() => null);
         const box = this.events.slice(ev0).filter((x) => /^finestra (alert|confirm|prompt)/.test(x));
         const said = box.length ? ` · il sito ha risposto ${box.map((x) => x.replace(/^finestra \w+ /, '').replace(/ -> .*$/, '')).join(' ')}` : '';
+        // l'editor di codice tiene il testo nel proprio modello, non nella textarea: il valore letto non e' confrontabile
+        if (!viaKeys && act === 'fill' && (await el.evaluate((e) => !!(e.closest && e.closest('.CodeMirror,.cm-editor,.monaco-editor,.ace_editor'))).catch(() => false))) viaKeys = true;
+        if (viaKeys) return { id: it.id, note: `${it.id} "${it.name}" e' un editor coperto: testo inserito da tastiera, non verificabile dal campo (controlla con browse_view)` };
         if (v !== null && act === 'fill' && v.trim() !== text.trim())
           return { id: it.id, warn: true, note: `⚠ ${it.id} "${it.name}" valore ora "${String(v).slice(0, 60)}" (richiesto "${text.slice(0, 40)}"): il campo non l'ha accettato${said}` };
         if (said) return { id: it.id, warn: true, note: `⚠ ${it.id} "${it.name}"${said}` };

@@ -179,13 +179,13 @@ const en = (values, description) => (description ? { enum: values, description }
 const obj = (properties, required) => ({ type: 'object', properties, ...(required ? { required } : {}) });
 const STEPS_DOC =
   'One verb per step. T = ref "e12" | name | {name,role,row,n} | {x,y} 0-1 (canvas/maps). ' +
-  'click:T (force:true if covered) · fill:T+text (date YYYY-MM-DD) · type:T+text (keystrokes) · ' +
+  'click:T (force:true if covered) · fill:T+text (date YYYY-MM-DD) · type:T+text (keystrokes; T="focus" = element already focused, {x,y} = click there first) ·' +
   'select:T+option (label/value/part) · check:T (on:false) · press:key (+target) · pick:"text" (visible option) · hover:T · ' +
   'scroll:down|up|top|bottom|T|px · wait:ms|"idle" · waitFor:"visible text" (+timeout) · goto:url · back:true · tab:n|"list"|"close" · ' +
   'upload:T+file (T may be a drop area) · dialog:accept|dismiss · find:"text" · read:text|table|cards|fields|describe (+target, max, links, sort, filter, maxPrice, query as browse_read) · ' +
   'confirm:true only after the user OKs a !c step.';
 const SCRIPT_DOC =
-  'Async JS body run after steps in a local sandbox: colibri.open|search|view|read|do|task|stats(args) as the tools (same safety), colibri.rows, text(), tables(). Return only the result (max 6k tokens).';
+  'Async JS body run after steps in a local sandbox: colibri.open|search|view|read|do|task|stats(args) as the tools (same safety), colibri.rows, colibri.text(args) (page text), colibri.tables(args) (table rows as arrays); there are no bare text()/tables() globals. Return only the result (max 6k tokens).';
 
 // ---------- script locale (codemode.js): stesse funzioni dei tool, stessi controlli di sicurezza ----------
 let TOOL_BY = {};
