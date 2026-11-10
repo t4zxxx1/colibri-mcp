@@ -92,7 +92,7 @@ else {
   const url1 = 'http://127.0.0.1:9334';
   const user = spawn(exe, ['--remote-debugging-port=9334', `--user-data-dir=${prof('cdp-user')}`, '--headless=new', '--no-first-run', ...(process.platform === 'linux' ? ['--no-sandbox'] : []), base + '/title-moment.html'], { stdio: 'ignore' });
   for (let k = 0; k < 80 && !(await cdpAlive(url1, 300)); k++) await sleep(250);
-  const c1 = await connect({ CB_MODE: 'cdp', CB_CDP_URL: url1 });
+  const c1 = await connect({ CB_MODE: 'cdp', CB_TAB: 'new', CB_CDP_URL: url1 });
   r = await c1.call('browse_open', { url: base + '/v052.html' });
   ok(has(r.text, 'Prenota treno'), 'cdp: collegato al Chrome dell\'utente', r.text.slice(0, 200));
   // la pagina apre una scheda propria (popup) mentre Colibri agisce
@@ -105,7 +105,7 @@ else {
   ok(alive, 'cdp: chiudendo Colibri (riconnessione /mcp) Chrome resta aperto');
   ok(after.some((u) => u.includes('title-moment')) && !after.some((u) => u.includes('cf-rich')), 'cdp: chiusa solo la scheda di Colibri, quella dell\'utente resta', `prima: ${before.join(' , ')}\ndopo: ${after.join(' , ')}`);
   // riconnessione: riusa il Chrome gia' aperto
-  const c2 = await connect({ CB_MODE: 'cdp', CB_CDP_URL: url1 });
+  const c2 = await connect({ CB_MODE: 'cdp', CB_TAB: 'new', CB_CDP_URL: url1 });
   r = await c2.call('browse_open', { url: base + '/v052.html' });
   ok(has(r.text, 'Prenota treno'), 'cdp: dopo la riconnessione lavora nello stesso Chrome', r.text.slice(0, 200));
   await c2.close();
@@ -116,7 +116,7 @@ else {
   // (finestra visibile: saltato in CI, dove non c'e' un display)
   if (!process.env.CI) {
   const url2 = 'http://127.0.0.1:9335';
-  const c3 = await connect({ CB_MODE: 'cdp', CB_CDP_URL: url2, CB_REAL_PROFILE_DIR: prof('real-chrome'), CB_EXTRA_ARGS: '' });
+  const c3 = await connect({ CB_MODE: 'cdp', CB_TAB: 'new', CB_CDP_URL: url2, CB_REAL_PROFILE_DIR: prof('real-chrome'), CB_EXTRA_ARGS: '' });
   r = await c3.call('browse_do', { steps: [{ goto: base + '/v052.html' }], view: 'none' });
   ok(has(r.text, 'avviato Chrome reale'), 'cdp: senza Chrome in ascolto Colibri avvia il Chrome reale', r.text);
   await c3.close();

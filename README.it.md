@@ -347,7 +347,9 @@ ok 22/22
 | `CB_STRIP_TRACKING` | `true` | toglie `utm_*`, `gclid`, `gbraid`, `fbclid`... dagli URL aperti da Colibri |
 | `CB_CLOSE_POPUPS` | `true` | chiude i popup promozionali (newsletter, sconto di benvenuto) con il loro pulsante Chiudi/×; mai finestre di login, pagamento o con piu' campi |
 | `CB_HUMAN_SHOW` | `true` | se il browser è invisibile e la verifica non si supera da sola, riapre Chrome visibile sulla stessa pagina |
-| `CB_MODE` / `CB_CDP_URL` | `launch` | `cdp` = **modalità Chrome reale**: si collega a un Chrome normale su `--remote-debugging-port=9222` (vedi FAQ) |
+| `CB_MODE` / `CB_CDP_URL` | `launch` | `attach` = **il tuo Chrome di tutti i giorni, già aperto** (accessi mantenuti, vedi FAQ) · `cdp` = **modalità Chrome reale**: un Chrome normale su `--remote-debugging-port=9222` |
+| `CB_TAB` | `active` (`attach`/`cdp`), `new` (`launch`) | `active` = lavora nella scheda che stai guardando · `new` = scheda propria di Colibri, chiusa all'uscita |
+| `CB_USER_DATA_DIR` | automatico | in modalità `attach`, la cartella del profilo di Chrome in cui cercare (default: Chrome, Beta, Canary, Edge, Brave, Chromium) |
 | `CB_AUTO_CHROME` | `true` | in modalità `cdp`, avvia da solo il Chrome reale se sulla porta non risponde nessuno |
 | `CB_REAL_PROFILE_DIR` | `~/.colibri/real-chrome` | profilo del Chrome reale avviato da Colibri |
 | `CB_SEARCH_URL` | DuckDuckGo, poi Bing | pagina/e di ricerca per `browse_search`, `{q}` = testo cercato; più indirizzi separati da spazi vengono provati in ordine |
@@ -380,7 +382,19 @@ No. Il motore in stile Jev gira in locale dentro Colibri. Usi solo l'agente che 
 <details>
 <summary><b>Quale browser usa? Vede i miei accessi?</b></summary>
 
-Chrome o Edge, con un profilo dedicato in `~/.colibri/profile`: fai l'accesso una volta e se lo ricorda. Per usare **il tuo** Chrome già aperto, avvialo con `--remote-debugging-port=9222` e imposta `CB_MODE=cdp`.
+Chrome o Edge, con un profilo dedicato in `~/.colibri/profile`: fai l'accesso una volta e se lo ricorda. Per lavorare **nel tuo Chrome, nella scheda che hai già aperta** (con tutti i tuoi accessi), usa `CB_MODE=attach`: vedi la domanda seguente.
+</details>
+
+<details>
+<summary><b>Colibri può usare il mio Chrome e la scheda in cui sono, invece di aprirne una nuova?</b></summary>
+
+Sì, con la **modalità attach** (Chrome 144+). Nessuna finestra nuova, nessuna scheda nuova, nessun nuovo accesso: Colibri lavora nella scheda che stai guardando.
+
+1. Nel tuo Chrome apri `chrome://inspect/#remote-debugging` e attiva **"Allow remote debugging for this browser instance"** (una volta sola, Chrome se lo ricorda).
+2. Aggiungi `"env": { "CB_MODE": "attach" }` alla voce di Colibri nella configurazione MCP del tuo agente.
+3. Alla prima chiamata Chrome ti chiede di **consentire** il collegamento: clicca *Consenti*.
+
+Colibri trova da solo il Chrome aperto (il file `DevToolsActivePort` nel profilo) e sceglie la scheda in primo piano, oppure l'ultima che hai usato. Se cambi scheda, il passo `{"tab":"active"}` ti segue. Non chiude mai il tuo Chrome né le tue schede: all'uscita chiude solo quelle aperte da lui. Verifica la configurazione con `npx -y github:t4zxxx1/colibri-mcp --attach`. Preferisci una scheda separata? Aggiungi `"CB_TAB": "new"`.
 </details>
 
 <details>

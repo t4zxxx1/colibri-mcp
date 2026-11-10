@@ -6,7 +6,7 @@ import * as P from './page-script.js';
 import { renderView, renderDiff, snapKeys, lineOf, estTokens, readCover, filterAlts, matchesFilter } from './render.js';
 import { fold, similarity, choice, decide, PRESETS } from './engine.js';
 import { runTask } from './task.js';
-import { cdpAlive, launchRealChrome } from './realchrome.js';
+import { cdpAlive, findRunningChrome, launchRealChrome, userDataDirs } from './realchrome.js';
 import { pdfText } from './pdf.js';
 
 const clean = (v) => (typeof v === 'string' && !v.startsWith('${') ? v.trim() : '');
@@ -141,6 +141,30 @@ const modelTokens = (title) => [...new Set((String(title).match(/[A-Za-z0-9][A-Z
 /** Testo con i ref tolti: le schede lette in una scheda di sfondo non hanno elementi cliccabili. */
 const noRefs = (s) => s.replace(/ →\S+/g, '').replace(/\[[a-z]?\d*e\d+\]( \| )?/g, '').replace(/\[[a-z]?\d*e\d+ ([^\]]*)\]/g, '$1');
 
+// osservatore delle modifiche della pagina (attese e diff): nelle pagine nuove come init script, in quelle gia'
+// aperte dell'utente con evaluate; una sola volta per documento
+const MUT_INIT = () => {
+  if (window.__cbAdded) return;
+  window.__cbMut = performance.now();
+  window.__cbAdded = [];
+  try {
+    new MutationObserver((ms) => {
+      window.__cbMut = performance.now();
+      const a = window.__cbAdded;
+      for (const m of ms) {
+        if (m.type === 'childList') for (const n of m.addedNodes) a.push(n);
+        else if (m.type === 'characterData') a.push(m.target);
+      }
+      if (a.length > 600) a.splice(0, a.length - 300);
+    }).observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
+  } catch {}
+};
+
+export const ATTACH_HELP =
+  'Nessun Chrome gia\' aperto con il debug remoto attivo. Nel tuo Chrome apri chrome://inspect/#remote-debugging, attiva ' +
+  '"Allow remote debugging for this browser instance" (Chrome 144+) e ripeti: Chrome chiedera\' di consentire il collegamento. ' +
+  'In alternativa avvia Chrome con --remote-debugging-port=9222 (CB_CDP_URL) oppure indica il profilo con CB_USER_DATA_DIR.';
+
 export function loadConfig(env = process.env) {
   const home = os.homedir();
   const dl = path.join(home, 'Downloads');
@@ -148,8 +172,12 @@ export function loadConfig(env = process.env) {
   const legacy = path.join(home, '.compact-browser');
   const base = fs.existsSync(legacy) ? legacy : path.join(home, '.colibri');
   return {
-    mode: clean(env.CB_MODE) === 'cdp' ? 'cdp' : 'launch',
+    mode: ['cdp', 'attach'].includes(clean(env.CB_MODE)) ? clean(env.CB_MODE) : 'launch',
     cdpUrl: clean(env.CB_CDP_URL) || 'http://127.0.0.1:9222',
+    // attach: cartella del profilo di cui leggere DevToolsActivePort (vuoto = Chrome/Edge/Brave di tutti i giorni)
+    userDataDir: clean(env.CB_USER_DATA_DIR),
+    // scheda di lavoro nel Chrome dell'utente: "active" = quella che sta guardando, "new" = una scheda nuova
+    tab: ['active', 'new'].includes(clean(env.CB_TAB)) ? clean(env.CB_TAB) : ['cdp', 'attach'].includes(clean(env.CB_MODE)) ? 'active' : 'new',
     chromePath: clean(env.CB_CHROME_PATH),
     profileDir: clean(env.CB_PROFILE_DIR) || path.join(base, 'profile'),
     realProfileDir: clean(env.CB_REAL_PROFILE_DIR) || path.join(base, 'real-chrome'),
@@ -227,6 +255,8 @@ export class Session {
     }
     if (this.ctx && this.page && !this.page.isClosed()) return this.page;
     if (this.ctx) {
+      // scheda di lavoro chiusa dall'utente: si passa a quella che ha davanti
+      if (this.cfg.tab === 'active' && this.cfg.mode !== 'launch' && (await this.useActive())) return this.page;
       const pages = this.ctx.pages().filter((p) => !p.isClosed() && !this.inUse.has(p));
       this.page = pages[pages.length - 1];
       if (!this.page) {
@@ -244,32 +274,59 @@ export class Session {
 
   async launch() {
     const c = this.cfg;
-    if (c.mode === 'cdp') {
-      const connect = () => chromium.connectOverCDP(c.cdpUrl, { timeout: 8000 });
-      try {
-        // un Chrome appena avviato dall'utente puo' metterci un attimo ad aprire la porta: si ricontrolla prima di avviarne uno
-        let alive = await cdpAlive(c.cdpUrl);
-        for (let k = 0; !alive && k < 3; k++) {
-          await new Promise((r) => setTimeout(r, 500));
-          alive = await cdpAlive(c.cdpUrl);
+    if (c.mode === 'cdp' || c.mode === 'attach') {
+      let endpoint = c.cdpUrl;
+      let where = '';
+      if (c.mode === 'attach') {
+        // il Chrome di tutti i giorni gia' aperto: nessun avvio, nessun profilo separato
+        const run = await findRunningChrome(c.userDataDir ? [c.userDataDir] : [...userDataDirs(), c.realProfileDir]);
+        if (run) {
+          endpoint = run.ws;
+          where = run.dir;
+        } else if (await cdpAlive(c.cdpUrl)) where = c.cdpUrl;
+        else throw new Error(ATTACH_HELP);
+        this.httpBase = run ? `http://127.0.0.1:${run.port}` : c.cdpUrl;
+        // Chrome chiede di consentire il collegamento: il tempo di risposta dell'utente non conta nei limiti
+        this.humanActive = (this.humanActive || 0) + 1;
+        try {
+          this.browser = await chromium.connectOverCDP(endpoint, { timeout: 90000 });
+        } catch (e) {
+          throw new Error(`Collegamento al tuo Chrome (${where}) non riuscito: nella finestra di Chrome clicca "Consenti" sulla richiesta di debug remoto, poi ripeti. Dettaglio: ${firstLine(e)}`);
+        } finally {
+          this.humanActive--;
         }
-        if (c.autoChrome && !alive) {
-          await launchRealChrome({ cdpUrl: c.cdpUrl, chromePath: c.chromePath, profileDir: c.realProfileDir });
-          this.events.push(`avviato Chrome reale (porta di debug, profilo ${c.realProfileDir}): resta aperto anche quando Colibri si chiude`);
+        this.events.push(`collegato al tuo Chrome gia' aperto (${where}): stessi accessi e cookie, nessuna scheda nuova`);
+      } else {
+        this.httpBase = c.cdpUrl;
+        const connect = () => chromium.connectOverCDP(c.cdpUrl, { timeout: 8000 });
+        try {
+          // un Chrome appena avviato dall'utente puo' metterci un attimo ad aprire la porta: si ricontrolla prima di avviarne uno
+          let alive = await cdpAlive(c.cdpUrl);
+          for (let k = 0; !alive && k < 3; k++) {
+            await new Promise((r) => setTimeout(r, 500));
+            alive = await cdpAlive(c.cdpUrl);
+          }
+          if (c.autoChrome && !alive) {
+            await launchRealChrome({ cdpUrl: c.cdpUrl, chromePath: c.chromePath, profileDir: c.realProfileDir });
+            this.events.push(`avviato Chrome reale (porta di debug, profilo ${c.realProfileDir}): resta aperto anche quando Colibri si chiude`);
+          }
+          this.browser = await connect();
+        } catch (e) {
+          throw new Error(`Nessun Chrome in ascolto su ${c.cdpUrl}. Avvialo con: npx -y github:t4zxxx1/colibri-mcp --chrome (oppure Chrome con --remote-debugging-port e un --user-data-dir dedicato). Dettaglio: ${firstLine(e)}`);
         }
-        this.browser = await connect();
-      } catch (e) {
-        throw new Error(`Nessun Chrome in ascolto su ${c.cdpUrl}. Avvialo con: npx -y github:t4zxxx1/colibri-mcp --chrome (oppure Chrome con --remote-debugging-port e un --user-data-dir dedicato). Dettaglio: ${firstLine(e)}`);
       }
       this.ctx = this.browser.contexts()[0] || (await this.browser.newContext());
-      // il Chrome e' dell'utente: si riusa una scheda vuota se c'e', altrimenti se ne apre una e solo quelle aperte
-      // da Colibri verranno chiuse all'uscita
-      const blank = this.ctx.pages().find((p) => /^(about:blank|chrome:\/\/(newtab|new-tab-page)\/?)$/.test(p.url()));
-      if (blank) this.page = blank;
-      else {
-        this.page = await this.ctx.newPage();
-        this.owned.add(this.page);
-        this.internal.add(this.page);
+      // il Chrome e' dell'utente: si lavora nella scheda che sta guardando (CB_TAB=active) oppure in una scheda
+      // vuota o nuova; solo le schede aperte da Colibri verranno chiuse all'uscita
+      if (c.tab === 'active') this.page = await this.activePage();
+      if (!this.page) {
+        const blank = this.ctx.pages().find((p) => /^(about:blank|chrome:\/\/(newtab|new-tab-page)\/?)$/.test(p.url()));
+        if (blank) this.page = blank;
+        else {
+          this.page = await this.ctx.newPage();
+          this.owned.add(this.page);
+          this.internal.add(this.page);
+        }
       }
       this.browser.on('disconnected', () => this.reset());
     } else {
@@ -297,21 +354,9 @@ export class Session {
       this.page = this.ctx.pages()[0] || (await this.ctx.newPage());
     }
     this.ctx.setDefaultTimeout(8000);
-    await this.ctx.addInitScript(() => {
-      window.__cbMut = performance.now();
-      window.__cbAdded = [];
-      try {
-        new MutationObserver((ms) => {
-          window.__cbMut = performance.now();
-          const a = window.__cbAdded;
-          for (const m of ms) {
-            if (m.type === 'childList') for (const n of m.addedNodes) a.push(n);
-            else if (m.type === 'characterData') a.push(m.target);
-          }
-          if (a.length > 600) a.splice(0, a.length - 300);
-        }).observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
-      } catch {}
-    });
+    await this.ctx.addInitScript(MUT_INIT);
+    // pagine gia' aperte nel Chrome dell'utente: l'osservatore si aggiunge subito, senza ricaricarle
+    if (this.page) await within(this.page.evaluate(MUT_INIT), 2000).catch(() => {});
     this.ctx.on('close', () => this.reset());
     this.ctx.on('page', (p) => {
       this.hook(p);
@@ -329,6 +374,66 @@ export class Session {
     this.browser = null;
     this.last = null;
     this.owned = new Set();
+  }
+
+  /**
+   * Scheda che l'utente sta guardando nel suo Chrome: finestra con il focus, poi scheda visibile, poi la piu'
+   * recente secondo Chrome (/json/list e' ordinato per ultima attivazione; serve quando la finestra e' coperta).
+   */
+  async activePage() {
+    if (!this.ctx) return null;
+    const pages = this.ctx.pages().filter((p) => !p.isClosed() && !this.inUse.has(p) && !this.internal.has(p));
+    if (pages.length <= 1) return pages[0] || null;
+    const st = await Promise.all(
+      pages.map((p) => within(p.evaluate(() => [document.visibilityState === 'visible', document.hasFocus()]), 1500).catch(() => [false, false]))
+    );
+    const score = st.map(([vis, foc]) => (foc ? 4 : 0) + (vis ? 2 : 0));
+    const best = Math.max(...score);
+    let cand = pages.filter((_, k) => score[k] === best);
+    if (cand.length > 1) {
+      const rank = await this.recency(cand);
+      if (rank) cand = cand.slice().sort((a, b) => (rank.get(a) ?? 1e9) - (rank.get(b) ?? 1e9));
+      else cand = [cand[cand.length - 1]];
+    }
+    return cand[0];
+  }
+
+  /** Posizione delle schede nell'elenco di Chrome (0 = attivata per ultima), o null se l'elenco non e' disponibile. */
+  async recency(pages) {
+    if (!this.httpBase) return null;
+    let list;
+    try {
+      const r = await fetch(new URL('/json/list', this.httpBase), { signal: AbortSignal.timeout(1500) });
+      if (!r.ok) return null;
+      list = (await r.json()).filter((t) => t.type === 'page').map((t) => t.id);
+    } catch {
+      return null;
+    }
+    const rank = new Map();
+    await Promise.all(
+      pages.map(async (p) => {
+        let s;
+        try {
+          s = await within(this.ctx.newCDPSession(p), 1500);
+          const { targetInfo } = await within(s.send('Target.getTargetInfo'), 1500);
+          const i = list.indexOf(targetInfo.targetId);
+          if (i >= 0) rank.set(p, i);
+        } catch {}
+        if (s) s.detach().catch(() => {});
+      })
+    );
+    return rank.size ? rank : null;
+  }
+
+  /** Passa alla scheda che l'utente ha davanti (passo tab:"active" o scheda di lavoro chiusa dall'utente). */
+  async useActive() {
+    const p = await this.activePage();
+    if (!p) return null;
+    this.page = p;
+    this.last = null;
+    this.hook(p);
+    await within(p.evaluate(MUT_INIT), 2000).catch(() => {});
+    return p;
   }
 
   /**
@@ -351,14 +456,14 @@ export class Session {
         this.hook(p);
         this.page = p;
         // la scheda dell'utente (cdp) resta aperta; le altre si chiudono senza aspettarle
-        if (old && old !== p && !old.isClosed() && (this.owned.has(old) || this.cfg.mode !== 'cdp')) within(old.close(), 3000).catch(() => {});
+        if (old && old !== p && !old.isClosed() && (this.owned.has(old) || this.cfg.mode === 'launch')) within(old.close(), 3000).catch(() => {});
       } catch {
         p = null;
       }
     }
     if (!p) {
       try {
-        if (this.cfg.mode === 'cdp') {
+        if (this.cfg.mode !== 'launch') {
           if (this.browser) await within(this.browser.close(), 3000);
         } else if (this.ctx) await within(this.ctx.close(), 5000);
       } catch {}
@@ -1038,6 +1143,8 @@ export class Session {
     let txt = renderView(snap, { url: page.url(), tabs: this.tabs(), max: this.cfg.maxItems, ...opts });
     if (opts.filter) txt += await this.filterText(page, snap, opts.filter);
     if (pop) txt = pop + '\n' + txt;
+    const ev = this.events.splice(0);
+    if (ev.length) txt = ev.join('\n') + '\n' + txt;
     return g.note ? g.note + '\n' + txt : txt;
   }
 
@@ -1754,6 +1861,14 @@ export class Session {
           if (pages.length < 2) throw new Error("e' l'unica scheda aperta");
           await within(page.close(), 5000).catch(() => {});
           this.page = this.ctx.pages().filter((p) => !p.isClosed() && !this.inUse.has(p)).pop();
+        } else if (st.tab === 'active') {
+          const p = await this.useActive();
+          if (!p) throw new Error('nessuna scheda aperta');
+          let u = '';
+          try {
+            u = p.url();
+          } catch {}
+          return { note: `scheda attiva dell'utente: ${u}` };
         } else if (st.tab === 'list') {
           const url = (p) => {
             try {
@@ -2210,7 +2325,7 @@ export class Session {
 
   async close() {
     try {
-      if (this.cfg.mode === 'cdp') {
+      if (this.cfg.mode !== 'launch') {
         // Chrome dell'utente: mai chiuderlo. Si chiudono solo le schede aperte da Colibri (lasciandone sempre
         // almeno una, altrimenti Chrome si chiuderebbe con l'ultima finestra) e ci si scollega.
         if (this.ctx) {

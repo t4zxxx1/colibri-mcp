@@ -347,7 +347,9 @@ ok 22/22
 | `CB_STRIP_TRACKING` | `true` | remove `utm_*`, `gclid`, `gbraid`, `fbclid`... from URLs Colibri opens |
 | `CB_CLOSE_POPUPS` | `true` | close promotional popups (newsletter, welcome discount) with their own Close/× button; never login, payment or multi-field windows |
 | `CB_HUMAN_SHOW` | `true` | when headless and a check doesn't clear on its own, reopen Chrome visibly on the same page |
-| `CB_MODE` / `CB_CDP_URL` | `launch` | `cdp` = **real Chrome mode**: attaches to a normal Chrome on `--remote-debugging-port=9222` (see FAQ) |
+| `CB_MODE` / `CB_CDP_URL` | `launch` | `attach` = **your everyday Chrome, already open** (logins kept, see FAQ) · `cdp` = **real Chrome mode**: a normal Chrome on `--remote-debugging-port=9222` |
+| `CB_TAB` | `active` (`attach`/`cdp`), `new` (`launch`) | `active` = work in the tab you are looking at · `new` = Colibri's own tab, closed on exit |
+| `CB_USER_DATA_DIR` | auto | in `attach` mode, the Chrome profile folder to look in (default: Chrome, Beta, Canary, Edge, Brave, Chromium) |
 | `CB_AUTO_CHROME` | `true` | in `cdp` mode, start the real Chrome by itself if nothing is listening on the port |
 | `CB_REAL_PROFILE_DIR` | `~/.colibri/real-chrome` | profile used by the real Chrome that Colibri starts |
 | `CB_SEARCH_URL` | DuckDuckGo, then Bing | search page(s) for `browse_search`, `{q}` = query; several separated by spaces are tried in order |
@@ -380,7 +382,19 @@ No. The Jev-style engine runs locally inside Colibri. You only use the agent you
 <details>
 <summary><b>Which browser does it drive? Will it see my logins?</b></summary>
 
-Chrome or Edge, with a dedicated profile in `~/.colibri/profile`: log in once and it remembers. To use **your own** running Chrome instead, start it with `--remote-debugging-port=9222` and set `CB_MODE=cdp`.
+Chrome or Edge, with a dedicated profile in `~/.colibri/profile`: log in once and it remembers. To work **in your own Chrome, in the tab you already have open** (with all your logins), use `CB_MODE=attach`: see the next question.
+</details>
+
+<details>
+<summary><b>Can Colibri use my Chrome and the tab I'm on, instead of opening a new one?</b></summary>
+
+Yes, with **attach mode** (Chrome 144+). No new window, no new tab, no new logins: Colibri works in the tab you are looking at.
+
+1. In your Chrome open `chrome://inspect/#remote-debugging` and turn on **"Allow remote debugging for this browser instance"** (once; Chrome remembers it).
+2. Add `"env": { "CB_MODE": "attach" }` to the Colibri entry in your agent's MCP config.
+3. On the first call Chrome asks you to **allow** the connection: click *Allow*.
+
+Colibri finds the running Chrome by itself (the `DevToolsActivePort` file in the profile) and picks the focused/visible tab, falling back to the last one you used. If you switch tab, the step `{"tab":"active"}` follows you. It never closes your Chrome or your tabs; only tabs it opened itself are closed on exit. Check the setup with `npx -y github:t4zxxx1/colibri-mcp --attach`. Prefer a separate tab? Add `"CB_TAB": "new"`.
 </details>
 
 <details>

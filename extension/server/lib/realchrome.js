@@ -2,6 +2,7 @@
 // automazione) con la porta di debug aperta. Colibri vi si collega via CDP e non lo chiude mai.
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
+import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -22,6 +23,52 @@ export function findChrome(custom) {
 
 export function realProfileDir(base) {
   return base || path.join(os.homedir(), '.colibri', 'real-chrome');
+}
+
+/** Cartelle dei profili di tutti i giorni (Chrome, Beta, Canary, Edge, Brave, Chromium) del sistema corrente. */
+export function userDataDirs() {
+  const h = os.homedir();
+  if (process.platform === 'win32') {
+    const l = process.env.LOCALAPPDATA || path.join(h, 'AppData', 'Local');
+    return [['Google', 'Chrome'], ['Google', 'Chrome Beta'], ['Google', 'Chrome SxS'], ['Microsoft', 'Edge'], ['BraveSoftware', 'Brave-Browser'], ['Chromium']].map((p) => path.join(l, ...p, 'User Data'));
+  }
+  if (process.platform === 'darwin') {
+    const s = path.join(h, 'Library', 'Application Support');
+    return ['Google/Chrome', 'Google/Chrome Beta', 'Google/Chrome Canary', 'Microsoft Edge', 'BraveSoftware/Brave-Browser', 'Chromium'].map((p) => path.join(s, p));
+  }
+  const c = process.env.XDG_CONFIG_HOME || path.join(h, '.config');
+  return ['google-chrome', 'google-chrome-beta', 'google-chrome-unstable', 'microsoft-edge', 'BraveSoftware/Brave-Browser', 'chromium'].map((p) => path.join(c, p));
+}
+
+const portOpen = (port, ms = 600) =>
+  new Promise((res) => {
+    const s = net.connect({ host: '127.0.0.1', port });
+    const end = (v) => {
+      s.destroy();
+      res(v);
+    };
+    s.setTimeout(ms, () => end(false));
+    s.once('connect', () => end(true));
+    s.once('error', () => end(false));
+  });
+
+/**
+ * Chrome gia' aperto dall'utente con il debug remoto attivo (chrome://inspect/#remote-debugging, Chrome 144+,
+ * oppure --remote-debugging-port): Chrome scrive porta e percorso WebSocket in <profilo>/DevToolsActivePort.
+ * Ritorna { ws, port, dir } del file piu' recente con la porta ancora in ascolto, altrimenti null.
+ */
+export async function findRunningChrome(dirs = userDataDirs()) {
+  const found = [];
+  for (const d of dirs) {
+    const f = path.join(d, 'DevToolsActivePort');
+    try {
+      const [port, wsPath] = fs.readFileSync(f, 'utf8').split(/\r?\n/);
+      if (/^\d+$/.test(port.trim()) && /^\/devtools\/browser\//.test((wsPath || '').trim())) found.push({ port: +port.trim(), wsPath: wsPath.trim(), dir: d, t: fs.statSync(f).mtimeMs });
+    } catch {}
+  }
+  found.sort((a, b) => b.t - a.t);
+  for (const x of found) if (await portOpen(x.port)) return { ws: `ws://127.0.0.1:${x.port}${x.wsPath}`, port: x.port, dir: x.dir };
+  return null;
 }
 
 export async function cdpAlive(cdpUrl, ms = 1500) {

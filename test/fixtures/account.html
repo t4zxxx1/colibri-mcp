@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="it">
+<head><meta charset="utf-8"><title>Area riservata</title></head>
+<body>
+  <h1 id="h">Accedi</h1>
+  <button type="button">Le mie pratiche</button>
+  <script>
+    if (document.cookie.includes('sess=mario')) document.getElementById('h').textContent = 'Benvenuto Mario';
+  </script>
+</body>
+</html>

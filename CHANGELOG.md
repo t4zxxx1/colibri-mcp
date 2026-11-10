@@ -1,8 +1,20 @@
 # Changelog
 
-## Unreleased
+## 0.5.12
 
-Fixes from a real session driving phpMyAdmin (code editor, tables, script API).
+**Work in your own Chrome, in the tab you are looking at.** No new window, no new tab, no new logins.
+
+- New `CB_MODE=attach`: Colibri finds the Chrome you already have open (the `DevToolsActivePort` file that Chrome writes when remote debugging is enabled at `chrome://inspect/#remote-debugging`, Chrome 144+) and connects to it. It never launches a browser. Profiles searched: Chrome, Beta, Canary, Edge, Brave, Chromium on Windows, macOS and Linux, or the folder in `CB_USER_DATA_DIR`. Chrome asks you to allow the connection: the wait for your click does not count against the tool time limits. Without a reachable Chrome the error explains the setup in one line.
+- New `CB_TAB=active|new` (default `active` in `attach` and `cdp` modes): Colibri works in the tab you are looking at (focused window, then visible tab, then the most recently used one according to Chrome) instead of opening its own. The page is not reloaded; the change observer used for waits and diffs is added on the fly.
+- New step `{"tab":"active"}`: follows you when you switch tab. If you close the tab Colibri is working in, it moves to the one you have in front of you.
+- Your Chrome and your tabs are never closed: on exit Colibri closes only the tabs it opened itself.
+- `npx -y github:t4zxxx1/colibri-mcp --attach` checks whether your Chrome is ready for the connection.
+- Claude Desktop extension: new setting "Quale Chrome usare" (`launch` / `attach` / `cdp`).
+- `browse_view` now also shows pending notices (connection, downloads, new tabs).
+
+**Also in this release** (PR #1): local **code mode** — `browse_do {script}` runs a small JS script in a sandbox (node:vm in a worker: no host objects, hard timeout, call cap, result cap) and `CB_CODE_MODE=true` exposes a single `browse_code` tool (about 377 tokens of definitions instead of about 1,800); trigram similarity and section-aware matching in `browse_task` (also Shadow DOM); card titles for generic links; local `filter` for `browse_read` text/table (−58% tokens on real sites); a network-quiet window after actions for SPAs.
+
+**Also in this release**: fixes from a real session driving phpMyAdmin (code editor, tables, script API).
 
 **Code editors (CodeMirror, Monaco, Ace)**
 - `fill` on an editor whose real input is a 1px textarea covered by the rendered text no longer times out: the element is focused by script and the text is inserted from the keyboard. The step says `editor coperto: testo inserito da tastiera, non verificabile dal campo` instead of a false `il campo non l'ha accettato` (editors keep the text in their own model and clear the textarea).
@@ -15,6 +27,10 @@ Fixes from a real session driving phpMyAdmin (code editor, tables, script API).
 **Tables and scripts**
 - `read:"table"` without a target picks the visible table with the most rows instead of the first `<table>` of the DOM (often a hidden settings panel).
 - Script docs: `colibri.text()` and `colibri.tables()` (there are no bare `text()`/`tables()` globals).
+
+Tests: new `test/attach.mjs` (12 checks: attach via `DevToolsActivePort`, logins kept, no new tab, `tab:"active"`, user tabs survive, clear error without Chrome, `cdp` with the active tab, `CB_TAB=new`, `--attach`) and `test/v0512.mjs` (editors, safer writes), all previous suites green.
+
+**IT** — Colibri lavora nel tuo Chrome già aperto e nella scheda che stai guardando, con i tuoi accessi: `CB_MODE=attach` (attiva una volta il debug remoto in `chrome://inspect/#remote-debugging` e clicca *Consenti*), `CB_TAB=active|new`, passo `tab:"active"` per seguire la scheda in cui passi, diagnostica `--attach`. Non chiude mai il tuo Chrome né le tue schede. Inoltre: modalità script locale (`CB_CODE_MODE`), editor di codice (CodeMirror) e scrittura più sicura (fill/type non scelgono più un campo "per somiglianza" sotto il 97%), read:"table" sceglie la tabella visibile con più righe.
 
 ## 0.5.11
 
